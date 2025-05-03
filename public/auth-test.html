@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auth Cache Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+            white-space: pre;
+            overflow-x: auto;
+        }
+        .log {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Authentication Cache Test</h1>
+    <p>This page tests the service worker's handling of authentication and caching.</p>
+    
+    <div>
+        <button id="testAuthCacheClearingBtn">Test Auth Cache Clearing</button>
+        <button id="populateAuthStorageBtn">Populate Auth Storage</button>
+        <button id="clearAllStorageBtn">Clear All Storage</button>
+    </div>
+    
+    <div class="result" id="result">Results will appear here...</div>
+    
+    <h3>Log:</h3>
+    <div class="log" id="log"></div>
+    
+    <script>
+        // Helper to log to the screen
+        function log(message) {
+            const logElement = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            logElement.innerHTML += `<div>[${time}] ${message}</div>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        // Function to update the result
+        function updateResult(data) {
+            document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+        }
+        
+        // Function to check if service worker is active
+        async function checkServiceWorker() {
+            try {
+                if ('serviceWorker' in navigator) {
+                    const registration = await navigator.serviceWorker.getRegistration();
+                    if (registration) {
+                        log(`Service worker is registered and ${registration.active ? 'active' : 'inactive'}`);
+                        return true;
+                    } else {
+                        log('No service worker is registered');
+                        return false;
+                    }
+                } else {
+                    log('Service workers not supported in this browser');
+                    return false;
+                }
+            } catch (error) {
+                log(`Error checking service worker: ${error.message}`);
+                return false;
+            }
+        }
+        
+        // Function to populate localStorage with mock auth data
+        function populateAuthStorage() {
+            log('Populating localStorage with mock auth data...');
+            
+            // Mock auth data
+            localStorage.setItem('supabase.auth.token', 'mock-auth-token');
+            localStorage.setItem('supabase.auth.refreshToken', 'mock-refresh-token');
+            localStorage.setItem('auth_email', 'test@example.com');
+            localStorage.setItem('zenjin_state_user123', JSON.stringify({ userId: 'user123', data: 'mock state data' }));
+            localStorage.setItem('zenjin_anonymous_state', JSON.stringify({ anonymous: true, data: 'anonymous data' }));
+            
+            // Create some mock IndexedDB data
+            try {
+                const dbRequest = indexedDB.open('zenjin_state_db', 1);
+                
+                dbRequest.onupgradeneeded = function(event) {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains('state_cache')) {
+                        const store = db.createObjectStore('state_cache', { keyPath: 'key' });
+                        store.createIndex('url', 'url', { unique: false });
+                        store.createIndex('timestamp', 'timestamp', { unique: false });
+                    }
+                };
+                
+                dbRequest.onsuccess = function(event) {
+                    const db = event.target.result;
+                    const tx = db.transaction(['state_cache'], 'readwrite');
+                    const store = tx.objectStore('state_cache');
+                    
+                    store.put({
+                        key: 'auth_data_1',
+                        url: '/api/user-state',
+                        data: { userId: 'user123', state: 'mock state data' },
+                        timestamp: Date.now(),
+                        expires: Date.now() + (24 * 60 * 60 * 1000)
+                    });
+                    
+                    tx.oncomplete = function() {
+                        log('IndexedDB populated with mock auth data');
+                    };
+                };
+                
+                dbRequest.onerror = function(event) {
+                    log(`Error opening IndexedDB: ${event.target.error}`);
+                };
+            } catch (error) {
+                log(`Error working with IndexedDB: ${error.message}`);
+            }
+            
+            // Display current storage
+            showCurrentStorage();
+        }
+        
+        // Function to show current storage contents
+        async function showCurrentStorage() {
+            // Get localStorage data
+            const localStorageData = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                localStorageData[key] = localStorage.getItem(key);
+            }
+            
+            // Try to get IndexedDB data
+            let indexedDBData = 'Unable to read IndexedDB data directly in this test';
+            
+            // Update result
+            updateResult({
+                localStorage: localStorageData,
+                indexedDB: indexedDBData
+            });
+            
+            log('Storage information updated');
+        }
+        
+        // Function to clear all storage
+        async function clearAllStorage() {
+            log('Clearing all storage...');
+            
+            // Clear localStorage
+            localStorage.clear();
+            
+            // Clear IndexedDB
+            try {
+                const databases = await indexedDB.databases();
+                for (const db of databases) {
+                    indexedDB.deleteDatabase(db.name);
+                }
+                log('All IndexedDB databases deleted');
+            } catch (error) {
+                log(`Error deleting IndexedDB databases: ${error.message}`);
+            }
+            
+            // Clear Cache API
+            if ('caches' in window) {
+                try {
+                    const cacheNames = await caches.keys();
+                    await Promise.all(cacheNames.map(name => caches.delete(name)));
+                    log('All caches cleared');
+                } catch (error) {
+                    log(`Error clearing caches: ${error.message}`);
+                }
+            }
+            
+            log('All storage cleared');
+            showCurrentStorage();
+        }
+        
+        // Function to test service worker auth data clearing
+        async function testAuthCacheClearing() {
+            log('Testing service worker auth data clearing...');
+            
+            const swActive = await checkServiceWorker();
+            if (!swActive) {
+                log('No active service worker found. The test will run in simulation mode.');
+            }
+            
+            // First show initial storage state
+            log('Initial storage state:');
+            await showCurrentStorage();
+            
+            // Send message to service worker
+            if (swActive && navigator.serviceWorker.controller) {
+                try {
+                    log('Sending CLEAR_AUTH_DATA message to service worker...');
+                    navigator.serviceWorker.controller.postMessage({
+                        type: 'CLEAR_AUTH_DATA'
+                    });
+                    
+                    // Set up listener for response
+                    navigator.serviceWorker.addEventListener('message', event => {
+                        if (event.data && event.data.type === 'AUTH_DATA_CLEARED') {
+                            log(`Service worker response: ${event.data.success ? 'Success' : 'Failed'}`);
+                            showCurrentStorage();
+                        }
+                    }, { once: true });
+                } catch (error) {
+                    log(`Error communicating with service worker: ${error.message}`);
+                }
+            } else {
+                // Simulate the behavior
+                log('Simulating auth data clearing...');
+                
+                // Clear auth-related localStorage
+                const authKeys = Object.keys(localStorage).filter(key => 
+                    key.includes('auth') || key.includes('token') || key.includes('user') || 
+                    key.includes('zenjin_state_') || key.includes('anonymous')
+                );
+                
+                authKeys.forEach(key => {
+                    localStorage.removeItem(key);
+                });
+                
+                // Show final storage state
+                log('Final storage state after simulated clearing:');
+                await showCurrentStorage();
+            }
+        }
+        
+        // Set up event listeners
+        document.getElementById('testAuthCacheClearingBtn').addEventListener('click', testAuthCacheClearing);
+        document.getElementById('populateAuthStorageBtn').addEventListener('click', populateAuthStorage);
+        document.getElementById('clearAllStorageBtn').addEventListener('click', clearAllStorage);
+        
+        // Initial check
+        checkServiceWorker();
+    </script>
+</body>
+</html>

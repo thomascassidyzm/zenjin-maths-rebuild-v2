@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline - Zenjin Learning Player</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      color: white;
+      height: 100vh;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+    
+    .offline-container {
+      background-color: rgba(0, 0, 0, 0.3);
+      border-radius: 16px;
+      padding: 40px;
+      max-width: 500px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      backdrop-filter: blur(10px);
+    }
+    
+    h1 {
+      font-size: 32px;
+      margin-bottom: 20px;
+    }
+    
+    p {
+      font-size: 18px;
+      line-height: 1.6;
+      margin-bottom: 30px;
+      opacity: 0.9;
+    }
+    
+    .icon {
+      font-size: 60px;
+      margin-bottom: 20px;
+      animation: pulse 2s infinite;
+    }
+    
+    .info {
+      background-color: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      padding: 15px;
+      font-size: 14px;
+      margin-top: 30px;
+      opacity: 0.8;
+    }
+    
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: background-color 0.3s, transform 0.2s;
+    }
+    
+    button:hover {
+      background-color: #3e8e41;
+      transform: translateY(-2px);
+    }
+    
+    button:active {
+      transform: translateY(0);
+    }
+    
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 8px;
+      background-color: #ff4d4d;
+    }
+    
+    .checking .dot {
+      background-color: #ffaa00;
+      animation: blink 1s infinite;
+    }
+    
+    .online .dot {
+      background-color: #4CAF50;
+    }
+    
+    .sync-status {
+      background-color: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      padding: 10px;
+      margin-top: 20px;
+      display: none;
+    }
+    
+    .sync-status.active {
+      display: block;
+    }
+    
+    .progress-bar {
+      height: 4px;
+      border-radius: 2px;
+      background-color: #2c5364;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+    
+    .progress-bar-inner {
+      height: 100%;
+      width: 0%;
+      background-color: #4CAF50;
+      transition: width 0.5s;
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.8; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    
+    @keyframes blink {
+      0% { opacity: 0.4; }
+      50% { opacity: 1; }
+      100% { opacity: 0.4; }
+    }
+  </style>
+</head>
+<body>
+  <div class="offline-container">
+    <div class="icon">📶</div>
+    <h1>You're Offline</h1>
+    
+    <div class="status-indicator offline">
+      <div class="dot"></div>
+      <span id="status-text">Offline</span>
+    </div>
+    
+    <p>The network connection appears to be unavailable.</p>
+    <p>Don't worry though! Your progress has been saved and will sync when you're back online.</p>
+    
+    <button id="try-again-btn" onclick="tryReconnect()">Try Again</button>
+    
+    <div id="sync-status" class="sync-status">
+      <p id="sync-message">Syncing your data...</p>
+      <div class="progress-bar">
+        <div id="progress-bar-inner" class="progress-bar-inner"></div>
+      </div>
+    </div>
+    
+    <div class="info">
+      <p>If you were working on a learning session, your progress is safely stored on this device. The state management system will automatically sync it to the server when connectivity is restored.</p>
+      <p id="storage-info"></p>
+    </div>
+  </div>
+  
+  <script>
+    // Elements
+    const statusIndicator = document.querySelector('.status-indicator');
+    const statusText = document.getElementById('status-text');
+    const syncStatus = document.getElementById('sync-status');
+    const syncMessage = document.getElementById('sync-message');
+    const progressBar = document.getElementById('progress-bar-inner');
+    const storageInfo = document.getElementById('storage-info');
+    const tryAgainBtn = document.getElementById('try-again-btn');
+    
+    // Check storage status
+    function checkStorageStatus() {
+      let status = [];
+      
+      // Check localStorage
+      try {
+        const testKey = 'offline_test';
+        localStorage.setItem(testKey, 'test');
+        localStorage.removeItem(testKey);
+        status.push('localStorage: Available');
+      } catch (err) {
+        status.push('localStorage: Unavailable');
+      }
+      
+      // Check IndexedDB
+      if ('indexedDB' in window) {
+        status.push('IndexedDB: Available');
+      } else {
+        status.push('IndexedDB: Unavailable');
+      }
+      
+      // Display storage status
+      storageInfo.textContent = status.join(' • ');
+    }
+    
+    // Try to reconnect
+    function tryReconnect() {
+      // Update UI to show checking status
+      statusIndicator.className = 'status-indicator checking';
+      statusText.textContent = 'Checking connection...';
+      tryAgainBtn.disabled = true;
+      
+      // Attempt to fetch a resource to verify connection
+      fetch('/api/health-check', { method: 'HEAD', cache: 'no-store' })
+        .then(() => {
+          // Connection restored
+          handleConnectionRestored();
+        })
+        .catch(() => {
+          // Still offline
+          statusIndicator.className = 'status-indicator offline';
+          statusText.textContent = 'Still offline';
+          tryAgainBtn.disabled = false;
+        });
+    }
+    
+    // Handle connection restored
+    function handleConnectionRestored() {
+      // Update UI
+      statusIndicator.className = 'status-indicator online';
+      statusText.textContent = 'Online! Syncing...';
+      syncStatus.classList.add('active');
+      
+      // Trigger data sync if service worker is available
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        // First, update progress bar animation
+        animateProgressBar();
+        
+        // Then send message to service worker to sync data
+        navigator.serviceWorker.controller.postMessage({
+          type: 'TRIGGER_SYNC'
+        });
+        
+        // Listen for message from service worker
+        navigator.serviceWorker.addEventListener('message', (event) => {
+          if (event.data && event.data.type === 'SYNC_COMPLETED') {
+            // Sync completed, update UI
+            syncMessage.textContent = `Sync complete! ${event.data.successCount || 0} items synced.`;
+            progressBar.style.width = '100%';
+            
+            // Enable button and change text
+            tryAgainBtn.disabled = false;
+            tryAgainBtn.textContent = 'Return to App';
+            tryAgainBtn.onclick = returnToApp;
+          }
+        });
+      } else {
+        // No service worker, just reload
+        syncMessage.textContent = 'Ready to return to the app';
+        progressBar.style.width = '100%';
+        tryAgainBtn.disabled = false;
+        tryAgainBtn.textContent = 'Return to App';
+        tryAgainBtn.onclick = returnToApp;
+      }
+    }
+    
+    // Animate the progress bar
+    function animateProgressBar() {
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += 5;
+        if (progress >= 90) {
+          clearInterval(interval);
+        }
+        progressBar.style.width = `${progress}%`;
+      }, 300);
+    }
+    
+    // Return to the app
+    function returnToApp() {
+      window.location.href = '/';
+    }
+    
+    // Check network status periodically
+    setInterval(() => {
+      if (navigator.onLine) {
+        // Attempt to fetch a resource to verify connection
+        fetch('/api/health-check', { method: 'HEAD', cache: 'no-store' })
+          .then(() => {
+            // If the fetch succeeds and we're still showing offline, update UI
+            if (statusIndicator.className !== 'status-indicator online') {
+              handleConnectionRestored();
+            }
+          })
+          .catch(() => {
+            // Still offline or server unreachable
+            console.log('Still offline or server unreachable');
+          });
+      }
+    }, 5000); // Check every 5 seconds
+    
+    // Initial checks
+    checkStorageStatus();
+    
+    // Check if we're actually online already
+    if (navigator.onLine) {
+      tryReconnect();
+    }
+  </script>
+</body>
+</html>

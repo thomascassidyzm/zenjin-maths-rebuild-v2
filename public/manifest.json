@@ -1,0 +1,37 @@
+{
+  "name": "Zenjin Learning Player",
+  "short_name": "Zenjin",
+  "description": "Interactive learning platform with tube cycling and state persistence",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f2027",
+  "theme_color": "#203a43",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "32x32",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "orientation": "portrait",
+  "lang": "en-US",
+  "prefer_related_applications": false,
+  "screenshots": [],
+  "offline_enabled": true,
+  "related_applications": [],
+  "scope": "/",
+  "serviceworker": {
+    "src": "/service-worker.js",
+    "scope": "/"
+  }
+}

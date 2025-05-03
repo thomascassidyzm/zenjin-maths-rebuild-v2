@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Triple-Helix Fixed Player</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #3b4ff8 0%, #223093 100%);
+      min-height: 100vh;
+      color: white;
+      overflow-x: hidden;
+    }
+    
+    * {
+      box-sizing: border-box;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+    
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      flex-direction: column;
+    }
+    
+    .spinner {
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top: 4px solid white;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin-bottom: 1rem;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .error {
+      background: rgba(0, 0, 0, 0.5);
+      padding: 2rem;
+      border-radius: 1rem;
+      max-width: 500px;
+      margin: 3rem auto;
+      text-align: center;
+    }
+    
+    .btn {
+      background-color: #38bdf8;
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      cursor: pointer;
+      font-weight: 500;
+      margin-top: 1rem;
+    }
+    
+    .btn:hover {
+      background-color: #0ea5e9;
+    }
+    
+    .player-container {
+      position: relative;
+      max-width: 600px;
+      margin: 3rem auto;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(8px);
+      border-radius: 1.5rem;
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+    
+    .tubes-indicator {
+      position: fixed;
+      top: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      border-radius: 2rem;
+      padding: 0.5rem 1.5rem;
+      display: flex;
+      gap: 1.5rem;
+      z-index: 10;
+    }
+    
+    .tube {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    
+    .tube-indicator {
+      width: 0.75rem;
+      height: 0.75rem;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.3);
+    }
+    
+    .tube.active .tube-indicator {
+      background: #34d399;
+    }
+    
+    .tube.active .tube-label {
+      color: #34d399;
+    }
+    
+    .tube-label {
+      font-size: 0.875rem;
+      color: rgba(255, 255, 255, 0.5);
+    }
+    
+    .player-header {
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .points-display {
+      display: flex;
+      gap: 1.5rem;
+    }
+    
+    .points-group .label {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 0.25rem;
+    }
+    
+    .points-group .value {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+    
+    .stitch-points {
+      color: white;
+    }
+    
+    .total-points {
+      color: #34d399;
+    }
+    
+    .timer {
+      width: 6rem;
+      height: 0.5rem;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 0.25rem;
+      overflow: hidden;
+    }
+    
+    .timer-fill {
+      height: 100%;
+      background: #34d399;
+      border-radius: 0.25rem;
+      transition: width 0.1s linear;
+    }
+    
+    .question-area {
+      padding: 2rem 1.5rem;
+    }
+    
+    .question {
+      text-align: center;
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 2rem;
+    }
+    
+    .question-pill {
+      display: inline-block;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 0.75rem 1.5rem;
+      border-radius: 2rem;
+    }
+    
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .option {
+      background: white;
+      color: #1f2937;
+      border: none;
+      border-radius: 10rem;
+      padding: 1rem;
+      font-size: 2rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      height: 5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .option:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .option:disabled {
+      cursor: default;
+    }
+    
+    .option.correct {
+      background: #34d399;
+      color: white;
+      box-shadow: 0 0 15px rgba(52, 211, 153, 0.7);
+    }
+    
+    .option.incorrect {
+      background: #ef4444;
+      color: white;
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.7);
+    }
+    
+    .option.neutral {
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.5);
+    }
+    
+    .option.highlight {
+      background: #34d399;
+      color: white;
+      box-shadow: 0 0 15px rgba(52, 211, 153, 0.7);
+    }
+    
+    .player-footer {
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .progress-text {
+      font-size: 0.875rem;
+      color: rgba(255, 255, 255, 0.7);
+    }
+    
+    .progress-bar {
+      width: 8rem;
+      height: 0.25rem;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 0.125rem;
+      overflow: hidden;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: #34d399;
+      border-radius: 0.125rem;
+    }
+    
+    .bubble-container {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      top: 0;
+      left: 0;
+      z-index: -1;
+    }
+    
+    .bubble {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      animation-name: bubble-rise;
+      animation-iteration-count: infinite;
+      animation-timing-function: linear;
+    }
+    
+    @keyframes bubble-rise {
+      0% {
+        bottom: -100px;
+        opacity: 0;
+      }
+      20% {
+        opacity: 0.2;
+      }
+      40% {
+        opacity: 0.4;
+      }
+      60% {
+        opacity: 0.2;
+      }
+      80% {
+        opacity: 0.1;
+      }
+      100% {
+        bottom: 100%;
+        opacity: 0;
+      }
+    }
+    
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+      20%, 40%, 60%, 80% { transform: translateX(5px); }
+    }
+    
+    .shake {
+      animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Loading Triple-Helix Fixed Player...</p>
+    </div>
+  </div>
+  
+  <!-- Bubble background -->
+  <div class="bubble-container" id="bubbleContainer"></div>
+  
+  <script>
+    /*********************
+     * Triple-Helix Fixed Player
+     * 
+     * A custom implementation that properly uses the Triple-Helix approach:
+     * 1. When a stitch is completed, immediately rotate to the next tube (rotating stage)
+     * 2. Process the stitch completion behind the scenes
+     * 3. Use the proper skip number sequence (1→3→5→10→25→100)
+     *********************/
+    
+    // Get user ID from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const userId = urlParams.get('userId') || 'anonymous';
+    
+    // State
+    let state = {
+      initialized: false,
+      loading: true,
+      error: null,
+      
+      // Triple-Helix state
+      tubes: {
+        1: { threadId: null, currentStitchId: null, stitches: [] },
+        2: { threadId: null, currentStitchId: null, stitches: [] },
+        3: { threadId: null, currentStitchId: null, stitches: [] }
+      },
+      activeTubeNumber: 1,
+      cycleCount: 0,
+      
+      // Question state
+      currentStitch: null,
+      currentQuestion: null,
+      questionPool: [],
+      currentQuestionIndex: 0,
+      options: [],
+      selectedOption: null,
+      isCorrect: null,
+      showCorrectAnswer: false,
+      timeRemaining: 100,
+      
+      // Session state
+      questionsCompleted: 0,
+      correctAnswers: 0,
+      stitchPoints: 0,
+      totalPoints: 0,
+      
+      // Transition state
+      isTransitioning: false,
+      rotationInProgress: false
+    };
+    
+    // DOM elements
+    let elements = {};
+    
+    // Constants
+    const QUESTIONS_PER_SESSION = 20;
+    const QUESTION_TIME_LIMIT = 5000; // 5 seconds
+    
+    // Timers
+    let timerInterval = null;
+    let transitionTimeout = null;
+    
+    // Initialize the application
+    function init() {
+      console.log('Initializing Triple-Helix Fixed Player for user:', userId);
+      
+      // Create bubbles in the background
+      createBubbles();
+      
+      // Load initial state from the server
+      fetchInitialState()
+        .then(initialState => {
+          if (initialState) {
+            // Initialize state with server data
+            initializeWithServerData(initialState);
+          } else {
+            // Initialize with default state if server data is unavailable
+            initializeWithDefaultState();
+          }
+          
+          // Render the main player
+          renderPlayer();
+          
+          // Start with the first question
+          if (state.currentStitch) {
+            prepareQuestionPool();
+            loadNextQuestion();
+          }
+          
+          state.loading = false;
+          state.initialized = true;
+          updateUI();
+        })
+        .catch(error => {
+          console.error('Failed to initialize:', error);
+          state.error = 'Could not load content. Please try again later.';
+          state.loading = false;
+          updateUI();
+        });
+    }
+    
+    // Fetch initial state from the server
+    async function fetchInitialState() {
+      try {
+        // First fetch threads and stitches
+        const response = await fetch(`/api/user-stitches?userId=${userId}`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch stitches: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        if (data.success && data.data) {
+          console.log('Successfully loaded threads and stitches:', data);
+          return data;
+        } else {
+          console.error('Error loading threads and stitches:', data);
+          return null;
+        }
+      } catch (error) {
+        console.error('Error fetching initial state:', error);
+        return null;
+      }
+    }
+    
+    // Initialize state with server data
+    function initializeWithServerData(serverData) {
+      console.log('Initializing with server data:', serverData);
+      
+      // Extract threads, stitches, and tube position
+      const threadsWithStitches = serverData.data;
+      const lastTubePosition = serverData.tubePosition;
+      
+      // Convert server data format to our state format
+      const tubeMap = {};
+      
+      // Process each thread
+      threadsWithStitches.forEach(threadData => {
+        const threadId = threadData.thread_id;
+        
+        // Determine which tube this thread belongs to
+        let tubeNumber = threadData.tube_number;
+        
+        // If tube_number is not explicitly provided, calculate it
+        if (!tubeNumber) {
+          const threadLetter = threadId.match(/thread-([A-Z])/)?.[1] || 'A';
+          const charCode = threadLetter.charCodeAt(0) - 65; // A=0, B=1, C=2, etc.
+          tubeNumber = (charCode % 3) + 1; // 1, 2, or 3 with wraparound
+        }
+        
+        // Convert server format stitches to our format
+        const stitches = threadData.stitches.map(stitch => ({
+          id: stitch.id,
+          threadId: threadId,
+          content: stitch.content || `Content for stitch ${stitch.id}`,
+          position: stitch.order_number || 0,
+          skipNumber: stitch.skip_number || 1,
+          distractorLevel: stitch.distractor_level || 'L1',
+          completed: false,
+          score: 0,
+          questions: stitch.questions || []
+        }));
+        
+        // Store in the map
+        if (!tubeMap[tubeNumber]) {
+          tubeMap[tubeNumber] = {
+            threadId: threadId,
+            stitches: stitches
+          };
+        } else {
+          // If there are multiple threads for this tube, append the stitches
+          tubeMap[tubeNumber].stitches = [...tubeMap[tubeNumber].stitches, ...stitches];
+        }
+      });
+      
+      // Ensure all tubes have data
+      for (let i = 1; i <= 3; i++) {
+        if (!tubeMap[i]) {
+          // Generate default data for this tube
+          const threadLetter = String.fromCharCode(64 + i); // A, B, C
+          const defaultThreadId = `thread-${threadLetter}`;
+          
+          tubeMap[i] = {
+            threadId: defaultThreadId,
+            stitches: Array.from({ length: 5 }, (_, index) => ({
+              id: `stitch-${threadLetter}-${index + 1}`,
+              threadId: defaultThreadId,
+              content: `Content for stitch ${index + 1} of thread ${defaultThreadId}`,
+              position: index === 0 ? 0 : index,
+              skipNumber: 1,
+              distractorLevel: 'L1',
+              completed: false,
+              score: 0,
+              questions: []
+            }))
+          };
+        }
+      }
+      
+      // For each tube, set the current stitch ID
+      Object.keys(tubeMap).forEach(tubeNumber => {
+        const tube = tubeMap[tubeNumber];
+        
+        // Sort stitches by position
+        tube.stitches.sort((a, b) => a.position - b.position);
+        
+        // Find the stitch with position 0 (ready stitch)
+        const activeStitch = tube.stitches.find(s => s.position === 0);
+        if (activeStitch) {
+          tube.currentStitchId = activeStitch.id;
+        } else if (tube.stitches.length > 0) {
+          // If no ready stitch, use the first one
+          tube.currentStitchId = tube.stitches[0].id;
+        }
+      });
+      
+      // Update state
+      state.tubes = {
+        1: tubeMap[1],
+        2: tubeMap[2],
+        3: tubeMap[3]
+      };
+      
+      // Set active tube number from saved position or default to 1
+      state.activeTubeNumber = lastTubePosition?.tubeNumber || 1;
+      
+      // Set current stitch
+      updateCurrentStitch();
+    }
+    
+    // Initialize with default state
+    function initializeWithDefaultState() {
+      console.log('Initializing with default state');
+      
+      // Generate default content for each tube
+      for (let i = 1; i <= 3; i++) {
+        const threadLetter = String.fromCharCode(64 + i); // A, B, C
+        const threadId = `thread-${threadLetter}`;
+        
+        // Generate stitches
+        const stitches = Array.from({ length: 5 }, (_, index) => {
+          // Generate sample questions
+          const questions = generateSampleQuestions(5, `${threadLetter}-${index + 1}`);
+          
+          return {
+            id: `stitch-${threadLetter}-${index + 1}`,
+            threadId: threadId,
+            content: `Content for stitch ${index + 1} of thread ${threadId}`,
+            position: index === 0 ? 0 : index,
+            skipNumber: 1,
+            distractorLevel: 'L1',
+            completed: false,
+            score: 0,
+            questions: questions
+          };
+        });
+        
+        // Set the tube data
+        state.tubes[i] = {
+          threadId: threadId,
+          currentStitchId: `stitch-${threadLetter}-1`,
+          stitches: stitches
+        };
+      }
+      
+      // Set current stitch
+      updateCurrentStitch();
+    }
+    
+    // Generate sample questions for a stitch
+    function generateSampleQuestions(count, id) {
+      const mathOperations = ['+', '-', '×', '÷'];
+      const questions = [];
+      
+      for (let i = 1; i <= count; i++) {
+        const op = mathOperations[(i - 1) % 4];
+        let num1 = Math.floor(Math.random() * 10) + 1;
+        let num2 = Math.floor(Math.random() * 10) + 1;
+        let correctAnswer = '';
+        let incorrectAnswers = [];
+        
+        // Ensure division problems have clean answers
+        if (op === '÷') {
+          num2 = Math.floor(Math.random() * 5) + 1; // 1-5
+          num1 = num2 * (Math.floor(Math.random() * 5) + 1); // Ensure divisible
+        }
+        
+        // Calculate correct answer
+        switch (op) {
+          case '+': correctAnswer = String(num1 + num2); break;
+          case '-': correctAnswer = String(num1 - num2); break;
+          case '×': correctAnswer = String(num1 * num2); break;
+          case '÷': correctAnswer = String(num1 / num2); break;
+        }
+        
+        // Generate wrong answers close to correct one
+        const correctNum = Number(correctAnswer);
+        incorrectAnswers = [
+          String(correctNum + 1),
+          String(correctNum - 1),
+          String(correctNum + 2)
+        ];
+        
+        questions.push({
+          id: `q-${id}-${i}`,
+          text: `${num1} ${op} ${num2}`,
+          correctAnswer: correctAnswer,
+          distractors: {
+            L1: incorrectAnswers[0],
+            L2: incorrectAnswers[1],
+            L3: incorrectAnswers[2]
+          }
+        });
+      }
+      
+      return questions;
+    }
+    
+    // Update the current stitch based on active tube
+    function updateCurrentStitch() {
+      const tube = state.tubes[state.activeTubeNumber];
+      if (!tube) return;
+      
+      const stitch = tube.stitches.find(s => s.id === tube.currentStitchId);
+      state.currentStitch = stitch;
+      
+      console.log(`Updated current stitch to ${stitch?.id} in tube ${state.activeTubeNumber}`);
+    }
+    
+    // Prepare question pool from current stitch
+    function prepareQuestionPool() {
+      if (!state.currentStitch) return;
+      
+      // Ensure stitch has questions
+      if (!state.currentStitch.questions || state.currentStitch.questions.length === 0) {
+        state.currentStitch.questions = generateSampleQuestions(20, state.currentStitch.id);
+      }
+      
+      // Shuffle questions and set the pool
+      state.questionPool = shuffleArray([...state.currentStitch.questions]);
+      state.currentQuestionIndex = 0;
+      
+      console.log(`Prepared question pool with ${state.questionPool.length} questions`);
+    }
+    
+    // Load the next question from the pool
+    function loadNextQuestion() {
+      if (state.questionPool.length === 0) {
+        console.error('No questions available in the pool');
+        return;
+      }
+      
+      // Get next question from pool
+      const question = state.questionPool[state.currentQuestionIndex];
+      state.currentQuestion = question;
+      
+      // Reset question state
+      state.selectedOption = null;
+      state.isCorrect = null;
+      state.showCorrectAnswer = false;
+      state.timeRemaining = 100;
+      
+      // Prepare answer options
+      const correctAnswer = question.correctAnswer;
+      const distractor = question.distractors.L1; // Use appropriate distractor level
+      
+      // Create and shuffle options
+      state.options = shuffleArray([correctAnswer, distractor]);
+      
+      // Start timer
+      startTimer();
+      
+      // Update UI
+      updateUI();
+    }
+    
+    // Start timer for question
+    function startTimer() {
+      // Clear any existing timer
+      if (timerInterval) {
+        clearInterval(timerInterval);
+      }
+      
+      const startTime = Date.now();
+      
+      timerInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const remaining = Math.max(0, 100 - (elapsed / QUESTION_TIME_LIMIT) * 100);
+        
+        state.timeRemaining = remaining;
+        updateTimer();
+        
+        if (remaining <= 0) {
+          // Time's up
+          clearInterval(timerInterval);
+          handleTimeout();
+        }
+      }, 100);
+    }
+    
+    // Handle timeout (no answer selected)
+    function handleTimeout() {
+      if (state.selectedOption !== null) return;
+      
+      state.selectedOption = 'timeout';
+      state.isCorrect = false;
+      state.showCorrectAnswer = true;
+      
+      // Track questions completed
+      state.questionsCompleted++;
+      
+      // Update UI
+      updateUI();
+      
+      // Move to next question after delay
+      transitionTimeout = setTimeout(() => {
+        if (state.questionsCompleted >= QUESTIONS_PER_SESSION) {
+          // Session complete - process
+          completeStitchSession();
+        } else {
+          // Move to next question
+          const nextIndex = (state.currentQuestionIndex + 1) % state.questionPool.length;
+          state.currentQuestionIndex = nextIndex;
+          loadNextQuestion();
+        }
+      }, 1500);
+    }
+    
+    // Handle option selection
+    function handleOptionSelect(option) {
+      // Prevent multiple selections or selection during transition
+      if (state.selectedOption !== null || state.isTransitioning) return;
+      
+      // Stop timer
+      if (timerInterval) {
+        clearInterval(timerInterval);
+      }
+      
+      const isAnswerCorrect = option === state.currentQuestion.correctAnswer;
+      state.selectedOption = option;
+      state.isCorrect = isAnswerCorrect;
+      
+      // If incorrect, show correct answer
+      if (!isAnswerCorrect) {
+        state.showCorrectAnswer = true;
+        
+        // Add shake animation to selected option
+        const selectedOptionElement = document.querySelector(`[data-option="${option}"]`);
+        if (selectedOptionElement) {
+          selectedOptionElement.classList.add('shake');
+          setTimeout(() => {
+            selectedOptionElement.classList.remove('shake');
+          }, 500);
+        }
+      }
+      
+      // Update score
+      if (isAnswerCorrect) {
+        state.stitchPoints += 3; // 3 points for correct answer
+        state.correctAnswers++;
+      }
+      
+      // Track questions completed
+      state.questionsCompleted++;
+      
+      // Update UI
+      updateUI();
+      
+      // Move to next question after delay
+      transitionTimeout = setTimeout(() => {
+        if (state.questionsCompleted >= QUESTIONS_PER_SESSION) {
+          // Session complete - process
+          completeStitchSession();
+        } else {
+          // Move to next question
+          const nextIndex = (state.currentQuestionIndex + 1) % state.questionPool.length;
+          state.currentQuestionIndex = nextIndex;
+          loadNextQuestion();
+        }
+      }, 1500);
+    }
+    
+    // Complete the stitch session and process with StateMachine approach
+    function completeStitchSession() {
+      if (state.rotationInProgress) return;
+      
+      console.log('Session completed');
+      state.rotationInProgress = true;
+      state.isTransitioning = true;
+      
+      // Create session results
+      const results = {
+        correctAnswers: state.correctAnswers,
+        totalQuestions: QUESTIONS_PER_SESSION,
+        accuracy: (state.correctAnswers / QUESTIONS_PER_SESSION) * 100
+      };
+      
+      // CRITICAL: Key Triple-Helix Process
+      // 1. First rotate to the next tube (rotating stage concept)
+      console.log('Starting tube rotation and stitch processing...');
+      updateUI(); // Show loading spinner
+      
+      setTimeout(() => {
+        // Rotate to next tube - this is the "rotating stage" concept
+        console.log('Step 1: Rotating to next tube');
+        cycleTubes();
+        
+        // Then process the completion
+        setTimeout(() => {
+          // This is the key part - we process the stitch completion in the previous tube
+          // AFTER rotating to the next tube
+          console.log('Step 2: Processing stitch completion');
+          const processResult = processStitchCompletion(
+            state.currentStitch.threadId,
+            state.currentStitch.id,
+            state.correctAnswers,
+            QUESTIONS_PER_SESSION
+          );
+          
+          // Reset for next session
+          state.questionsCompleted = 0;
+          state.correctAnswers = 0;
+          state.stitchPoints = 0;
+          state.questionPool = [];
+          state.currentQuestion = null;
+          state.rotationInProgress = false;
+          state.isTransitioning = false;
+          
+          // Persist state to server
+          persistStateToServer();
+          
+          // Prepare for next stitch
+          updateCurrentStitch();
+          prepareQuestionPool();
+          loadNextQuestion();
+        }, 500); // Process completion after rotation
+      }, 800); // First rotate, then process
+    }
+    
+    // Process stitch completion
+    function processStitchCompletion(threadId, stitchId, score, totalQuestions) {
+      console.log(`Processing stitch completion: ${stitchId} with score ${score}/${totalQuestions}`);
+      
+      // Find which tube contains this thread
+      let tubeNumber = findTubeByThreadId(threadId);
+      if (!tubeNumber) {
+        console.error(`Thread ${threadId} not found in any tube`);
+        return null;
+      }
+      
+      const tube = state.tubes[tubeNumber];
+      
+      // Find the stitch in the tube
+      const stitchIndex = tube.stitches.findIndex(s => s.id === stitchId);
+      if (stitchIndex === -1) {
+        console.error(`Stitch ${stitchId} not found in tube ${tubeNumber}`);
+        return null;
+      }
+      
+      // Update stitch with completion information
+      tube.stitches[stitchIndex].completed = true;
+      tube.stitches[stitchIndex].score = score;
+      
+      // Check for perfect score
+      const isPerfectScore = score === totalQuestions;
+      
+      // Add points to total
+      state.totalPoints += score;
+      
+      if (isPerfectScore) {
+        console.log(`Perfect score achieved (${score}/${totalQuestions}) for stitch ${stitchId}`);
+        
+        // Update skip number and distractor level for perfect scores
+        const currentStitch = tube.stitches[stitchIndex];
+        
+        // Progress skip number: 1 -> 3 -> 5 -> 10 -> 25 -> 100
+        if (currentStitch.skipNumber === 1) currentStitch.skipNumber = 3;
+        else if (currentStitch.skipNumber === 3) currentStitch.skipNumber = 5;
+        else if (currentStitch.skipNumber === 5) currentStitch.skipNumber = 10;
+        else if (currentStitch.skipNumber === 10) currentStitch.skipNumber = 25;
+        else if (currentStitch.skipNumber === 25) currentStitch.skipNumber = 100;
+        else currentStitch.skipNumber = 100; // Max value
+        
+        console.log(`Updated skip number to ${currentStitch.skipNumber}`);
+        
+        // Progress distractor level on ratchet: L1 -> L2 -> L3
+        if (currentStitch.distractorLevel === 'L1') currentStitch.distractorLevel = 'L2';
+        else if (currentStitch.distractorLevel === 'L2') currentStitch.distractorLevel = 'L3';
+        // L3 is max level
+        
+        console.log(`Updated distractor level to ${currentStitch.distractorLevel}`);
+        
+        // CRITICAL: Reorder stitches in the tube
+        advanceStitchInTube(tubeNumber);
+      } else {
+        // For non-perfect scores, reset the skip number to 1
+        tube.stitches[stitchIndex].skipNumber = 1;
+        console.log(`Non-perfect score (${score}/${totalQuestions}) - reset skip number to 1`);
+        
+        // Note: We do NOT reset distractor level as it's on a one-way ratchet
+      }
+      
+      return tube.stitches[stitchIndex];
+    }
+    
+    // Find which tube contains a thread
+    function findTubeByThreadId(threadId) {
+      for (const [tubeNum, tube] of Object.entries(state.tubes)) {
+        if (tube.threadId === threadId) {
+          return parseInt(tubeNum);
+        }
+      }
+      return null;
+    }
+    
+    // Cycle to the next tube
+    function cycleTubes() {
+      const prevTube = state.activeTubeNumber;
+      
+      // Cycle 1->2->3->1
+      state.activeTubeNumber = (state.activeTubeNumber % 3) + 1;
+      
+      // Increment cycle count if back to tube 1
+      if (state.activeTubeNumber === 1) {
+        state.cycleCount++;
+      }
+      
+      console.log(`Cycled from tube ${prevTube} to tube ${state.activeTubeNumber}`);
+      updateCurrentStitch();
+      
+      return state.currentStitch;
+    }
+    
+    // Advance stitch in the tube after perfect score
+    function advanceStitchInTube(tubeNumber) {
+      const tube = state.tubes[tubeNumber];
+      if (!tube) return;
+      
+      console.log(`Beginning stitch advancement in tube ${tubeNumber}`);
+      
+      // Find current stitch
+      const currentStitchIndex = tube.stitches.findIndex(s => s.id === tube.currentStitchId);
+      if (currentStitchIndex === -1) return;
+      
+      const currentStitch = tube.stitches[currentStitchIndex];
+      
+      // Get the current stitch's skip number
+      const skipNumber = currentStitch.skipNumber || 3;
+      console.log(`Current stitch (${currentStitch.id}) has skip number ${skipNumber}`);
+      
+      // Step 1: Temporarily assign position -1 to current stitch (making it inactive)
+      console.log(`Step 1: Assign position -1 to current stitch ${currentStitch.id}`);
+      currentStitch.position = -1;
+      
+      // Step 2: Shift all stitches between positions 1 to skipNumber up one position (decrement)
+      console.log(`Step 2: Shift positions 1 to ${skipNumber} up by 1`);
+      tube.stitches.forEach(stitch => {
+        if (stitch.position >= 1 && stitch.position <= skipNumber) {
+          stitch.position -= 1;
+          console.log(`- Moved stitch ${stitch.id} from position ${stitch.position + 1} to ${stitch.position}`);
+        }
+      });
+      
+      // Step 3: Place the completed stitch at the skipNumber position
+      console.log(`Step 3: Place completed stitch ${currentStitch.id} at position ${skipNumber}`);
+      currentStitch.position = skipNumber;
+      
+      // Step 4: Find the next stitch in sequence (the one now at position 0)
+      const newReadyStitch = tube.stitches.find(s => s.position === 0);
+      
+      if (!newReadyStitch) {
+        console.error(`No stitch found at position 0 after reordering in tube ${tubeNumber}`);
+        
+        // Create a fallback stitch if no ready stitch is found
+        const threadLetter = tube.threadId.split('-').pop();
+        let maxStitchNumber = 0;
+        
+        // Find the highest stitch number
+        tube.stitches.forEach(stitch => {
+          const match = stitch.id.match(/-(\d+)$/);
+          if (match) {
+            const num = parseInt(match[1]);
+            if (num > maxStitchNumber) maxStitchNumber = num;
+          }
+        });
+        
+        const newStitchNumber = maxStitchNumber + 1;
+        const newId = `stitch-${threadLetter}-${newStitchNumber}`;
+        
+        const fallbackStitch = {
+          id: newId,
+          threadId: tube.threadId,
+          content: `Content for stitch ${newStitchNumber} of thread ${tube.threadId}`,
+          position: 0,
+          skipNumber: 1,
+          distractorLevel: 'L1',
+          completed: false,
+          score: 0,
+          questions: generateSampleQuestions(20, newId)
+        };
+        
+        tube.stitches.push(fallbackStitch);
+        tube.currentStitchId = fallbackStitch.id;
+        console.log(`Created fallback stitch ${fallbackStitch.id} at position 0`);
+      } else {
+        // Set the new ready stitch as the current stitch
+        tube.currentStitchId = newReadyStitch.id;
+        console.log(`Step 4: Set new ready stitch ${newReadyStitch.id} as current stitch`);
+      }
+      
+      // Log the new stitch order
+      const sortedStitches = [...tube.stitches].sort((a, b) => a.position - b.position);
+      console.log('New stitch order:');
+      sortedStitches.slice(0, 5).forEach(s => {
+        console.log(`Position ${s.position}: Stitch ${s.id} (${s.completed ? 'Completed' : 'Incomplete'})`);
+      });
+    }
+    
+    // Persist state to server
+    async function persistStateToServer() {
+      if (userId === 'anonymous') return;
+      
+      try {
+        // Create state object for persistence
+        const stateForServer = {
+          userId: userId,
+          activeTubeNumber: state.activeTubeNumber,
+          cycleCount: state.cycleCount,
+          tubes: state.tubes,
+          totalPoints: state.totalPoints,
+          lastUpdated: new Date().toISOString()
+        };
+        
+        // Send to server
+        const response = await fetch('/api/update-state', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ state: stateForServer })
+        });
+        
+        const result = await response.json();
+        console.log('State persisted to server:', result.success);
+      } catch (error) {
+        console.error('Error persisting state:', error);
+      }
+    }
+    
+    // Render the player UI
+    function renderPlayer() {
+      const appElement = document.getElementById('app');
+      
+      appElement.innerHTML = `
+        <!-- Tube indicator -->
+        <div class="tubes-indicator">
+          <div class="tube${state.activeTubeNumber === 1 ? ' active' : ''}" data-tube="1">
+            <div class="tube-indicator"></div>
+            <span class="tube-label">Tube 1</span>
+          </div>
+          <div class="tube${state.activeTubeNumber === 2 ? ' active' : ''}" data-tube="2">
+            <div class="tube-indicator"></div>
+            <span class="tube-label">Tube 2</span>
+          </div>
+          <div class="tube${state.activeTubeNumber === 3 ? ' active' : ''}" data-tube="3">
+            <div class="tube-indicator"></div>
+            <span class="tube-label">Tube 3</span>
+          </div>
+        </div>
+        
+        <div class="container">
+          <div class="player-container">
+            <div class="player-header">
+              <div class="points-display">
+                <div class="points-group">
+                  <div class="label">STITCH</div>
+                  <div class="value stitch-points">${state.stitchPoints}</div>
+                </div>
+                <div class="points-group">
+                  <div class="label">SESSION</div>
+                  <div class="value total-points">${state.totalPoints + state.stitchPoints}</div>
+                </div>
+              </div>
+              
+              <div class="timer">
+                <div class="timer-fill" style="width: ${state.timeRemaining}%"></div>
+              </div>
+            </div>
+            
+            <div class="question-area">
+              <div class="question">
+                ${state.showCorrectAnswer 
+                  ? `<div class="question-pill">${state.currentQuestion?.text} = ${state.currentQuestion?.correctAnswer}</div>` 
+                  : state.currentQuestion?.text || 'Loading question...'}
+              </div>
+              
+              <div class="options">
+                ${state.options.map((option, index) => {
+                  let classes = 'option';
+                  
+                  if (state.selectedOption === option && state.isCorrect) {
+                    classes += ' correct';
+                  } else if (state.selectedOption === option && !state.isCorrect) {
+                    classes += ' incorrect';
+                  } else if (state.selectedOption !== null && option === state.currentQuestion?.correctAnswer && !state.isCorrect) {
+                    classes += ' highlight';
+                  } else if (state.selectedOption !== null) {
+                    classes += ' neutral';
+                  }
+                  
+                  return `
+                    <button 
+                      class="${classes}" 
+                      ${state.selectedOption !== null ? 'disabled' : ''}
+                      data-option="${option}"
+                      onclick="handleOptionSelect('${option}')"
+                    >
+                      ${option}
+                    </button>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+            
+            <div class="player-footer">
+              <div class="progress-text">
+                Question ${state.questionsCompleted + 1} of ${QUESTIONS_PER_SESSION}
+              </div>
+              
+              <div class="progress-bar">
+                <div class="progress-fill" style="width: ${(state.questionsCompleted / QUESTIONS_PER_SESSION) * 100}%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      // Store references to DOM elements
+      elements = {
+        tubeIndicators: document.querySelectorAll('.tube'),
+        timer: document.querySelector('.timer-fill'),
+        question: document.querySelector('.question'),
+        options: document.querySelector('.options'),
+        progressBar: document.querySelector('.progress-fill'),
+        progressText: document.querySelector('.progress-text'),
+        stitchPoints: document.querySelector('.stitch-points'),
+        totalPoints: document.querySelector('.total-points')
+      };
+    }
+    
+    // Update the UI based on the current state
+    function updateUI() {
+      // Handle different application states
+      if (state.loading) {
+        // Show loading screen
+        document.getElementById('app').innerHTML = `
+          <div class="loading">
+            <div class="spinner"></div>
+            <p>Loading Triple-Helix Fixed Player...</p>
+          </div>
+        `;
+        return;
+      }
+      
+      if (state.error) {
+        // Show error screen
+        document.getElementById('app').innerHTML = `
+          <div class="error">
+            <h2>Error</h2>
+            <p>${state.error}</p>
+            <button class="btn" onclick="window.location.reload()">Try Again</button>
+          </div>
+        `;
+        return;
+      }
+      
+      if (state.isTransitioning) {
+        // Show transition screen
+        document.getElementById('app').innerHTML = `
+          <div class="loading">
+            <div class="spinner"></div>
+            <p>Moving to next stitch...</p>
+          </div>
+        `;
+        return;
+      }
+      
+      // If we have a rendered player UI, update elements
+      if (elements.tubeIndicators) {
+        // Update tube indicators
+        elements.tubeIndicators.forEach(indicator => {
+          const tubeNumber = parseInt(indicator.dataset.tube);
+          if (tubeNumber === state.activeTubeNumber) {
+            indicator.classList.add('active');
+          } else {
+            indicator.classList.remove('active');
+          }
+        });
+        
+        // Update timer
+        if (elements.timer) {
+          elements.timer.style.width = `${state.timeRemaining}%`;
+        }
+        
+        // Update question
+        if (elements.question) {
+          if (state.showCorrectAnswer) {
+            elements.question.innerHTML = `<div class="question-pill">${state.currentQuestion?.text} = ${state.currentQuestion?.correctAnswer}</div>`;
+          } else {
+            elements.question.textContent = state.currentQuestion?.text || 'Loading question...';
+          }
+        }
+        
+        // Update options
+        if (elements.options) {
+          elements.options.innerHTML = state.options.map((option, index) => {
+            let classes = 'option';
+            
+            if (state.selectedOption === option && state.isCorrect) {
+              classes += ' correct';
+            } else if (state.selectedOption === option && !state.isCorrect) {
+              classes += ' incorrect';
+            } else if (state.selectedOption !== null && option === state.currentQuestion?.correctAnswer && !state.isCorrect) {
+              classes += ' highlight';
+            } else if (state.selectedOption !== null) {
+              classes += ' neutral';
+            }
+            
+            return `
+              <button 
+                class="${classes}" 
+                ${state.selectedOption !== null ? 'disabled' : ''}
+                data-option="${option}"
+                onclick="handleOptionSelect('${option}')"
+              >
+                ${option}
+              </button>
+            `;
+          }).join('');
+        }
+        
+        // Update progress
+        if (elements.progressBar) {
+          elements.progressBar.style.width = `${(state.questionsCompleted / QUESTIONS_PER_SESSION) * 100}%`;
+        }
+        
+        if (elements.progressText) {
+          elements.progressText.textContent = `Question ${state.questionsCompleted + 1} of ${QUESTIONS_PER_SESSION}`;
+        }
+        
+        // Update points
+        if (elements.stitchPoints) {
+          elements.stitchPoints.textContent = state.stitchPoints;
+        }
+        
+        if (elements.totalPoints) {
+          elements.totalPoints.textContent = state.totalPoints + state.stitchPoints;
+        }
+      } else {
+        // If elements don't exist, render the whole player
+        renderPlayer();
+      }
+    }
+    
+    // Update just the timer
+    function updateTimer() {
+      if (elements.timer) {
+        elements.timer.style.width = `${state.timeRemaining}%`;
+      }
+    }
+    
+    // Utility: Shuffle array
+    function shuffleArray(array) {
+      const newArray = [...array];
+      for (let i = newArray.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+      }
+      return newArray;
+    }
+    
+    // Create bubbles in the background
+    function createBubbles() {
+      const bubbleContainer = document.getElementById('bubbleContainer');
+      const bubbleCount = 15;
+      
+      for (let i = 0; i < bubbleCount; i++) {
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        
+        // Random bubble properties
+        const size = Math.floor(Math.random() * 80) + 20; // 20-100px
+        const left = `${Math.random() * 100}%`;
+        const delay = Math.random() * 15;
+        const duration = (Math.random() * 20 + 15) * 0.5; // 7.5-17.5s
+        
+        // Set styles
+        bubble.style.width = `${size}px`;
+        bubble.style.height = `${size}px`;
+        bubble.style.left = left;
+        bubble.style.bottom = '-100px';
+        bubble.style.animationDelay = `${delay}s`;
+        bubble.style.animationDuration = `${duration}s`;
+        
+        bubbleContainer.appendChild(bubble);
+      }
+    }
+    
+    // Make option handler available globally
+    window.handleOptionSelect = handleOptionSelect;
+    
+    // Initialize the app
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

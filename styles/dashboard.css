@@ -1,0 +1,142 @@
+/* Dashboard Styles */
+
+/* Evolution and status badge animations */
+@keyframes pulse-purple {
+  0%, 100% { box-shadow: 0 0 15px rgba(168, 85, 247, 0.7); }
+  50% { box-shadow: 0 0 25px rgba(168, 85, 247, 0.9); }
+}
+
+@keyframes pulse-blue {
+  0%, 100% { box-shadow: 0 0 10px rgba(59, 130, 246, 0.6); }
+  50% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.8); }
+}
+
+@keyframes pulse-teal {
+  0%, 100% { box-shadow: 0 0 8px rgba(20, 184, 166, 0.5); }
+  50% { box-shadow: 0 0 15px rgba(20, 184, 166, 0.7); }
+}
+
+.animate-pulse-purple {
+  animation: pulse-purple 2s infinite;
+}
+
+.animate-pulse-blue {
+  animation: pulse-blue 3s infinite;
+}
+
+.animate-pulse-teal {
+  animation: pulse-teal 4s infinite;
+}
+
+.shadow-purple {
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.5);
+}
+
+.shadow-blue {
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+}
+
+.shadow-teal {
+  box-shadow: 0 0 8px rgba(20, 184, 166, 0.3);
+}
+
+/* Session summary animations */
+@keyframes fadeIn {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+@keyframes scaleIn {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.5s ease-out forwards;
+}
+
+.delay-1 {
+  animation-delay: 0.1s;
+}
+
+.delay-2 {
+  animation-delay: 0.2s;
+}
+
+.delay-3 {
+  animation-delay: 0.3s;
+}
+
+.delay-4 {
+  animation-delay: 0.4s;
+}
+
+/* Floating bubble animation for dashboard background */
+@keyframes float {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.5;
+  }
+  90% {
+    opacity: 0.2;
+  }
+  100% {
+    transform: translateY(-2000px);
+    opacity: 0;
+  }
+}
+
+/* Dashboard background with gradient and bubbles */
+.dashboard-bg {
+  background: linear-gradient(to bottom, #0f172a, #1e293b);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Points counter animation */
+@keyframes countUp {
+  0% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-countUp {
+  animation: countUp 0.5s ease-out forwards;
+}
+
+/* Tab transitions */
+.tab-content {
+  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+}
+
+.tab-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.tab-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.tab-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.tab-exit-active {
+  opacity: 0;
+  transform: translateY(-10px);
+}

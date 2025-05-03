@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Tube Cycling Simulator</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1, h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .success {
+            color: #27ae60;
+        }
+        .loading {
+            color: #3498db;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .error {
+            color: #e74c3c;
+        }
+        .tubes-container {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+        .tube {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            position: relative;
+            min-width: 300px;
+        }
+        .tube.active {
+            border: 2px solid #27ae60;
+            background-color: rgba(39, 174, 96, 0.05);
+        }
+        .tube-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .tube-title {
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        .active-badge {
+            background-color: #27ae60;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+        }
+        .stitch {
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            border-left: 3px solid #ccc;
+            position: relative;
+        }
+        .stitch.ready {
+            border-left-color: #27ae60;
+            background-color: rgba(39, 174, 96, 0.1);
+        }
+        .stitch-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        .stitch-id {
+            font-weight: bold;
+        }
+        .stitch-status {
+            font-size: 0.8em;
+            color: #777;
+        }
+        .stitch-details {
+            font-size: 0.9em;
+            color: #555;
+        }
+        .status-badge {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 0.7em;
+            font-weight: bold;
+        }
+        .ready-badge {
+            background-color: #27ae60;
+            color: white;
+        }
+        .waiting-badge {
+            background-color: #f1c40f;
+            color: #333;
+        }
+        .simulation-log {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            margin-top: 20px;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #34495e;
+        }
+        .perfect-score {
+            color: #2ecc71;
+        }
+        .partial-score {
+            color: #f39c12;
+        }
+        .tube-cycle {
+            color: #3498db;
+        }
+        .thread-info {
+            padding: 8px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+            font-size: 0.9em;
+        }
+        .configure {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        .form-group {
+            margin-bottom: 10px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Live Tube Cycling Simulator</h1>
+    
+    <div class="container">
+        <h2>Connect to Your Data</h2>
+        <div class="configure">
+            <div class="form-group">
+                <label for="supabase-url">Supabase URL:</label>
+                <input type="text" id="supabase-url" value="https://ggwoupzaruiaaliylxga.supabase.co">
+            </div>
+            <div class="form-group">
+                <label for="supabase-key">Supabase API Key:</label>
+                <input type="text" id="supabase-key" value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdnd291cHphcnVpYWFsaXlseGdhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE5MTczNDAsImV4cCI6MjA1NzQ5MzM0MH0.gXtiM5b3YZoV5SMRrMmY59Qp7VjadOxkJ5an0Q3Og_c">
+            </div>
+            <div class="form-group">
+                <label for="user-id">User ID (for progress data):</label>
+                <input type="text" id="user-id" value="simulated-user-123">
+            </div>
+            <button id="connect-btn">Connect to Database</button>
+        </div>
+        <div id="connection-status"></div>
+    </div>
+    
+    <div class="container">
+        <h2>How It Works</h2>
+        <p>This simulator connects to your actual database and demonstrates the tube cycling system with your real content:</p>
+        <ul>
+            <li>Tubes cycle in sequence: Tube-1 → Tube-2 → Tube-3 → Tube-1...</li>
+            <li>Each tube contains threads based on their tube_number in the database</li>
+            <li>The stitch at position 0 in each tube is the "active" or "ready" stitch</li>
+            <li>When a stitch gets a perfect score (20/20):
+                <ul>
+                    <li>First, all stitches with positions 1 to skip_number are decremented by 1</li>
+                    <li>Then, the completed stitch is moved to position equal to its skip_number</li>
+                    <li>Skip numbers increase with consecutive perfects: 3 → 5 → 10 → 25 → 100</li>
+                    <li>Distractor level increases (L1 → L2 → L3) and never decreases</li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+
+    <div class="container simulation-container" style="display: none;">
+        <h2>Simulation Controls</h2>
+        <div class="controls">
+            <button id="step-btn" disabled>Next Tube</button>
+            <button id="perfect-btn" disabled>Perfect Score (20/20)</button>
+            <button id="partial-btn" disabled>Partial Score (15/20)</button>
+            <button id="reset-btn" disabled>Reset Simulation</button>
+        </div>
+        
+        <h2>Current State - Cycle: <span id="cycle-count">0</span></h2>
+        <div class="tubes-container" id="tubes-container"></div>
+    </div>
+    
+    <div class="simulation-log" id="simulation-log" style="display: none;">
+        <div class="log-entry">Waiting for database connection...</div>
+    </div>
+    
+    <script>
+        // Supabase client setup
+        let supabase;
+        let state = {
+            currentTube: 1,
+            cycleCount: 0,
+            tubes: {
+                1: [],
+                2: [],
+                3: []
+            },
+            userId: 'simulated-user-123',
+            isConnected: false,
+            initialState: null
+        };
+        
+        // Constants
+        const TUBES = [1, 2, 3];
+        const SKIP_SEQUENCE = [3, 5, 10, 25, 100];
+        const DISTRACTOR_LEVELS = ['L1', 'L2', 'L3'];
+        
+        // Connect to Supabase
+        document.getElementById('connect-btn').addEventListener('click', connectToDatabase);
+        
+        async function connectToDatabase() {
+            const statusElem = document.getElementById('connection-status');
+            statusElem.innerHTML = '<p class="loading">Connecting to database...</p>';
+            
+            const supabaseUrl = document.getElementById('supabase-url').value;
+            const supabaseKey = document.getElementById('supabase-key').value;
+            state.userId = document.getElementById('user-id').value;
+            
+            if (!supabaseUrl || !supabaseKey) {
+                statusElem.innerHTML = '<p class="error">Please provide Supabase URL and API key</p>';
+                return;
+            }
+            
+            try {
+                // Initialize the Supabase client
+                supabase = supabaseCreateClient(supabaseUrl, supabaseKey);
+                
+                // Test the connection by fetching threads
+                const { data: threads, error } = await supabase
+                    .from('threads')
+                    .select('id, name, tube_number')
+                    .order('tube_number, id');
+                
+                if (error) throw error;
+                
+                statusElem.innerHTML = `<p class="success">Connected successfully! Found ${threads.length} threads</p>`;
+                
+                // Display thread info
+                let threadInfo = '<h3>Threads by Tube:</h3>';
+                
+                // Group threads by tube
+                const threadsByTube = {};
+                threads.forEach(thread => {
+                    if (!threadsByTube[thread.tube_number]) threadsByTube[thread.tube_number] = [];
+                    threadsByTube[thread.tube_number].push(thread);
+                });
+                
+                // Create thread info HTML
+                Object.entries(threadsByTube).forEach(([tube, tubeThreads]) => {
+                    threadInfo += `<div class="thread-info">`;
+                    threadInfo += `<strong>Tube-${tube} (${tubeThreads.length} threads):</strong> `;
+                    threadInfo += tubeThreads.map(t => t.id).join(', ');
+                    threadInfo += `</div>`;
+                });
+                
+                statusElem.innerHTML += threadInfo;
+                
+                // Enable the simulation interface
+                document.querySelector('.simulation-container').style.display = 'block';
+                document.getElementById('simulation-log').style.display = 'block';
+                
+                // Load full thread data with stitches and progress
+                await loadThreadData();
+                
+            } catch (error) {
+                statusElem.innerHTML = `<p class="error">Connection failed: ${error.message}</p>`;
+                console.error('Connection error:', error);
+            }
+        }
+        
+        // Create Supabase client helper
+        function supabaseCreateClient(url, key) {
+            return window.supabase.createClient(url, key);
+        }
+        
+        // Load thread data from database
+        async function loadThreadData() {
+            addLogEntry('Loading thread data from database...', 'loading');
+            
+            try {
+                // Get threads with their stitches
+                const { data: threads, error: threadError } = await supabase
+                    .from('threads')
+                    .select(`
+                        id,
+                        name, 
+                        tube_number,
+                        stitches:stitch_thread_map(
+                            stitch_id,
+                            order_number,
+                            stitches(
+                                id,
+                                name
+                            )
+                        )
+                    `)
+                    .order('tube_number, id');
+                
+                if (threadError) throw threadError;
+                
+                // Get stitch progress
+                const { data: progress, error: progressError } = await supabase
+                    .from('user_stitch_progress')
+                    .select('stitch_id, order_number, skip_number, distractor_level')
+                    .eq('user_id', state.userId);
+                
+                if (progressError) throw progressError;
+                
+                // Create progress map for quick lookup
+                const progressMap = {};
+                progress.forEach(p => {
+                    progressMap[p.stitch_id] = p;
+                });
+                
+                // Reset tubes
+                state.tubes = {
+                    1: [],
+                    2: [],
+                    3: []
+                };
+                
+                // Process threads and assign to tubes
+                threads.forEach(thread => {
+                    const tube = thread.tube_number;
+                    
+                    // Create stitches with progress
+                    const stitches = thread.stitches.map(s => {
+                        const stitch = s.stitches;
+                        const progress = progressMap[s.stitch_id] || {
+                            order_number: s.order_number || 1, // Use mapping order as default
+                            skip_number: 3,
+                            distractor_level: 'L1'
+                        };
+                        
+                        return {
+                            id: stitch.id,
+                            name: stitch.name,
+                            threadId: thread.id,
+                            order: progress.order_number,
+                            skip: progress.skip_number,
+                            distractorLevel: progress.distractor_level
+                        };
+                    });
+                    
+                    // Add thread to appropriate tube
+                    state.tubes[tube].push({
+                        id: thread.id,
+                        name: thread.name,
+                        stitches: stitches
+                    });
+                });
+                
+                // Ensure there's at least one stitch with order=0 in each tube
+                TUBES.forEach(tubeNum => {
+                    if (!state.tubes[tubeNum] || state.tubes[tubeNum].length === 0) {
+                        addLogEntry(`Warning: No threads found for Tube-${tubeNum}`, 'error');
+                        return;
+                    }
+                    
+                    // Collect all stitches in this tube
+                    let tubeStitches = [];
+                    state.tubes[tubeNum].forEach(thread => {
+                        tubeStitches = tubeStitches.concat(thread.stitches);
+                    });
+                    
+                    // Check if there's a ready stitch
+                    const readyStitches = tubeStitches.filter(s => s.order === 0);
+                    
+                    if (readyStitches.length === 0) {
+                        // No ready stitch, make the first one ready
+                        addLogEntry(`No ready stitch in Tube-${tubeNum}, setting the first one as ready`, 'warning');
+                        
+                        if (tubeStitches.length > 0) {
+                            // Find the stitch with lowest order number
+                            const lowestOrderStitch = tubeStitches.reduce((prev, curr) => 
+                                (curr.order < prev.order) ? curr : prev, tubeStitches[0]);
+                            
+                            lowestOrderStitch.order = 0;
+                        }
+                    } else if (readyStitches.length > 1) {
+                        // Multiple ready stitches, keep only the first one
+                        addLogEntry(`Multiple ready stitches in Tube-${tubeNum}, keeping only the first one`, 'warning');
+                        
+                        readyStitches.slice(1).forEach((stitch, i) => {
+                            stitch.order = i + 1;
+                        });
+                    }
+                });
+                
+                // Save initial state for reset
+                state.initialState = JSON.parse(JSON.stringify(state));
+                
+                // Enable simulation buttons
+                document.getElementById('step-btn').disabled = false;
+                document.getElementById('perfect-btn').disabled = false;
+                document.getElementById('partial-btn').disabled = false;
+                document.getElementById('reset-btn').disabled = false;
+                
+                // Update UI
+                renderTubes();
+                updateCycleCount();
+                
+                addLogEntry('Thread data loaded successfully', 'success');
+                
+            } catch (error) {
+                addLogEntry(`Error loading thread data: ${error.message}`, 'error');
+                console.error('Data loading error:', error);
+            }
+        }
+        
+        // Helper functions
+        function getActiveStitch(tubeNumber) {
+            // Collect all stitches from all threads in this tube
+            let tubeStitches = [];
+            
+            if (!state.tubes[tubeNumber] || state.tubes[tubeNumber].length === 0) {
+                return null;
+            }
+            
+            state.tubes[tubeNumber].forEach(thread => {
+                if (thread.stitches) {
+                    tubeStitches = tubeStitches.concat(thread.stitches);
+                }
+            });
+            
+            return tubeStitches.find(stitch => stitch.order === 0);
+        }
+        
+        function moveToNextTube() {
+            // Cycle to next tube (1→2→3→1)
+            state.currentTube = state.currentTube % 3 + 1;
+            
+            // If we've completed a full cycle, increment the cycle count
+            if (state.currentTube === 1) {
+                state.cycleCount++;
+            }
+            
+            addLogEntry(`Cycling to Tube-${state.currentTube}`, 'tube-cycle');
+            
+            // Update UI
+            renderTubes();
+            updateCycleCount();
+            
+            return state.currentTube;
+        }
+        
+        function getAllStitchesInTube(tubeNumber) {
+            // Collect all stitches from all threads in this tube
+            let allStitches = [];
+            
+            if (!state.tubes[tubeNumber] || state.tubes[tubeNumber].length === 0) {
+                return [];
+            }
+            
+            state.tubes[tubeNumber].forEach(thread => {
+                if (thread.stitches) {
+                    allStitches = allStitches.concat(thread.stitches);
+                }
+            });
+            
+            return allStitches;
+        }
+        
+        function handleStitchCompletion(score, totalQuestions = 20) {
+            const activeStitch = getActiveStitch(state.currentTube);
+            
+            if (!activeStitch) {
+                addLogEntry(`No active stitch found in Tube-${state.currentTube}`, 'error');
+                return;
+            }
+            
+            const logClass = score === totalQuestions ? 'perfect-score' : 'partial-score';
+            addLogEntry(`Completing stitch ${activeStitch.id} (${activeStitch.name}) with score ${score}/${totalQuestions}`, logClass);
+            
+            // Get all stitches in the current tube
+            const tubeStitches = getAllStitchesInTube(state.currentTube);
+            
+            // Perfect score case - move stitch based on skip number
+            if (score === totalQuestions) {
+                const currentSkip = activeStitch.skip;
+                let targetPosition = currentSkip; // Skip 3 means position 3
+                
+                // Handle case where skip number exceeds available positions
+                const maxPosition = tubeStitches.length - 1;
+                if (targetPosition > maxPosition) {
+                    targetPosition = maxPosition + 1;
+                    addLogEntry(`Perfect score! Skip (${currentSkip}) exceeds tube length. Moving to end position ${targetPosition}`, 'perfect-score');
+                } else {
+                    addLogEntry(`Perfect score! Moving stitch to position ${targetPosition} (skipping ${currentSkip} positions)`, 'perfect-score');
+                }
+                
+                // 1. Temporarily mark the active stitch
+                activeStitch.order = -1;
+                
+                // 2. Decrement all stitches with positions 1 to skip_number
+                tubeStitches.forEach(stitch => {
+                    if (stitch.order >= 1 && stitch.order <= currentSkip) {
+                        stitch.order--;
+                    }
+                });
+                
+                // 3. Move the completed stitch to its target position
+                activeStitch.order = targetPosition;
+                
+                // 4. Update skip number for next time (progress through sequence)
+                const currentSkipIndex = SKIP_SEQUENCE.indexOf(currentSkip);
+                if (currentSkipIndex >= 0 && currentSkipIndex < SKIP_SEQUENCE.length - 1) {
+                    const newSkip = SKIP_SEQUENCE[currentSkipIndex + 1];
+                    addLogEntry(`Skip number advances from ${currentSkip} to ${newSkip}`, 'perfect-score');
+                    activeStitch.skip = newSkip;
+                }
+                
+                // 5. Update distractor level (one-way ratchet)
+                const currentDistractorIndex = DISTRACTOR_LEVELS.indexOf(activeStitch.distractorLevel);
+                if (currentDistractorIndex >= 0 && currentDistractorIndex < DISTRACTOR_LEVELS.length - 1) {
+                    const newLevel = DISTRACTOR_LEVELS[currentDistractorIndex + 1];
+                    addLogEntry(`Distractor level advances from ${activeStitch.distractorLevel} to ${newLevel}`, 'perfect-score');
+                    activeStitch.distractorLevel = newLevel;
+                }
+                
+                // 6. Verify we have exactly one ready stitch (order_number = 0)
+                const readyStitches = tubeStitches.filter(s => s.order === 0);
+                
+                if (readyStitches.length === 0) {
+                    addLogEntry(`Warning: No ready stitch found after reordering. Setting the first stitch as ready.`, 'warning');
+                    
+                    // Find the stitch with the lowest positive order
+                    const nextActiveStitch = tubeStitches.reduce((prev, curr) => {
+                        // Skip the stitch we just moved
+                        if (curr === activeStitch) return prev;
+                        // Find lowest positive order
+                        if (curr.order > 0 && (prev === null || curr.order < prev.order)) {
+                            return curr;
+                        }
+                        return prev;
+                    }, null);
+                    
+                    if (nextActiveStitch) {
+                        nextActiveStitch.order = 0;
+                        addLogEntry(`${nextActiveStitch.id} becomes the new ready stitch (order = 0)`, 'success');
+                    } else {
+                        addLogEntry(`Critical error: No available stitch to make ready!`, 'error');
+                    }
+                } else if (readyStitches.length > 1) {
+                    addLogEntry(`Warning: Multiple ready stitches (${readyStitches.length}) found!`, 'warning');
+                } else {
+                    addLogEntry(`${readyStitches[0].id} is now the ready stitch`, 'success');
+                }
+                
+                // 7. Sort the tube stitches by order for cleaner display
+                tubeStitches.sort((a, b) => a.order - b.order);
+                
+            } else {
+                // Not a perfect score - reset skip but keep distractor level
+                addLogEntry(`Non-perfect score. Keeping stitch at position 0 and resetting skip number to 3`, 'partial-score');
+                activeStitch.skip = 3;
+            }
+            
+            // Move to next tube
+            moveToNextTube();
+        }
+        
+        // UI functions
+        function renderTubes() {
+            const tubesContainer = document.getElementById('tubes-container');
+            tubesContainer.innerHTML = '';
+            
+            // For each tube
+            TUBES.forEach(tubeNum => {
+                const isActive = tubeNum === state.currentTube;
+                
+                const tubeEl = document.createElement('div');
+                tubeEl.className = `tube ${isActive ? 'active' : ''}`;
+                
+                // Tube header
+                const tubeHeader = document.createElement('div');
+                tubeHeader.className = 'tube-header';
+                tubeHeader.innerHTML = `
+                    <div class="tube-title">Tube-${tubeNum}</div>
+                    ${isActive ? '<div class="active-badge">ACTIVE</div>' : ''}
+                `;
+                tubeEl.appendChild(tubeHeader);
+                
+                // No threads in this tube?
+                if (!state.tubes[tubeNum] || state.tubes[tubeNum].length === 0) {
+                    const emptyMessage = document.createElement('p');
+                    emptyMessage.textContent = `No threads assigned to Tube-${tubeNum}`;
+                    emptyMessage.style.fontStyle = 'italic';
+                    emptyMessage.style.color = '#777';
+                    tubeEl.appendChild(emptyMessage);
+                    tubesContainer.appendChild(tubeEl);
+                    return;
+                }
+                
+                // Get all stitches in this tube
+                let tubeStitches = [];
+                state.tubes[tubeNum].forEach(thread => {
+                    if (thread.stitches) {
+                        tubeStitches = tubeStitches.concat(thread.stitches.map(s => ({
+                            ...s,
+                            threadName: thread.name
+                        })));
+                    }
+                });
+                
+                // Sort stitches by order for display
+                tubeStitches.sort((a, b) => a.order - b.order);
+                
+                // Render each stitch
+                tubeStitches.forEach(stitch => {
+                    const isReady = stitch.order === 0;
+                    
+                    const stitchEl = document.createElement('div');
+                    stitchEl.className = `stitch ${isReady ? 'ready' : ''}`;
+                    
+                    stitchEl.innerHTML = `
+                        <div class="stitch-header">
+                            <div class="stitch-id">${stitch.name || stitch.id}</div>
+                            <div class="stitch-status">Order: ${stitch.order}</div>
+                        </div>
+                        <div class="stitch-details">
+                            Thread: ${stitch.threadName || stitch.threadId} | 
+                            Skip: ${stitch.skip} | 
+                            Distractor: ${stitch.distractorLevel}
+                        </div>
+                        <div class="status-badge ${isReady ? 'ready-badge' : 'waiting-badge'}">
+                            ${isReady ? 'READY' : 'Waiting'}
+                        </div>
+                    `;
+                    
+                    tubeEl.appendChild(stitchEl);
+                });
+                
+                tubesContainer.appendChild(tubeEl);
+            });
+        }
+        
+        function updateCycleCount() {
+            document.getElementById('cycle-count').textContent = state.cycleCount;
+        }
+        
+        function addLogEntry(message, className = '') {
+            const log = document.getElementById('simulation-log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${className}`;
+            entry.textContent = message;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight; // Auto-scroll to bottom
+        }
+        
+        function resetSimulation() {
+            if (state.initialState) {
+                state = JSON.parse(JSON.stringify(state.initialState));
+                renderTubes();
+                updateCycleCount();
+                addLogEntry('Simulation reset to initial state', 'success');
+            } else {
+                addLogEntry('Cannot reset - no initial state available', 'error');
+            }
+        }
+        
+        // Event handlers
+        document.getElementById('step-btn').addEventListener('click', moveToNextTube);
+        
+        document.getElementById('perfect-btn').addEventListener('click', function() {
+            handleStitchCompletion(20);
+        });
+        
+        document.getElementById('partial-btn').addEventListener('click', function() {
+            handleStitchCompletion(15);
+        });
+        
+        document.getElementById('reset-btn').addEventListener('click', resetSimulation);
+    </script>
+</body>
+</html>

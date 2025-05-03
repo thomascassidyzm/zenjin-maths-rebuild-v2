@@ -1,0 +1,20 @@
+DEPLOYMENT: Bundled Content Integration
+
+Date: May 3, 2025
+
+CHANGES:
+- Added expanded bundled content with 10 stitches per tube (30 total)
+- Implemented content tier system (same content for anonymous & free users)
+- Added InfinitePlayStateMachine for continuous cycling
+- Enhanced content buffer to prioritize bundled content
+- Added feature flags for toggling bundled content usage
+
+HOW TO TEST:
+1. Use incognito window to test as anonymous user
+2. Verify content loads without network requests
+3. Complete multiple stitches in each tube
+4. Test offline functionality by disconnecting network
+5. Check that content continues to cycle properly
+
+DOCUMENTATION:
+See BUNDLED-CONTENT-INTEGRATION.md for full implementation details
