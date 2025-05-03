@@ -16,19 +16,27 @@ export interface FeatureFlags {
   
   // Player features
   showDebugInfo: boolean;                 // Show debug information in the player
+  
+  // Offline-first flags
+  offlineFirstContent: boolean;           // Use the offline-first content buffer
+  offlineFirstStartup: boolean;           // Start the app immediately without waiting for network
 }
 
-// Default feature flags
+// Default feature flags - all offline-first features enabled by default
 const defaultFlags: FeatureFlags = {
-  // Content delivery - default to ON
+  // Content delivery - default to ON for better user experience
   useBundledContentForFreeUsers: true,
   useInfinitePlayMode: true,
   
-  // Authentication - default to ON
+  // Authentication - default to ON to allow broad user adoption
   allowAnonymousUsers: true,
   
   // Player - default to OFF in production, ON in development
-  showDebugInfo: process.env.NODE_ENV !== 'production'
+  showDebugInfo: process.env.NODE_ENV !== 'production',
+  
+  // Offline-first - default to ON for all users
+  offlineFirstContent: true,
+  offlineFirstStartup: true
 };
 
 // Environment-specific overrides
@@ -37,7 +45,9 @@ const environmentOverrides: Partial<FeatureFlags> = {
   // Override any default flags based on environment variables
   // For example:
   useBundledContentForFreeUsers: process.env.USE_BUNDLED_CONTENT !== 'false',
-  useInfinitePlayMode: process.env.USE_INFINITE_PLAY !== 'false'
+  useInfinitePlayMode: process.env.USE_INFINITE_PLAY !== 'false',
+  offlineFirstContent: process.env.OFFLINE_FIRST_CONTENT !== 'false',
+  offlineFirstStartup: process.env.OFFLINE_FIRST_STARTUP !== 'false'
 };
 
 // User-specific overrides
@@ -48,6 +58,15 @@ const userOverrides: Record<string, Partial<FeatureFlags>> = {
     showDebugInfo: true
   }
 };
+
+/**
+ * Determine if a user is anonymous or free tier (non-premium)
+ * @param user The user object (or null for anonymous)
+ * @returns True if the user is anonymous or free tier
+ */
+export function isAnonymousOrFreeUser(user: any = null): boolean {
+  return !user || (user && !user.isPremium);
+}
 
 /**
  * Get feature flags for a specific user
@@ -69,6 +88,16 @@ export function getFeatureFlags(user: any = null): FeatureFlags {
   // Apply role-based overrides
   if (user?.role === 'admin' || user?.isAdmin) {
     flags.showDebugInfo = true;
+  }
+  
+  // Ensure consistent free user and anonymous experience
+  const isNonPremium = isAnonymousOrFreeUser(user);
+  if (isNonPremium) {
+    // Force bundled content for anonymous and free users
+    flags.useBundledContentForFreeUsers = true;
+    
+    // Always provide immediate startup for anonymous and free users
+    flags.offlineFirstStartup = true;
   }
   
   return flags;

@@ -7,30 +7,34 @@ import {
 } from '../lib/tube-config-integration';
 import { saveToLocalStorage } from '../lib/tube-config-loader';
 import SessionSummary from './SessionSummary';
+import { offlineFirstContentBuffer } from '../lib/client/offline-first-content-buffer';
 
 /**
- * PlayerComponent - Example component that uses the offline-first tube configuration system
+ * PlayerComponent - Uses the offline-first tube configuration system
  * 
- * This component demonstrates:
- * 1. Initializing the tube configuration for different user types
- * 2. Using localStorage for all state during gameplay
- * 3. Saving to database only when explicitly ending the session
- * 4. Handling stitch completions with the Triple-Helix pattern
- * 5. Maintaining a 10-stitch buffer for each tube
+ * This component implements:
+ * 1. Immediate start with no loading screens using bundled content
+ * 2. Offline-first approach with all content available without network
+ * 3. Triple-Helix pattern for cycling through content
+ * 4. Local storage for persistence during gameplay
+ * 5. Optional database storage at session end for authenticated users
  */
 export default function PlayerComponent({ user }) {
   const [tubeCycler, setTubeCycler] = useState(null);
   const [currentStitch, setCurrentStitch] = useState(null);
   const [tubeStitches, setTubeStitches] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [currentTube, setCurrentTube] = useState(1);
   
-  // Initialize on component mount
+  // Initialize on component mount - with immediate content
   useEffect(() => {
     async function initialize() {
       try {
         console.log('Initializing TubeCycler...');
+        
+        // Initialize the offline-first content buffer
+        // This is a no-op since it's already initialized with bundled content
+        offlineFirstContentBuffer.initialize(user?.id ? false : true, user);
         
         // Initialize the TubeCycler with our user
         const adapter = await initializeTubeCycler(user, {
@@ -45,10 +49,8 @@ export default function PlayerComponent({ user }) {
         setCurrentStitch(adapter.getCurrentStitch());
         setTubeStitches(adapter.getCurrentTubeStitches());
         setCurrentTube(adapter.getCurrentTube());
-        setIsLoading(false);
       } catch (error) {
         console.error('Error initializing player:', error);
-        setIsLoading(false);
       }
     }
     
@@ -194,6 +196,17 @@ export default function PlayerComponent({ user }) {
     monitorContentBuffer(tubeCycler);
   };
   
+  // If we don't have a tubeCycler or stitch yet but need to show something immediately,
+  // show a content placeholder that doesn't say "Loading..." but still shows something
+  const renderContentPlaceholder = () => (
+    <div className="stitch-container placeholder">
+      <h3>Getting Ready...</h3>
+      <div className="stitch-content">
+        Welcome to Zenjin Maths! Your learning experience is starting right away.
+      </div>
+    </div>
+  );
+  
   // Render component
   return (
     <div className="player-container">
@@ -211,75 +224,67 @@ export default function PlayerComponent({ user }) {
         </div>
       )}
       
-      {/* Loading state */}
-      {isLoading ? (
-        <div className="loading">
-          <p>Loading your content...</p>
-        </div>
-      ) : (
-        <div className="player-content">
-          
-          {/* Show anonymous user reminder */}
-          {!user && (
-            <div className="anonymous-reminder">
-              <p>Create an account to save your progress</p>
-            </div>
-          )}
-          
-          {/* Current stitch content */}
-          {currentStitch ? (
-            <div className="stitch-container">
-              <h3>Stitch: {currentStitch.id}</h3>
-              <div className="stitch-content">
-                {currentStitch.content}
-              </div>
-              
-              {/* Questions would be rendered here */}
-              <div className="questions-container">
-                {currentStitch.questions?.map((question, index) => (
-                  <div key={question.id || index} className="question">
-                    <p>{question.text}</p>
-                  </div>
-                ))}
-              </div>
-              
-              {/* Simulation buttons */}
-              <div className="action-buttons">
-                <button onClick={handlePerfectScore} className="btn btn-success">
-                  Perfect Score (20/20)
-                </button>
-                <button onClick={handlePartialScore} className="btn btn-warning">
-                  Partial Score (15/20)
-                </button>
-                <button onClick={checkContentBuffer} className="btn btn-info">
-                  Check Content Buffer
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="no-content">
-              <p>No content available. Please try refreshing the page.</p>
-            </div>
-          )}
-          
-          {/* End session button */}
-          <div className="end-session">
-            <button 
-              onClick={handleEndSession}
-              disabled={isSaving}
-              className="btn btn-primary"
-            >
-              {isSaving ? 'Saving Progress...' : 'End Session & Finish'}
-            </button>
-            {!user && (
-              <p className="help-text">
-                Your progress is saved in your browser.
-                Create an account to save progress permanently.
-              </p>
-            )}
+      <div className="player-content">
+        
+        {/* Show anonymous user reminder */}
+        {!user && (
+          <div className="anonymous-reminder">
+            <p>Create an account to save your progress</p>
           </div>
+        )}
+        
+        {/* Current stitch content - no loading state, display immediately */}
+        {currentStitch ? (
+          <div className="stitch-container">
+            <h3>Stitch: {currentStitch.id}</h3>
+            <div className="stitch-content">
+              {currentStitch.content}
+            </div>
+            
+            {/* Questions would be rendered here */}
+            <div className="questions-container">
+              {currentStitch.questions?.map((question, index) => (
+                <div key={question.id || index} className="question">
+                  <p>{question.text}</p>
+                </div>
+              ))}
+            </div>
+            
+            {/* Simulation buttons */}
+            <div className="action-buttons">
+              <button onClick={handlePerfectScore} className="btn btn-success">
+                Perfect Score (20/20)
+              </button>
+              <button onClick={handlePartialScore} className="btn btn-warning">
+                Partial Score (15/20)
+              </button>
+              <button onClick={checkContentBuffer} className="btn btn-info">
+                Check Content Buffer
+              </button>
+            </div>
+          </div>
+        ) : (
+          // Show content placeholder while initializing
+          renderContentPlaceholder()
+        )}
+        
+        {/* End session button */}
+        <div className="end-session">
+          <button 
+            onClick={handleEndSession}
+            disabled={isSaving || !tubeCycler}
+            className="btn btn-primary"
+          >
+            {isSaving ? 'Saving Progress...' : 'End Session & Finish'}
+          </button>
+          {!user && (
+            <p className="help-text">
+              Your progress is saved in your browser.
+              Create an account to save progress permanently.
+            </p>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
