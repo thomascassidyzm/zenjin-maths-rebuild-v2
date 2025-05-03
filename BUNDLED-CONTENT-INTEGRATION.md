@@ -120,3 +120,45 @@ The following new files have been created:
 - **Server Load**: This significantly reduces server load as content requests only happen for premium users
 - **App Size**: Adding bundled content increases the initial app size, but reduces subsequent network usage
 - **Feature Flags**: Use the feature flags system to gradually roll out these changes to users
+
+## Debugging
+
+When troubleshooting the bundled content implementation, consider these debugging approaches:
+
+1. **Browser Console Logging**: Feature flags and content loading operations emit detailed logs to the console
+2. **Network Tab**: Verify that no content fetching requests are made for anonymous/free users
+3. **Application Tab**: Check the IndexedDB storage to ensure progress is being properly saved
+4. **Offline Mode**: Use the browser's network panel to simulate offline conditions
+5. **State Inspection**: Use the `/state-inspector` page to examine the current state of the StateMachine
+
+Common issues and solutions:
+
+- **Content Not Appearing**: Ensure the feature flags are properly enabled
+- **Stitch Cycling Issues**: Check the StateMachine implementation and ensure tube indexes are valid
+- **Missing Questions**: Verify the expanded-bundled-content.ts file contains complete stitch data
+
+## Performance Considerations
+
+The bundled content approach provides significant performance benefits:
+
+1. **Reduced Network Usage**: Elimination of API calls for content fetching (30+ fewer network requests)
+2. **Faster Initial Load**: Content is available immediately without waiting for network responses
+3. **Improved Offline Support**: Full functionality without requiring connectivity
+4. **Reduced Server Load**: API servers receive fewer requests, improving scalability
+
+Metrics to monitor:
+
+- Time to first contentful paint
+- Time to interactive
+- Number of network requests made during a session
+- Cold start times across different devices and connections
+
+## Future Improvements
+
+Potential future enhancements to this implementation:
+
+1. **Content Pre-caching**: Automatically cache additional content beyond the initial 30 stitches
+2. **Progressive Loading**: Load basic content first, then enhance with media assets
+3. **Content Versioning**: Implement a versioning system to update bundled content
+4. **Sync Mechanism**: Add functionality to sync progress when reconnected to network
+5. **Analytics**: Track offline usage patterns to optimize content bundling strategy
