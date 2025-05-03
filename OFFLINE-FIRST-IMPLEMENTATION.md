@@ -71,7 +71,9 @@ File: `lib/expanded-bundled-content.ts`
 
 ## Testing and Verification
 
-A test page is provided to verify the offline-first implementation:
+Two test pages are provided to verify the offline-first implementation:
+
+### 1. Full Test Page
 
 - Tests with different user types (anonymous, free, premium)
 - Shows feature flag status for each user type
@@ -79,6 +81,15 @@ A test page is provided to verify the offline-first implementation:
 - Allows checking immediate startup across user types
 
 File: `pages/offline-first-test.tsx`
+
+### 2. Simple Test Page
+
+- A simplified test that only uses the bundled content directly
+- No dependencies on other components or the Supabase client
+- Allows browsing through all bundled content
+- Shows content statistics and manifest structure
+
+File: `pages/simple-offline-test.tsx`
 
 ## Implementation Details
 
@@ -151,9 +162,17 @@ Potential future enhancements to the offline-first implementation:
 
 ## How to Use
 
-Use the test page to verify the implementation:
+### Full Test Page
 
 1. Navigate to `/offline-first-test`
 2. Select a user type (anonymous, free, premium)
 3. Observe that the player starts immediately without loading screens
 4. Check that content is available offline for all user types
+
+### Simple Test Page
+
+1. Navigate to `/simple-offline-test`
+2. Browse through the tubes and stitches
+3. View complete content and questions for each stitch
+4. Verify that all 30 stitches (10 per tube) are available
+5. No network connection required - everything is bundled in the app

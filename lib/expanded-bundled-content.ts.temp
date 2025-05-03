@@ -1,0 +1,117 @@
+/**
+ * Expanded Bundled Content - Temporary Fix
+ * 
+ * This is a placeholder until you can run the export-bundled-content.js script
+ * to replace this with your actual database content.
+ */
+
+import { StitchContent } from './client/content-buffer';
+
+/**
+ * Temporary minimal version to fix build errors
+ */
+export const BUNDLED_FULL_CONTENT: Record<string, StitchContent> = {
+  // Minimal content to fix build
+  'stitch-T1-001-01': {
+    id: 'stitch-T1-001-01',
+    threadId: 'thread-T1-001',
+    title: 'Number Recognition',
+    content: 'Placeholder content',
+    order: 1,
+    questions: [
+      {
+        id: 'stitch-T1-001-01-q01',
+        text: 'Placeholder question',
+        correctAnswer: 'Answer',
+        distractors: {
+          L1: 'Distractor 1',
+          L2: 'Distractor 2',
+          L3: 'Distractor 3'
+        }
+      }
+    ]
+  },
+  'stitch-T2-001-01': {
+    id: 'stitch-T2-001-01',
+    threadId: 'thread-T2-001',
+    title: 'Simple Addition',
+    content: 'Placeholder content',
+    order: 1,
+    questions: [
+      {
+        id: 'stitch-T2-001-01-q01',
+        text: 'Placeholder question',
+        correctAnswer: 'Answer',
+        distractors: {
+          L1: 'Distractor 1',
+          L2: 'Distractor 2',
+          L3: 'Distractor 3'
+        }
+      }
+    ]
+  },
+  'stitch-T3-001-01': {
+    id: 'stitch-T3-001-01',
+    threadId: 'thread-T3-001',
+    title: 'Simple Problem Solving',
+    content: 'Placeholder content',
+    order: 1,
+    questions: [
+      {
+        id: 'stitch-T3-001-01-q01',
+        text: 'Placeholder question',
+        correctAnswer: 'Answer',
+        distractors: {
+          L1: 'Distractor 1',
+          L2: 'Distractor 2',
+          L3: 'Distractor 3'
+        }
+      }
+    ]
+  }
+};
+
+/**
+ * Default manifest structure
+ */
+export const DEFAULT_MANIFEST = {
+  version: 1,
+  generated: new Date().toISOString(),
+  tubes: {
+    1: {
+      threads: {
+        'thread-T1-001': {
+          title: 'Number Facts',
+          stitches: [
+            { id: 'stitch-T1-001-01', order: 1, title: 'Number Recognition' }
+          ]
+        }
+      }
+    },
+    2: {
+      threads: {
+        'thread-T2-001': {
+          title: 'Basic Operations',
+          stitches: [
+            { id: 'stitch-T2-001-01', order: 1, title: 'Simple Addition' }
+          ]
+        }
+      }
+    },
+    3: {
+      threads: {
+        'thread-T3-001': {
+          title: 'Problem Solving',
+          stitches: [
+            { id: 'stitch-T3-001-01', order: 1, title: 'Simple Problem Solving' }
+          ]
+        }
+      }
+    }
+  },
+  stats: {
+    tubeCount: 3,
+    threadCount: 3,
+    stitchCount: 3
+  }
+};
