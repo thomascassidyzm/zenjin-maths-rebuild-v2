@@ -4,6 +4,8 @@
  * These utilities provide standardized response formatting for all API endpoints.
  */
 
+// These will be defined below after the functions are declared
+
 /**
  * Generate a successful API response
  * 
@@ -63,3 +65,7 @@ export const ERROR_MESSAGES = {
   MISSING_FIELDS: 'Required fields are missing',
   INVALID_CREDENTIALS: 'Invalid credentials'
 };
+
+// Export aliases for backward compatibility
+export const formatSuccessResponse = successResponse;
+export const formatErrorResponse = errorResponse;

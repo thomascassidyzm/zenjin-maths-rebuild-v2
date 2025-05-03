@@ -206,7 +206,7 @@ export function getAccessRestrictionMessage(
 ): string {
   if (accessResult.hasAccess) {
     if (accessResult.isTeaser) {
-      return 'You're viewing a preview of this premium content. Subscribe to unlock the full experience.';
+      return 'You are viewing a preview of this premium content. Subscribe to unlock the full experience.';
     }
     return ''; // No message needed for accessible content
   }

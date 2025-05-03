@@ -31,13 +31,31 @@ The Zenjin Maths app is an educational application that uses a Triple Helix lear
 - PlayerComponent shows content placeholder instead of loading screen during initialization
 - Feature flags enforce consistent experience for anonymous and free users
 
-## Implementation Changes (May 3, 2025)
+## Implementation Changes (May 3-4, 2025)
 
 1. Created `expanded-bundled-content.ts` with actual mathematics content for all 30 stitches (10 per tube)
 2. Fixed URL format in Supabase client to ensure hardcoded credentials are used properly
 3. Created a simplified test page (`simple-offline-test.tsx`) that directly uses bundled content
-4. Added comprehensive documentation in `OFFLINE-FIRST-IMPLEMENTATION.md`
-5. Ensured all 30 stitches are properly structured and immediately available
+4. Fixed syntax error in `freeTierAccess.ts` that was causing build failure
+5. Added comprehensive documentation in `OFFLINE-FIRST-IMPLEMENTATION.md`
+6. Created `DEPLOY-FIXES.md` with deployment instructions and troubleshooting steps
+7. Ensured all 30 stitches are properly structured and immediately available
+
+## Supabase Integration Fixes (May 4, 2025)
+
+1. Fixed Supabase client initialization in multiple files to ensure build success:
+   - `/lib/supabase.ts` - Added hardcoded URL fallbacks
+   - `/lib/api/auth.ts` - Fixed supabaseAdmin initialization
+   - `/lib/supabase/client.ts` - Ensured singleton client pattern works
+   - `/lib/supabase/server.ts` - Simplified cookie handling and fixed URL
+   - `/lib/supabase/admin.ts` - Added build-time fallback for service key
+
+2. Added missing API module exports for backward compatibility:
+   - Added `logError` and `logInfo` exports to `lib/api/logging.ts`
+   - Added `formatSuccessResponse` and `formatErrorResponse` to `lib/api/responses.ts`
+   - Implemented missing `createAdvancedHandler` function in `lib/api/handlers.ts`
+
+3. Updated `DEPLOY-FIXES.md` to document all changes and provide guidance for deployment
 
 ## Testing
 

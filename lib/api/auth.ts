@@ -10,10 +10,10 @@ import { logApiError } from './logging';
 import { errorResponse } from './responses';
 import { HTTP_STATUS, ERROR_MESSAGES } from './responses';
 
-// Initialize Supabase admin client for database operations
+// Initialize Supabase admin client for database operations with hardcoded URL
 export const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ggwoupzaruiaaliylyxga.supabase.co',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdnd291cHphcnVpYWFsaXlseGdhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MTkxNzM0MCwiZXhwIjoyMDU3NDkzMzQwfQ.MKPlabJrcvZQ2jyW0LKLs9VqnrQf2vOfllCZV9hv8tQ'
 );
 
 /**

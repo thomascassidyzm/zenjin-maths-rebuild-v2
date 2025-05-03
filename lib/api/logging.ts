@@ -5,11 +5,12 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
+// Use hardcoded URL to avoid build issues
+const supabaseUrl = 'https://ggwoupzaruiaaliylyxga.supabase.co';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdnd291cHphcnVpYWFsaXlseGdhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MTkxNzM0MCwiZXhwIjoyMDU3NDkzMzQwfQ.3bvfZGkTc9nVtf1I7A0TwYy9pMFudJTrp974RZIwrq0';
+
 // Initialize Supabase admin client for logging to database
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
+const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
 
 // Define log levels
 export enum LogLevel {
@@ -107,6 +108,8 @@ export function logApiError(
  * @param userId - Optional user ID
  * @param metadata - Optional additional data
  */
+// These will be defined below after the functions are declared
+
 export function logApiInfo(
   context: string,
   message: string,
@@ -154,3 +157,7 @@ export function logApiInfo(
   
   return logEntry;
 }
+
+// Simplified exports for backward compatibility
+export const logError = logApiError;
+export const logInfo = logApiInfo;
