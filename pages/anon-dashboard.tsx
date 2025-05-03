@@ -7,6 +7,8 @@ import BlinkSpeedDisplay from '../components/BlinkSpeedDisplay';
 import EvolutionBadge from '../components/EvolutionBadge';
 import UserWelcomeButton from '../components/UserWelcomeButton';
 import { startFreshAnonymousSession } from '../lib/anonymousData';
+import AnonymousUpgradePrompt from '../components/subscription/AnonymousUpgradePrompt';
+import SubscriptionBadge from '../components/subscription/SubscriptionBadge';
 
 /**
  * Anonymous Dashboard Page
@@ -137,6 +139,14 @@ export default function AnonDashboard() {
     );
   }
   
+  // Calculate time spent in hours (simulated)
+  const calculateHoursSpent = () => {
+    if (!dashboardData) return 0;
+    
+    // Simple algorithm based on points (1 point ~= 5 seconds)
+    return Math.max(0.1, dashboardData.totalPoints * 5 / 3600);
+  };
+  
   // Main dashboard content
   return (
     <div className="min-h-screen dashboard-bg flex flex-col text-white">
@@ -162,6 +172,9 @@ export default function AnonDashboard() {
           <span className="ml-3 bg-amber-600/30 text-amber-300 text-xs px-2 py-1 rounded-full">
             Guest Mode
           </span>
+          <div className="ml-3">
+            <SubscriptionBadge tier="free" />
+          </div>
         </div>
         
         <div className="flex items-center gap-2">
@@ -188,7 +201,7 @@ export default function AnonDashboard() {
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <Link 
-              href="/minimal-player?mode=anonymous&force=true&resetPoints=true" 
+              href="/premium-play" 
               className="inline-block px-4 py-2 bg-gradient-to-r from-teal-600 to-emerald-500 hover:from-teal-500 hover:to-emerald-400 text-white font-medium rounded-lg transition-colors"
             >
               Continue Playing
@@ -236,7 +249,7 @@ export default function AnonDashboard() {
             {/* Continue Learning Button */}
             <div className="mt-6">
               <Link 
-                href="/minimal-player?mode=anonymous&resetPoints=true" 
+                href="/premium-play" 
                 className="block bg-gradient-to-r from-teal-600 to-emerald-500 hover:from-teal-500 hover:to-emerald-400 text-white font-bold py-4 px-6 rounded-xl transition-colors text-lg text-center shadow-lg"
               >
                 Continue Learning
@@ -246,41 +259,21 @@ export default function AnonDashboard() {
           
           {/* Sidebar */}
           <div className="lg:col-span-1 space-y-6">
-            {/* Benefits of Creating an Account */}
+            {/* Enhanced upgrade prompt */}
+            <AnonymousUpgradePrompt 
+              points={dashboardData?.totalPoints || 0}
+              hoursSpent={calculateHoursSpent()}
+              onSignUp={() => router.push('/signin?mode=signup')}
+            />
+            
+            {/* Quick actions */}
             <div className="rounded-xl border border-white/20 bg-white/10 p-4">
-              <h3 className="text-lg font-semibold text-white mb-3">Create an Account to:</h3>
-              <ul className="space-y-2">
-                <li className="flex items-start">
-                  <svg className="w-5 h-5 text-teal-400 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-white">Save your progress permanently</span>
-                </li>
-                <li className="flex items-start">
-                  <svg className="w-5 h-5 text-teal-400 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-white">Continue learning on any device</span>
-                </li>
-                <li className="flex items-start">
-                  <svg className="w-5 h-5 text-teal-400 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-white">Track your progress over time</span>
-                </li>
-                <li className="flex items-start">
-                  <svg className="w-5 h-5 text-teal-400 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-white">Unlock additional features</span>
-                </li>
-              </ul>
-              <div className="mt-4 space-y-2">
+              <div className="space-y-2">
                 <Link 
-                  href="/signin" 
-                  className="w-full block py-2 bg-white/20 hover:bg-white/30 text-white font-medium rounded-lg transition-colors text-center"
+                  href="/subscription" 
+                  className="w-full block py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium rounded-lg transition-colors text-center"
                 >
-                  Create Free Account
+                  View Premium Plans
                 </Link>
                 
                 <button 

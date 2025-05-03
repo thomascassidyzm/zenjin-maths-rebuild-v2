@@ -17,6 +17,31 @@ echo "Deployment started: $(date)" > public/$DEPLOYMENT_INFO
 echo "Deployment type: Offline-First Implementation" >> public/$DEPLOYMENT_INFO
 echo "Build includes: Bundled content (30 stitches), Hardcoded Supabase URLs" >> public/$DEPLOYMENT_INFO
 
+# Ensure all required dependencies are installed
+echo "Checking dependencies..."
+
+# Install framer-motion (required for animations)
+echo "Installing framer-motion (required for animations)..."
+npm install framer-motion
+
+# Check for other common dependencies
+echo "Installing any other missing dependencies..."
+# Add a check if package.json contains the dependency but it's not installed
+if grep -q '"@supabase/supabase-js"' package.json && ! ls node_modules/@supabase/supabase-js > /dev/null 2>&1; then
+  echo "Installing @supabase/supabase-js..."
+  npm install @supabase/supabase-js
+fi
+
+if grep -q '"next"' package.json && ! ls node_modules/next > /dev/null 2>&1; then
+  echo "Installing next..."
+  npm install next
+fi
+
+if grep -q '"react"' package.json && ! ls node_modules/react > /dev/null 2>&1; then
+  echo "Installing react and react-dom..."
+  npm install react react-dom
+fi
+
 # Build the application
 echo "Building application..."
 npm run build

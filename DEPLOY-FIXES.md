@@ -80,7 +80,12 @@ We've successfully fixed all the build issues:
    - Added exports to `lib/api/responses.ts`
    - Added `createAdvancedHandler` to `lib/api/handlers.ts`
 
-3. Successfully built the application with `npm run build`
+3. Fixed missing dependencies:
+   - Added `framer-motion` dependency for animations used in dashboard and subscribe pages
+   - Created `animation-test.tsx` to verify animations work in the deployed application
+   - Added dependency checks in deployment script to prevent future build failures
+
+4. Successfully built the application with `npm run build`
    - All 30 bundled stitches loaded correctly
    - All 147 routes built successfully (68 pages + 79 API routes)
 

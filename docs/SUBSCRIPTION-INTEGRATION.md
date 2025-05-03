@@ -13,9 +13,40 @@ The subscription integration includes:
 
 ## Implementation Steps
 
-### 1. Replace Player Hook with Subscription-Aware Version
+### 1. Use PlayerWrapper Component (Recommended)
 
-In your Player component, replace the existing `useTripleHelixPlayer` with the subscription-aware version:
+The easiest way to integrate subscription awareness is to use the pre-built PlayerWrapper component:
+
+```tsx
+// Import the PlayerWrapper
+import PlayerWrapper from '../components/subscription/PlayerWrapper';
+
+// In your component
+function PlayPage() {
+  // Your existing code to get thread data
+  
+  return (
+    <PlayerWrapper
+      thread={thread}
+      onComplete={handleComplete}
+      onEndSession={handleEndSession}
+      questionsPerSession={20}
+      sessionTotalPoints={totalPoints}
+      userId={userId}
+    />
+  );
+}
+```
+
+The PlayerWrapper handles all subscription logic including:
+- Free tier limitations
+- Premium content paywalls
+- Access control
+- Upgrade prompts
+
+### 2. Alternative: Replace Player Hook with Subscription-Aware Version
+
+If you need more customization, you can directly use the subscription-aware hook:
 
 ```tsx
 // Before
@@ -28,7 +59,7 @@ import { useSubscriptionAwarePlayer } from '../hooks/useSubscriptionAwarePlayer'
 const player = useSubscriptionAwarePlayer({ mode: 'default' });
 ```
 
-### 2. Add Paywall Component to Player
+### 3. Add Paywall Component to Player
 
 Modify your Player component to include the paywall:
 
@@ -274,22 +305,94 @@ STRIPE_PRICE_ANNUAL=price_annual_id_from_stripe
    - Check browser console for errors
    - Verify database subscription flags are set correctly
 
+## Anonymous User Support
+
+The system supports anonymous users who haven't created accounts yet:
+
+1. **Setting Up Anonymous Mode Pages:**
+   
+   The premium-play.tsx page automatically handles anonymous users:
+   
+   ```tsx
+   // premium-play.tsx
+   export default function PremiumPlay() {
+     // Create anonymous ID if needed
+     useEffect(() => {
+       if (!loading && !isAuthenticated && !localStorage.getItem('anonymousId')) {
+         const anonymousId = `anon-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+         localStorage.setItem('anonymousId', anonymousId);
+       }
+     }, [isAuthenticated, loading]);
+     
+     // Get current user ID (either authenticated or anonymous)
+     const currentUserId = isAuthenticated && user?.id 
+       ? user.id 
+       : (localStorage.getItem('anonymousId') || 'anonymous');
+       
+     // Then use PlayerWrapper with that ID
+     return (
+       <PlayerWrapper
+         thread={thread}
+         userId={currentUserId}
+         {...otherProps}
+       />
+     );
+   }
+   ```
+
+2. **Anonymous Dashboard:**
+   
+   Use the AnonymousUpgradePrompt component to encourage sign-ups:
+   
+   ```tsx
+   import AnonymousUpgradePrompt from '../components/subscription/AnonymousUpgradePrompt';
+   
+   function AnonDashboard() {
+     // Load data from localStorage
+     const progressData = getProgressFromLocalStorage();
+     
+     return (
+       <div className="dashboard">
+         {/* User stats */}
+         <div className="stats">...</div>
+         
+         {/* Upgrade prompt */}
+         <AnonymousUpgradePrompt 
+           points={progressData?.totalPoints || 0}
+           hoursSpent={calculateHoursSpent()}
+           onSignUp={() => router.push('/signin?mode=signup')}
+         />
+       </div>
+     );
+   }
+   ```
+
+3. **Data Persistence:**
+   
+   Data for anonymous users is stored in localStorage with these keys:
+   - `anonymousId`: Unique identifier for the anonymous user
+   - `progressData_[anonymousId]`: User progress data including points and evolution
+   - `sessionData_[anonymousId]`: Latest session data
+
 ## Best Practices
 
 1. **Free Tier Experience:**
    - Show premium content teasers to encourage upgrades
    - Clearly mark which content requires subscription
    - Make subscription benefits obvious
+   - Support anonymous users with localStorage persistence
 
 2. **Conversion Optimization:**
    - Place upgrade CTAs at strategic points (end of free stitches, dashboard)
    - Highlight value proposition of subscription
+   - Use AnonymousUpgradePrompt to encourage sign-ups
    - Offer annual plan with discount for higher LTV
 
 3. **Payment Experience:**
    - Maintain brand consistency in checkout flow
    - Provide clear success/failure feedback
    - Offer easy subscription management
+   - Support smooth transition from anonymous to authenticated user
 
 ## Additional Resources
 
