@@ -652,16 +652,54 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     
     // CRITICAL FIX: Use the actual question count rather than inferring from results
     // This ensures we always report 20 questions when there are 20 questions
+    // Get current session stats
     const correctResults = sessionResults.filter(r => r.correct);
-    const correctAnswers = correctResults.length;
+    const currentSessionCorrectAnswers = correctResults.length;
+    const currentSessionFirstTimeCorrect = sessionResults.filter(r => r.firstTimeCorrect).length;
     
-    // Use the maximum of either the unique question IDs in results or the actual session questions length
-    const totalQuestions = Math.max(
+    // For anonymous users, we need to count accumulated stats across all sessions
+    // in this gaming period (since the user started playing until they clicked "Finish")
+    const isAnonymous = !userId || userId.startsWith('anon-');
+    
+    // Calculate the total questions completed in the current session
+    const currentSessionQuestions = Math.max(
       new Set(sessionResults.map(r => r.id)).size,
       sessionQuestions.length
     );
     
-    const firstTimeCorrect = sessionResults.filter(r => r.firstTimeCorrect).length;
+    // Initialize with current session values
+    let totalQuestions = currentSessionQuestions;
+    let correctAnswers = currentSessionCorrectAnswers;
+    let firstTimeCorrect = currentSessionFirstTimeCorrect;
+    
+    // If anonymous, get accumulated data from localStorage
+    if (isAnonymous && typeof window !== 'undefined') {
+      try {
+        // Check if we have accumulated data in localStorage
+        const savedState = localStorage.getItem('zenjin_anonymous_state');
+        if (savedState) {
+          const parsedState = JSON.parse(savedState);
+          // Add previously accumulated stats to current session stats
+          if (parsedState.state && parsedState.state.accumulatedSessionData) {
+            const accData = parsedState.state.accumulatedSessionData;
+            totalQuestions += (accData.totalQuestions || 0);
+            correctAnswers += (accData.correctAnswers || 0);
+            firstTimeCorrect += (accData.firstTimeCorrect || 0);
+          }
+          console.log(`Anonymous user accumulated stats: 
+            Total questions: ${totalQuestions}
+            Correct answers: ${correctAnswers}
+            First time correct: ${firstTimeCorrect}`);
+        }
+      } catch (error) {
+        console.error('Error reading accumulated data from localStorage:', error);
+        // Fall back to current session values
+        totalQuestions = currentSessionQuestions;
+        correctAnswers = currentSessionCorrectAnswers;
+        firstTimeCorrect = currentSessionFirstTimeCorrect;
+      }
+    }
+    
     const eventuallyCorrect = correctAnswers - firstTimeCorrect;
     
     console.log(`FINAL STATS (manual end): Total questions=${totalQuestions}, Correct answers=${correctAnswers}, First time correct=${firstTimeCorrect}`);
@@ -702,7 +740,8 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       stitchId: thread.stitches[0].id
     };
     
-    // Calculate base points using our new formula
+    // Calculate base points using our formula with the accumulated values
+    // This will include all points earned since the user started playing
     const basePoints = calculateBasePoints(firstTimeCorrect, eventuallyCorrect);
     
     // Calculate bonuses
