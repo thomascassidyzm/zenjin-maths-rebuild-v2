@@ -398,10 +398,12 @@ export class OfflineFirstContentBuffer {
       return this.cachedStitches[stitchId];
     }
     
-    // 2. Check expanded bundled content and enhance with additional questions
+    // 2. Use expanded bundled content directly since it now has complete stitch data
     if (BUNDLED_FULL_CONTENT[stitchId]) {
-      // Always enhance the stitch with additional questions
-      return this.generateFallbackStitch(stitchId);
+      // Cache the bundled content
+      this.cachedStitches[stitchId] = BUNDLED_FULL_CONTENT[stitchId];
+      console.log(`Using ${BUNDLED_FULL_CONTENT[stitchId].questions?.length || 0} questions from bundled content for stitch ${stitchId}`);
+      return BUNDLED_FULL_CONTENT[stitchId];
     }
     
     // 3. For premium users only, try to load from API
