@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Thread, Question } from '../lib/types/distinction-learning';
 import { calculateBonuses, calculateTotalPoints, calculateBasePoints } from '../lib/bonusCalculator';
+import { BUNDLED_FULL_CONTENT } from '../lib/expanded-bundled-content';
 
 interface MinimalDistinctionPlayerProps {
   thread: Thread;
@@ -124,36 +125,46 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
         stitch.questions = [];
       }
       
-      // Check if the questions array has valid questions
-      // NOTE: This is a safety measure - the questions should already be properly formatted
-      const validQuestions = stitch.questions.filter(q => (
-        q.text && q.correctAnswer && q.distractors && 
-        q.distractors.L1 && q.distractors.L2 && q.distractors.L3
-      ));
-      
-      if (validQuestions.length === 0) {
-        console.error(`No valid questions found for stitch ${stitch.id} in thread ${thread.id}`);
-        
-        // Use placeholder error questions instead of generating random content
-        const errorQuestions = [
-          {
-            id: `${stitch.id}-error-1`,
-            text: 'Content missing. Please contact support.',
-            correctAnswer: 'Contact support',
-            distractors: {
-              L1: 'Try again later',
-              L2: 'Refresh page',
-              L3: 'Check settings'
-            }
-          }
-        ];
-        
-        // Set the error questions on the stitch
-        stitch.questions = errorQuestions;
-        console.log(`Using error placeholder question for stitch ${stitch.id}`);
+      // First check if we have this stitch in bundled content
+      if (BUNDLED_FULL_CONTENT[stitch.id] && BUNDLED_FULL_CONTENT[stitch.id].questions && BUNDLED_FULL_CONTENT[stitch.id].questions.length > 0) {
+        console.log(`Using ${BUNDLED_FULL_CONTENT[stitch.id].questions.length} questions from bundled content for stitch ${stitch.id}`);
+        // Use the bundled content's questions directly
+        stitch.questions = [...BUNDLED_FULL_CONTENT[stitch.id].questions];
       } else {
-        console.log(`Using ${validQuestions.length} valid existing questions from database for stitch ${stitch.id}`);
-        stitch.questions = validQuestions;
+        // Fallback to checking passed-in questions when stitch is not in bundled content
+        console.log(`Stitch ${stitch.id} not found in bundled content, checking passed-in questions`);
+        
+        // Check if the questions array has valid questions
+        // NOTE: This is a safety measure - the questions should already be properly formatted
+        const validQuestions = stitch.questions.filter(q => (
+          q.text && q.correctAnswer && q.distractors && 
+          q.distractors.L1 && q.distractors.L2 && q.distractors.L3
+        ));
+        
+        if (validQuestions.length === 0) {
+          console.error(`No valid questions found for stitch ${stitch.id} in thread ${thread.id}`);
+          
+          // Use placeholder error questions instead of generating random content
+          const errorQuestions = [
+            {
+              id: `${stitch.id}-error-1`,
+              text: 'Content missing. Please contact support.',
+              correctAnswer: 'Contact support',
+              distractors: {
+                L1: 'Try again later',
+                L2: 'Refresh page',
+                L3: 'Check settings'
+              }
+            }
+          ];
+          
+          // Set the error questions on the stitch
+          stitch.questions = errorQuestions;
+          console.log(`Using error placeholder question for stitch ${stitch.id}`);
+        } else {
+          console.log(`Using ${validQuestions.length} valid existing questions from database for stitch ${stitch.id}`);
+          stitch.questions = validQuestions;
+        }
       }
       
       // Clone the questions array to avoid mutation issues

@@ -150,7 +150,7 @@ export default function Home() {
           
           <div className="space-y-4">
             <Link 
-              href="/signin" 
+              href="/account/login" 
               className="w-full py-4 bg-gradient-to-r from-teal-600 to-emerald-500 hover:from-teal-500 hover:to-emerald-400 text-white font-bold rounded-xl shadow-lg transition-all block text-center"
             >
               Sign In

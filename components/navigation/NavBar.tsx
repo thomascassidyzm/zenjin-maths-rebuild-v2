@@ -7,14 +7,14 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useUser } from '@supabase/auth-helpers-react';
+import { useAuth } from '../../context/AuthContext';
 import SubscriptionStatusIndicator from '../subscription/SubscriptionStatusIndicator';
 import PremiumNavItem from './PremiumNavItem';
 
 const NavBar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const router = useRouter();
-  const user = useUser();
+  const { user, isAuthenticated } = useAuth();
   
   // Close menu when route changes
   useEffect(() => {
@@ -83,14 +83,14 @@ const NavBar: React.FC = () => {
           {/* Right side - User section */}
           <div className="hidden md:flex items-center">
             {/* Subscription status */}
-            {user && (
+            {isAuthenticated && (
               <div className="mr-4">
                 <SubscriptionStatusIndicator variant="badge" />
               </div>
             )}
             
             {/* Auth buttons */}
-            {user ? (
+            {isAuthenticated ? (
               <div className="flex items-center">
                 <Link 
                   href="/account"
@@ -113,14 +113,14 @@ const NavBar: React.FC = () => {
             ) : (
               <div className="flex items-center">
                 <Link 
-                  href="/signin"
+                  href="/account/login"
                   className="px-3 py-2 rounded-md text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white"
                 >
                   Sign In
                 </Link>
                 
                 <Link 
-                  href="/signup"
+                  href="/account/login"
                   className="ml-3 px-3 py-2 rounded-md text-sm font-medium text-indigo-900 bg-white hover:bg-gray-100 transition-colors"
                 >
                   Sign Up
@@ -221,7 +221,7 @@ const NavBar: React.FC = () => {
           </Link>
           
           {/* Account or auth links */}
-          {user ? (
+          {isAuthenticated ? (
             <Link 
               href="/account"
               className={`block px-3 py-2 rounded-md text-base font-medium ${
@@ -235,9 +235,9 @@ const NavBar: React.FC = () => {
           ) : (
             <>
               <Link 
-                href="/signin"
+                href="/account/login"
                 className={`block px-3 py-2 rounded-md text-base font-medium ${
-                  router.pathname === '/signin' 
+                  router.pathname === '/account/login' 
                     ? 'bg-blue-800 text-white' 
                     : 'text-white/80 hover:bg-blue-800 hover:text-white'
                 }`}
@@ -246,9 +246,9 @@ const NavBar: React.FC = () => {
               </Link>
               
               <Link 
-                href="/signup"
+                href="/account/login"
                 className={`block px-3 py-2 rounded-md text-base font-medium ${
-                  router.pathname === '/signup' 
+                  router.pathname === '/account/login' 
                     ? 'bg-blue-800 text-white' 
                     : 'text-white/80 hover:bg-blue-800 hover:text-white'
                 }`}
