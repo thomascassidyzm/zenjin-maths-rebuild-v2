@@ -105,3 +105,11 @@ This simple change ensures we maintain a consistent offline-first experience whe
 4. Anonymous and free users always get bundled content for consistency
 5. Premium users can receive personalized content from the API after initial loading
 6. Consider adding a mechanism to periodically update the bundled content
+
+## Important Instructions for Claude
+
+1. ALWAYS discuss any proposed changes with the developer before implementing them
+2. DO NOT make extensive code changes without getting step-by-step approval first
+3. When suggesting improvements, present a clear plan and wait for feedback before proceeding
+4. For complex features, break down the implementation into smaller, reviewable steps
+5. Prioritize understanding the existing code patterns before suggesting new approaches

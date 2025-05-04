@@ -170,10 +170,15 @@ export default function AnonDashboard() {
         <div className="flex items-center">
           <h1 className="text-2xl font-bold">Your Progress</h1>
           <span className="ml-3 bg-amber-600/30 text-amber-300 text-xs px-2 py-1 rounded-full">
-            Guest Mode
+            Anonymous Mode
           </span>
-          <div className="ml-3">
-            <SubscriptionBadge tier="free" />
+          {/* Direct Free Tier badge without loading */}
+          <div 
+            className="ml-3 inline-flex items-center rounded-full bg-blue-600/20 text-sm py-1 px-3 cursor-pointer"
+            onClick={() => router.push('/subscribe')}
+          >
+            <div className="w-3 h-3 mr-1.5 rounded-full bg-blue-500"></div>
+            <span className="text-blue-300 font-medium">Free Tier</span>
           </div>
         </div>
         
@@ -196,12 +201,12 @@ export default function AnonDashboard() {
         <div className="bg-amber-500/20 border border-amber-300/30 rounded-xl p-4 mb-6">
           <h2 className="text-amber-300 font-semibold text-lg mb-1">Anonymous Mode</h2>
           <p className="text-white/80 mb-3">
-            You're in Guest Mode! Your learning journey is saved on this device. 
+            You're in Anonymous Mode! Your learning journey is saved on this device. 
             Create a free account anytime to save your progress across all devices.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <Link 
-              href="/premium-play" 
+              href="/minimal-player?mode=anonymous" 
               className="inline-block px-4 py-2 bg-gradient-to-r from-teal-600 to-emerald-500 hover:from-teal-500 hover:to-emerald-400 text-white font-medium rounded-lg transition-colors"
             >
               Continue Playing
@@ -249,7 +254,7 @@ export default function AnonDashboard() {
             {/* Continue Learning Button */}
             <div className="mt-6">
               <Link 
-                href="/premium-play" 
+                href="/minimal-player?mode=anonymous" 
                 className="block bg-gradient-to-r from-teal-600 to-emerald-500 hover:from-teal-500 hover:to-emerald-400 text-white font-bold py-4 px-6 rounded-xl transition-colors text-lg text-center shadow-lg"
               >
                 Continue Learning

@@ -110,28 +110,16 @@ export function useSubscription(options: UseSubscriptionOptions = {}) {
           };
         }
       } else {
-        // Anonymous user - always return free tier status
-        const anonymousId = localStorage.getItem('anonymousId') || 'anonymous';
-        
-        // Use anonymous endpoint if API is available, otherwise create local status
-        try {
-          const response = await fetch(`/api/payments/anonymous-subscription-status?anonymousId=${anonymousId}`);
-          if (response.ok) {
-            const data = await response.json();
-            subscriptionStatus = data.data;
-          } else {
-            throw new Error('Anonymous subscription endpoint failed');
-          }
-        } catch (anonError) {
-          console.log('Using local anonymous subscription status');
-          subscriptionStatus = {
-            active: false,
-            status: 'free',
-            subscription: null,
-            updatedAt: new Date().toISOString(),
-            isAnonymous: true
-          };
-        }
+        // Anonymous user - immediately return free tier status without API call
+        // This prevents loading delay for anonymous users
+        console.log('Using immediate local anonymous subscription status');
+        subscriptionStatus = {
+          active: false,
+          status: 'free',
+          subscription: null,
+          updatedAt: new Date().toISOString(),
+          isAnonymous: true
+        };
       }
       
       setState(prev => ({

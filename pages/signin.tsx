@@ -209,10 +209,16 @@ export default function SignIn() {
       {/* Background bubbles like in the player */}
       <BackgroundBubbles />
       
-      {/* Simple header */}
-      <header className="py-4 px-6 relative z-10">
+      {/* Simple header with back button */}
+      <header className="py-4 px-6 relative z-10 flex justify-between items-center">
         <Link href="/" className="text-white font-bold text-xl">
           Zenjin Maths
+        </Link>
+        <Link 
+          href="/anon-dashboard" 
+          className="text-white text-sm px-3 py-1 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+        >
+          Back to Dashboard
         </Link>
       </header>
       
