@@ -408,9 +408,9 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       }, 500);
     }
     
-    // Update points
+    // Update points in real-time (but no bonuses)
+    // First time correct gets 3 points, replay gets 1 point
     if (correct) {
-      // First time correct gets 3 points, replay gets 1 point
       const pointsToAdd = !isReplayQuestion ? 3 : 1;
       setPoints(prev => prev + pointsToAdd);
     }
@@ -519,7 +519,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
         correctTimes.reduce((sum, time) => sum + time, 0) / correctTimes.length : 
         2500; // Default to 2.5 seconds
         
-      saveAnonymousSessionData(points, avgTime / 1000, sessionResults);
+      saveAnonymousSessionData(points, avgTime / 1000, sessionResults); // Use accumulated points
     }
     
     // Format results for API
@@ -533,7 +533,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       firstTimeCorrect,
       accuracy,
       averageTimeToAnswer: averageTime,
-      totalPoints: points,
+      totalPoints: points, // Use accumulated points
       results: sessionResults,
       completedAt: new Date().toISOString(),
       blinkSpeed: averageTime / 1000, // Convert to seconds for blink speed
@@ -685,7 +685,9 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     // Save anonymous user data using our helper function
     const isAnonymous = !userId || userId.startsWith('anon-');
     if (isAnonymous) {
-      saveAnonymousSessionData(points, avgTime / 1000, sessionResults);
+      // Use calculated basePoints instead of accumulated points for consistency
+      const calculatedBasePoints = calculateBasePoints(firstTimeCorrect, correctAnswers - firstTimeCorrect);
+      saveAnonymousSessionData(calculatedBasePoints, avgTime / 1000, sessionResults);
     }
     
     // Prepare session data for bonus calculation
