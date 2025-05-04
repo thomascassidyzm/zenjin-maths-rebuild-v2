@@ -88,13 +88,51 @@ export function useSubscription(options: UseSubscriptionOptions = {}) {
    * Check subscription status
    */
   const checkSubscription = useCallback(async () => {
-    // Skip if user is not authenticated or still loading
-    if (!user || isAuthLoading) return null;
-    
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
       
-      const subscriptionStatus = await getSubscriptionStatus();
+      // Handle different user states
+      let subscriptionStatus;
+      
+      if (isAuthenticated && user) {
+        // Authenticated user - get real subscription status
+        try {
+          subscriptionStatus = await getSubscriptionStatus();
+        } catch (authError: any) {
+          console.error('Error checking subscription (authenticated user):', authError);
+          
+          // Fallback to free tier status if API fails
+          subscriptionStatus = {
+            active: false,
+            status: 'free',
+            subscription: null,
+            updatedAt: new Date().toISOString()
+          };
+        }
+      } else {
+        // Anonymous user - always return free tier status
+        const anonymousId = localStorage.getItem('anonymousId') || 'anonymous';
+        
+        // Use anonymous endpoint if API is available, otherwise create local status
+        try {
+          const response = await fetch(`/api/payments/anonymous-subscription-status?anonymousId=${anonymousId}`);
+          if (response.ok) {
+            const data = await response.json();
+            subscriptionStatus = data.data;
+          } else {
+            throw new Error('Anonymous subscription endpoint failed');
+          }
+        } catch (anonError) {
+          console.log('Using local anonymous subscription status');
+          subscriptionStatus = {
+            active: false,
+            status: 'free',
+            subscription: null,
+            updatedAt: new Date().toISOString(),
+            isAnonymous: true
+          };
+        }
+      }
       
       setState(prev => ({
         ...prev,
@@ -116,7 +154,7 @@ export function useSubscription(options: UseSubscriptionOptions = {}) {
       
       return null;
     }
-  }, [user, isAuthLoading]);
+  }, [isAuthenticated, user]);
   
   /**
    * Subscribe to premium plan
@@ -199,23 +237,24 @@ export function useSubscription(options: UseSubscriptionOptions = {}) {
   
   // Check subscription on mount if enabled
   useEffect(() => {
-    if (checkOnMount && user && !isAuthLoading) {
+    if (checkOnMount && !isAuthLoading) {
+      // Check subscription for all users (authenticated or anonymous)
       checkSubscription();
     }
-  }, [checkOnMount, user, isAuthLoading, checkSubscription]);
+  }, [checkOnMount, isAuthLoading, checkSubscription]);
   
   // Set up auto-refresh interval if enabled
   useEffect(() => {
     if (refreshInterval && refreshInterval > 0) {
       const intervalId = setInterval(() => {
-        if (user && !isAuthLoading) {
+        if (!isAuthLoading) {
           checkSubscription();
         }
       }, refreshInterval);
       
       return () => clearInterval(intervalId);
     }
-  }, [refreshInterval, user, isAuthLoading, checkSubscription]);
+  }, [refreshInterval, isAuthLoading, checkSubscription]);
   
   // Check for subscription status in query parameters
   useEffect(() => {

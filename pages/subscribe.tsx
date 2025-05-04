@@ -30,10 +30,11 @@ const itemVariants = {
   }
 };
 
-// Calculate with VAT included (20% UK standard rate)
+// Price is £12 including VAT
 const monthlyPrice = 12;
+// Calculate VAT portion for reference only (20% UK standard rate)
 const vatRate = 0.2;
-const monthlyPriceWithVAT = monthlyPrice * (1 + vatRate);
+const vatPortion = monthlyPrice - (monthlyPrice / (1 + vatRate));
 
 export default function SubscribePage() {
   const router = useRouter();
@@ -184,7 +185,7 @@ export default function SubscribePage() {
                     <span className="text-3xl font-bold">£{monthlyPrice}</span>
                     <span className="ml-1 text-white/80">/month</span>
                   </div>
-                  <p className="text-xs text-white/70">£{monthlyPriceWithVAT.toFixed(2)} with VAT</p>
+                  <p className="text-xs text-white/70">VAT included (£{vatPortion.toFixed(2)})</p>
                 </div>
               </div>
             </div>
@@ -359,7 +360,7 @@ export default function SubscribePage() {
             <div className="space-y-4">
               <div className="bg-white/5 backdrop-blur-sm rounded-xl p-5 hover:bg-white/10 transition-colors">
                 <h3 className="font-bold text-lg mb-2">Will I be charged immediately?</h3>
-                <p className="text-white/70">Yes, you'll be charged the monthly fee (£{monthlyPriceWithVAT.toFixed(2)} including VAT) as soon as you subscribe. Your subscription will renew automatically each month.</p>
+                <p className="text-white/70">Yes, you'll be charged the monthly fee (£{monthlyPrice}) as soon as you subscribe. Your subscription will renew automatically each month.</p>
               </div>
               
               <div className="bg-white/5 backdrop-blur-sm rounded-xl p-5 hover:bg-white/10 transition-colors">
