@@ -2,7 +2,21 @@
 
 This document outlines several fixes implemented to improve the anonymous user experience in the Zenjin Maths application.
 
-## 1. Fixed Incorrect Player Link
+## 1. Fixed Session Summary Dashboard Redirection
+
+**Problem**:
+- The fallback error handler in the Session Summary was redirecting anonymous users to the authenticated user dashboard
+- This led to anonymous users seeing a dashboard that doesn't correctly track their progress between sessions
+
+**Solution**:
+- Enhanced the error handling in the `finishSession` function to check the user type even when errors occur
+- Ensured anonymous users are redirected to `/anon-dashboard` and authenticated users to `/dashboard`
+- This maintains correct progress tracking for anonymous users regardless of error conditions
+
+**Files Changed**:
+- `/components/MinimalDistinctionPlayer.tsx`
+
+## 2. Fixed Incorrect Player Link
 
 **Problem**: 
 - "Continue Playing" and "Continue Learning" buttons in the anonymous dashboard were linking to `/premium-play`

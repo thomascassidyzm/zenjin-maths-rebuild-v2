@@ -946,9 +946,11 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
           }
         } catch (error) {
           console.error('Error saving anonymous session data:', error);
-          // Default redirect to dashboard
+          // Check if this is an anonymous user even if there was an error
+          const isAnonymous = !userId || userId.startsWith('anon-');
+          // Redirect to the appropriate dashboard based on user type
           setTimeout(() => {
-            window.location.href = '/dashboard';
+            window.location.href = isAnonymous ? '/anon-dashboard' : '/dashboard';
           }, 100);
         }
       }
