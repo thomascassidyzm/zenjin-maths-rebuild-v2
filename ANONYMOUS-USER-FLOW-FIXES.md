@@ -2,6 +2,26 @@
 
 This document outlines several fixes implemented to improve the anonymous user experience in the Zenjin Maths application.
 
+## 0. Fixed Points Double-Counting for Anonymous Users
+
+**Problem**:
+- When completing a session and clicking "Go to Dashboard", points were being counted twice
+- A 18-point session would result in 36 points being added to the total
+- This was happening because session data was being saved in multiple places:
+  1. In handleEndSession
+  2. In the "Go to Dashboard" button handler
+  3. In the finishSession function
+
+**Solution**:
+- Simplified by removing point-saving code from all but one location
+- Designated handleEndSession as the single source of truth for saving points
+- Added clear comments indicating that other places should NOT save points
+- Kept non-points session data in other locations for compatibility
+- Added detailed logging for better visibility into the process
+
+**Files Changed**:
+- `/components/MinimalDistinctionPlayer.tsx`
+
 ## 1. Fixed Session Summary Dashboard Redirection
 
 **Problem**:

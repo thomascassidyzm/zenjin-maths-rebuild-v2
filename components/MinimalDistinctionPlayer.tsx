@@ -716,10 +716,12 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       sessionResults.reduce((sum, r) => sum + r.timeToAnswer, 0) / 1000
     );
     
-    // Save anonymous user data using our helper function
+    // Save anonymous user data - THIS IS THE ONLY PLACE WHERE POINTS ARE SAVED
+    // All other places should skip saving points to avoid double-counting
     if (isAnonymous) {
       // Use calculated basePoints instead of accumulated points for consistency
       const calculatedBasePoints = calculateBasePoints(firstTimeCorrect, correctAnswers - firstTimeCorrect);
+      console.log(`HandleEndSession: Saving ${calculatedBasePoints} points (SINGLE SOURCE OF TRUTH)`);
       saveAnonymousSessionData(calculatedBasePoints, avgTime / 1000, sessionResults);
     }
     
@@ -888,50 +890,17 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
             const anonymousId = localStorage.getItem('anonymousId');
             
             if (anonymousId) {
-              // Store session data for anonymous user
+              console.log('FINISH SESSION: Points already saved in handleEndSession, skipping to avoid double-counting');
+              
+              // Store basic session data but don't update points again
               const sessionData = {
-                totalPoints: stats.totalPoints || points,
                 blinkSpeed: stats.blinkSpeed || timeToAnswer / 1000,
-                blinkSpeedTrend: 'steady', // Simple default
+                blinkSpeedTrend: 'steady', 
                 lastSessionDate: new Date().toISOString()
               };
               
-              // Save to localStorage
+              // Save non-point session data to localStorage
               localStorage.setItem(`sessionData_${anonymousId}`, JSON.stringify(sessionData));
-              
-              // Update progress data or create it if it doesn't exist
-              const existingProgressData = localStorage.getItem(`progressData_${anonymousId}`);
-              let progressData = existingProgressData ? JSON.parse(existingProgressData) : {
-                totalPoints: 0,
-                blinkSpeed: 0,
-                blinkSpeedTrend: 'steady',
-                evolution: {
-                  currentLevel: 'Mind Spark',
-                  levelNumber: 1,
-                  progress: 0,
-                  nextLevel: 'Thought Weaver'
-                }
-              };
-              
-              // Update progress data
-              progressData.totalPoints = (progressData.totalPoints || 0) + (stats.totalPoints || points);
-              progressData.blinkSpeed = stats.blinkSpeed || timeToAnswer / 1000;
-              
-              // Simple evolution progress - every 100 points = 10% progress
-              const totalPoints = progressData.totalPoints;
-              const levelNumber = Math.floor(totalPoints / 1000) + 1; // Level up every 1000 points
-              const progress = (totalPoints % 1000) / 10; // 0-100% within level
-              
-              // Update evolution data
-              progressData.evolution = {
-                currentLevel: getLevelName(levelNumber),
-                levelNumber: levelNumber,
-                progress: progress,
-                nextLevel: getLevelName(levelNumber + 1)
-              };
-              
-              // Save updated progress data
-              localStorage.setItem(`progressData_${anonymousId}`, JSON.stringify(progressData));
               
               // Redirect anonymous users to anon-dashboard
               setTimeout(() => {
@@ -1399,8 +1368,8 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
                       
                       if (isAnonymous) {
                         console.log('DIRECT NAVIGATION: Anonymous user detected - going to /anon-dashboard');
-                        // Force save state first
-                        saveAnonymousSessionData(totalPoints, stats.blinkSpeed || 2.5, sessionResults);
+                        // No need to save points here - already saved in handleEndSession
+                        
                         // Direct navigation to anonymous dashboard using full URL to avoid any rewrites
                         window.location.href = 'https://zenjin-maths-v1-zenjin.vercel.app/anon-dashboard';
                       } else {
