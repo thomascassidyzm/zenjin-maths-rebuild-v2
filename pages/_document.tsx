@@ -10,13 +10,10 @@ export default function Document() {
         <link rel="preconnect" href="/" />
         <link rel="dns-prefetch" href="/" />
         
-        {/* Preload the first stitch data if possible */}
-        <link 
-          rel="preload" 
-          href="/api/user-stitches?userId=anonymous&prefetch=5&isAnonymous=true" 
-          as="fetch" 
-          crossOrigin="anonymous" 
-        />
+        {/* 
+          Removed preload link for anonymous users since we now use 
+          bundled content directly instead of API calls
+        */}
       </Head>
       <body>
         <Main />

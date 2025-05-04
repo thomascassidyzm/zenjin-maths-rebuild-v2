@@ -81,6 +81,22 @@ Use two test pages to verify the implementation:
    - No dependencies on other components
    - Works without network connection
 
+## Anonymous API Call Fix (May 4, 2025)
+
+We eliminated unnecessary API calls to `/api/user-stitches` for anonymous users by:
+
+1. Removing the preload link in `_document.tsx` that was causing a fetch on page load
+
+The existing implementation in playerUtils.ts was already correctly handling anonymous users by:
+- Using pre-embedded bundled content without API calls
+- Storing data in localStorage for persistence
+- Following a true offline-first approach
+
+This simple change ensures we maintain a consistent offline-first experience where anonymous users:
+- Never make API calls when using bundled content
+- Always use content from localStorage or bundled defaults
+- Have a seamless experience, even without network connection
+
 ## Notes for Future Development
 
 1. The system currently assumes the first 10 stitches per tube as bundled content
