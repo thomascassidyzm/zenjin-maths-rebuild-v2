@@ -126,117 +126,104 @@ const DevTestPane: React.FC<DevTestPaneProps> = ({ player, show = true }) => {
   if (!show) return null;
   
   return (
-    <div className="fixed bottom-0 right-0 z-50 max-w-lg bg-gray-900/90 backdrop-blur-sm text-white font-mono text-xs rounded-tl-lg overflow-hidden shadow-lg border-l border-t border-gray-700">
+    <div className="fixed top-20 right-0 z-50 w-48 bg-gray-900/90 backdrop-blur-sm text-white font-mono text-xs rounded-l-lg overflow-hidden shadow-lg border-l border-t border-b border-gray-700">
       {/* Header bar */}
       <div 
         className="p-2 bg-indigo-800 flex justify-between items-center cursor-pointer"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <h3 className="font-bold">
-          🔧 DevTest Pane {player?.currentStitch && `- Tube ${player.currentTube}`}
+        <h3 className="font-bold text-xs">
+          🔧 DevTest {player?.currentTube && `T${player.currentTube}`}
         </h3>
-        <span>{isExpanded ? '▼' : '▲'}</span>
+        <span>{isExpanded ? '►' : '◄'}</span>
       </div>
       
       {/* Expandable content */}
       {isExpanded && (
-        <div className="p-3">
+        <div className="p-2">
           {/* Current stitch info */}
-          <div className="mb-3 border-b border-gray-700 pb-2">
-            <h4 className="font-bold mb-1">Current State:</h4>
+          <div className="mb-2 border-b border-gray-700 pb-2 text-[10px]">
             {player?.currentStitch ? (
-              <div>
-                <p>Stitch: <span className="text-teal-300">{player.currentStitch.id}</span></p>
-                <p>Thread: <span className="text-amber-300">{player.currentStitch.threadId}</span></p>
-                <p>Tube: <span className="text-purple-300">{player.currentTube}</span></p>
+              <div className="space-y-0.5">
+                <p className="truncate text-teal-300">{player.currentStitch.id}</p>
+                <p className="truncate text-amber-300">{player.currentStitch.threadId}</p>
               </div>
             ) : (
-              <p className="text-red-400">No active stitch</p>
+              <p className="text-red-400 text-[10px]">No active stitch</p>
             )}
           </div>
           
-          {/* Action buttons */}
-          <div className="space-y-2">
-            <h4 className="font-bold mb-1">Actions:</h4>
+          {/* Action buttons - vertically stacked */}
+          <div className="space-y-1.5">
+            <button
+              onClick={completeCurrentStitch}
+              className="bg-green-700 hover:bg-green-600 text-white px-2 py-1 rounded-sm w-full text-[10px]"
+              disabled={!player?.currentStitch}
+            >
+              Complete Stitch
+            </button>
             
-            <div className="flex flex-col space-y-2">
-              <button
-                onClick={completeCurrentStitch}
-                className="bg-green-700 hover:bg-green-600 text-white px-2 py-1 rounded w-full"
-                disabled={!player?.currentStitch}
-              >
-                Complete Stitch (Stay in Tube)
-              </button>
-              
-              <button
-                onClick={() => {
-                  try {
-                    if (!player || !player.currentStitch) {
-                      console.error("No active stitch found");
-                      return;
-                    }
-                    
-                    // Create a mock session result with perfect score (20/20)
-                    const mockSessionResults = {
-                      sessionId: `dev-session-${Date.now()}`,
-                      correctAnswers: 20,
-                      firstTimeCorrect: 20,
-                      totalQuestions: 20,
-                      totalPoints: 60, // 3 points per first-time correct answer (20 × 3 = 60)
-                      questionResults: Array(20).fill(0).map((_, i) => ({
-                        questionId: `q-${i+1}`,
-                        correct: true,
-                        timeToAnswer: 1500, // 1.5 seconds per question
-                        firstTimeCorrect: true
-                      })),
-                      blinkSpeed: 1.5, // Fast response time
-                      sessionDuration: 30,
-                      completedAt: new Date().toISOString()
-                    };
-                    
-                    // Use the standard session completion which cycles tubes
-                    console.log('DevTestPane: Normal session completion (with tube cycling)');
-                    player.handleSessionComplete(mockSessionResults);
-                  } catch (err) {
-                    console.error('Error completing stitch with tube cycling:', err);
+            <button
+              onClick={() => {
+                try {
+                  if (!player || !player.currentStitch) {
+                    console.error("No active stitch found");
+                    return;
                   }
-                }}
-                className="bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded w-full"
-                disabled={!player?.currentStitch}
-              >
-                Complete & Cycle Tubes
-              </button>
-            </div>
+                  
+                  // Create a mock session result with perfect score (20/20)
+                  const mockSessionResults = {
+                    sessionId: `dev-session-${Date.now()}`,
+                    correctAnswers: 20,
+                    firstTimeCorrect: 20,
+                    totalQuestions: 20,
+                    totalPoints: 60, // 3 points per first-time correct answer (20 × 3 = 60)
+                    questionResults: Array(20).fill(0).map((_, i) => ({
+                      questionId: `q-${i+1}`,
+                      correct: true,
+                      timeToAnswer: 1500, // 1.5 seconds per question
+                      firstTimeCorrect: true
+                    })),
+                    blinkSpeed: 1.5, // Fast response time
+                    sessionDuration: 30,
+                    completedAt: new Date().toISOString()
+                  };
+                  
+                  // Use the standard session completion which cycles tubes
+                  console.log('DevTestPane: Normal session completion (with tube cycling)');
+                  player.handleSessionComplete(mockSessionResults);
+                } catch (err) {
+                  console.error('Error completing stitch with tube cycling:', err);
+                }
+              }}
+              className="bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded-sm w-full text-[10px]"
+              disabled={!player?.currentStitch}
+            >
+              Complete & Cycle
+            </button>
             
-            <div className="flex space-x-2">
-              <button
-                onClick={cycleTubes}
-                className="bg-blue-700 hover:bg-blue-600 text-white px-2 py-1 rounded flex-1"
-              >
-                Cycle Tubes
-              </button>
-              
-              <div className="flex space-x-1">
-                {[1, 2, 3].map(tubeNum => (
-                  <button
-                    key={tubeNum}
-                    onClick={() => selectTube(tubeNum)}
-                    className={`px-2 py-1 rounded ${
-                      player?.currentTube === tubeNum
-                        ? 'bg-teal-700 text-white'
-                        : 'bg-gray-700 hover:bg-gray-600 text-white'
-                    }`}
-                  >
-                    T{tubeNum}
-                  </button>
-                ))}
-              </div>
+            <button
+              onClick={cycleTubes}
+              className="bg-blue-700 hover:bg-blue-600 text-white px-2 py-1 rounded-sm w-full text-[10px]"
+            >
+              Cycle Tubes
+            </button>
+            
+            <div className="flex space-x-1">
+              {[1, 2, 3].map(tubeNum => (
+                <button
+                  key={tubeNum}
+                  onClick={() => selectTube(tubeNum)}
+                  className={`px-2 py-1 rounded-sm text-[10px] ${
+                    player?.currentTube === tubeNum
+                      ? 'bg-teal-700 text-white'
+                      : 'bg-gray-700 hover:bg-gray-600 text-white'
+                  } flex-1`}
+                >
+                  T{tubeNum}
+                </button>
+              ))}
             </div>
-          </div>
-          
-          {/* Dev note */}
-          <div className="mt-3 pt-2 border-t border-gray-700 text-gray-500 text-xs">
-            DevTest Pane: Complete stitches with perfect scores to test position handling
           </div>
         </div>
       )}
