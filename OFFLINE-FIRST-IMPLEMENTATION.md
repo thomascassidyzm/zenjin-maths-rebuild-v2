@@ -59,15 +59,18 @@ Feature flags have been implemented to:
 
 File: `lib/feature-flags.ts`
 
-### 5. Expanded Bundled Content
+### 5. Expanded Bundled Content with Dynamic Question Generation
 
 All 30 initial stitches (10 per tube) are bundled with the app:
 
-- Complete content for the first 10 stitches of each tube
+- Metadata and minimal content for the first 10 stitches of each tube
 - Structured in the same format as API-delivered content
-- Includes questions and all required properties
+- Contains basic stitch properties with minimal questions (1 per stitch)
+- **Enhanced at runtime** with dynamically generated questions (20 per stitch)
 
-File: `lib/expanded-bundled-content.ts`
+Files:
+- `lib/expanded-bundled-content.ts` - Basic stitch content
+- `lib/client/offline-first-content-buffer.ts` - Question generation logic
 
 ## Testing and Verification
 

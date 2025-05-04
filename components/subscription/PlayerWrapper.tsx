@@ -58,10 +58,11 @@ const PlayerWrapper: React.FC<PlayerWrapperProps> = ({
 }) => {
   const router = useRouter();
   
-  // Use the subscription-aware player hook
+  // Use the subscription-aware player hook with debug enabled
   const player = useSubscriptionAwarePlayer({
     thread,
-    userId
+    userId,
+    disableAutoRefresh: true // Disable auto-refresh to prevent excessive API calls
   });
   
   // Local state for UI components

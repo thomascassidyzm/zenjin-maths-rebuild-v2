@@ -75,14 +75,10 @@ export default function SubscribePage() {
         <div className="container mx-auto flex justify-between items-center">
           <div className="flex items-center space-x-2">
             <Image 
-              src="/images/logo.png" 
+              src="/images/logo.svg" 
               alt="Zenjin Maths Logo" 
               width={40} 
               height={40}
-              onError={(e) => {
-                // Fallback if image doesn't exist
-                e.currentTarget.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%2306b6d4"/><text x="20" y="25" font-size="20" text-anchor="middle" fill="white">Z</text></svg>';
-              }}
             />
             <h1 className="text-xl font-bold">Zenjin Maths</h1>
           </div>

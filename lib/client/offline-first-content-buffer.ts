@@ -398,11 +398,10 @@ export class OfflineFirstContentBuffer {
       return this.cachedStitches[stitchId];
     }
     
-    // 2. Check expanded bundled content (almost as fast as cache)
+    // 2. Check expanded bundled content and enhance with additional questions
     if (BUNDLED_FULL_CONTENT[stitchId]) {
-      const bundledStitch = BUNDLED_FULL_CONTENT[stitchId];
-      this.cachedStitches[stitchId] = bundledStitch;
-      return bundledStitch;
+      // Always enhance the stitch with additional questions
+      return this.generateFallbackStitch(stitchId);
     }
     
     // 3. For premium users only, try to load from API
@@ -411,8 +410,17 @@ export class OfflineFirstContentBuffer {
         const [stitch] = await this.fetchStitches([stitchId]);
         
         if (stitch) {
-          this.cachedStitches[stitchId] = stitch;
-          return stitch;
+          // For API-loaded stitches, check if they have enough questions
+          if (stitch.questions && stitch.questions.length >= 10) {
+            this.cachedStitches[stitchId] = stitch;
+            return stitch;
+          } else {
+            // Even API stitches might need enhancement
+            console.log(`API-loaded stitch ${stitchId} has only ${stitch.questions?.length || 0} questions. Enhancing.`);
+            // Store in bundled content for enhancement
+            BUNDLED_FULL_CONTENT[stitchId] = stitch;
+            return this.generateFallbackStitch(stitchId);
+          }
         }
       } catch (error) {
         console.error(`Failed to get stitch ${stitchId} from API:`, error);
@@ -425,13 +433,283 @@ export class OfflineFirstContentBuffer {
   
   /**
    * Generate a fallback stitch when all other methods fail
+   * Includes enhanced question generation to provide a full set of questions
    */
   private generateFallbackStitch(stitchId: string): StitchContent | null {
+    // Determines how many questions to generate for each stitch
+    const QUESTIONS_PER_STITCH = 20;
+    
+    // Check if this is a Tube 2 stitch (Basic Operations - Addition/Subtraction)
+    if (stitchId.startsWith('stitch-T2-')) {
+      console.log(`Enhancing Tube 2 stitch ${stitchId} with additional questions`);
+      
+      // Get original stitch from bundled content
+      const originalStitch = BUNDLED_FULL_CONTENT[stitchId];
+      if (!originalStitch) {
+        console.warn(`No original stitch found for ${stitchId}`);
+        return this.generateGenericFallbackStitch(stitchId);
+      }
+      
+      // Generate additional basic addition/subtraction questions
+      const enhancedQuestions = [];
+      
+      // Keep any existing questions
+      if (originalStitch.questions && originalStitch.questions.length > 0) {
+        enhancedQuestions.push(...originalStitch.questions);
+      }
+      
+      // Generate more questions if needed
+      while (enhancedQuestions.length < QUESTIONS_PER_STITCH) {
+        const a = Math.floor(Math.random() * 10);
+        const b = Math.floor(Math.random() * 10);
+        const sum = a + b;
+        const diff = Math.max(a, b) - Math.min(a, b);
+        
+        // Decide between addition and subtraction based on stitch ID
+        const isAddition = stitchId.includes('-001-01') || stitchId.includes('-001-02');
+        
+        if (isAddition) {
+          enhancedQuestions.push({
+            id: `${stitchId}-q${(enhancedQuestions.length + 1).toString().padStart(2, '0')}`,
+            text: `What is ${a} + ${b}?`,
+            correctAnswer: `${sum}`,
+            distractors: {
+              L1: `${sum + 1}`,
+              L2: `${sum - 1}`,
+              L3: `${a}${b}` // Common mistake of concatenating digits
+            }
+          });
+        } else {
+          // Use larger number first to avoid negative results
+          const larger = Math.max(a, b);
+          const smaller = Math.min(a, b);
+          
+          enhancedQuestions.push({
+            id: `${stitchId}-q${(enhancedQuestions.length + 1).toString().padStart(2, '0')}`,
+            text: `What is ${larger} - ${smaller}?`,
+            correctAnswer: `${larger - smaller}`,
+            distractors: {
+              L1: `${larger - smaller + 1}`,
+              L2: `${larger - smaller - 1}`,
+              L3: `${smaller - larger}` // Common mistake of reversing operands
+            }
+          });
+        }
+      }
+      
+      // Create enhanced stitch with additional questions
+      const enhancedStitch: StitchContent = {
+        ...originalStitch,
+        questions: enhancedQuestions.slice(0, QUESTIONS_PER_STITCH) // Limit to desired count
+      };
+      
+      this.cachedStitches[stitchId] = enhancedStitch;
+      console.log(`Enhanced stitch ${stitchId} with ${enhancedStitch.questions.length} questions`);
+      return enhancedStitch;
+    }
+    
+    // Check if this is a Tube 3 stitch (Problem Solving)
+    if (stitchId.startsWith('stitch-T3-')) {
+      console.log(`Enhancing Tube 3 stitch ${stitchId} with additional questions`);
+      
+      // Get original stitch from bundled content
+      const originalStitch = BUNDLED_FULL_CONTENT[stitchId];
+      if (!originalStitch) {
+        console.warn(`No original stitch found for ${stitchId}`);
+        return this.generateGenericFallbackStitch(stitchId);
+      }
+      
+      // Generate word problems
+      const enhancedQuestions = [];
+      
+      // Keep any existing questions
+      if (originalStitch.questions && originalStitch.questions.length > 0) {
+        enhancedQuestions.push(...originalStitch.questions);
+      }
+      
+      // Word problem templates
+      const wordProblemTemplates = [
+        {
+          text: (a, b) => `Sarah has ${a} apples. Tom gives her ${b} more apples. How many apples does Sarah have now?`,
+          answer: (a, b) => a + b,
+          distractors: (a, b) => ({ L1: a + b - 1, L2: a + b + 1, L3: a - b })
+        },
+        {
+          text: (a, b) => `Jack has ${a} stickers. Jill has ${b} stickers. How many stickers do they have together?`,
+          answer: (a, b) => a + b,
+          distractors: (a, b) => ({ L1: a + b - 1, L2: a + b + 1, L3: a - b })
+        },
+        {
+          text: (a, b) => `There are ${a} children on the bus. At the bus stop, ${b} children get off. How many children are left on the bus?`,
+          answer: (a, b) => a - b,
+          distractors: (a, b) => ({ L1: a - b + 1, L2: a - b - 1, L3: a + b })
+        },
+        {
+          text: (a, b) => `Max has ${a} toy cars. He gives ${b} cars to his friend. How many cars does Max have left?`,
+          answer: (a, b) => a - b,
+          distractors: (a, b) => ({ L1: a - b + 1, L2: a - b - 1, L3: a + b })
+        }
+      ];
+      
+      // Generate more questions if needed
+      while (enhancedQuestions.length < QUESTIONS_PER_STITCH) {
+        const a = 5 + Math.floor(Math.random() * 10); // Larger first number
+        const b = 1 + Math.floor(Math.random() * 5);  // Smaller second number
+        
+        // Select random template
+        const template = wordProblemTemplates[Math.floor(Math.random() * wordProblemTemplates.length)];
+        
+        // For subtraction problems, ensure a > b to avoid negative results
+        const problemA = template.text.toString().includes('left') ? Math.max(a, b + 2) : a;
+        const problemB = template.text.toString().includes('left') ? Math.min(b, problemA - 2) : b;
+        
+        enhancedQuestions.push({
+          id: `${stitchId}-q${(enhancedQuestions.length + 1).toString().padStart(2, '0')}`,
+          text: template.text(problemA, problemB),
+          correctAnswer: `${template.answer(problemA, problemB)}`,
+          distractors: {
+            L1: `${template.distractors(problemA, problemB).L1}`,
+            L2: `${template.distractors(problemA, problemB).L2}`,
+            L3: `${template.distractors(problemA, problemB).L3}`
+          }
+        });
+      }
+      
+      // Create enhanced stitch with additional questions
+      const enhancedStitch: StitchContent = {
+        ...originalStitch,
+        questions: enhancedQuestions.slice(0, QUESTIONS_PER_STITCH) // Limit to desired count
+      };
+      
+      this.cachedStitches[stitchId] = enhancedStitch;
+      console.log(`Enhanced stitch ${stitchId} with ${enhancedStitch.questions.length} questions`);
+      return enhancedStitch;
+    }
+    
+    // Check if this is a Tube 1 stitch (Number Facts) or any other stitch
+    // Get original stitch from bundled content
+    const originalStitch = BUNDLED_FULL_CONTENT[stitchId];
+    if (originalStitch) {
+      console.log(`Enhancing stitch ${stitchId} with additional questions`);
+      
+      // Generate number fact questions
+      const enhancedQuestions = [];
+      
+      // Keep any existing questions
+      if (originalStitch.questions && originalStitch.questions.length > 0) {
+        enhancedQuestions.push(...originalStitch.questions);
+      }
+      
+      // Number facts operations based on stitch ID
+      const isCounting = stitchId.includes('-001-01') || stitchId.includes('-001-02');
+      const isComparison = stitchId.includes('-001-03') || stitchId.includes('-001-04');
+      const isSequence = stitchId.includes('-001-05') || stitchId.includes('-001-06');
+      
+      // Generate more questions if needed
+      while (enhancedQuestions.length < QUESTIONS_PER_STITCH) {
+        if (isCounting) {
+          // Counting questions
+          const num = 1 + Math.floor(Math.random() * 9);
+          enhancedQuestions.push({
+            id: `${stitchId}-q${(enhancedQuestions.length + 1).toString().padStart(2, '0')}`,
+            text: `What comes after ${num}?`,
+            correctAnswer: `${num + 1}`,
+            distractors: {
+              L1: `${num + 2}`,
+              L2: `${num - 1}`,
+              L3: `${num}`
+            }
+          });
+        } else if (isComparison) {
+          // Comparison questions
+          const a = 1 + Math.floor(Math.random() * 10);
+          const b = 1 + Math.floor(Math.random() * 10);
+          const greater = Math.max(a, b);
+          const lesser = Math.min(a, b);
+          
+          enhancedQuestions.push({
+            id: `${stitchId}-q${(enhancedQuestions.length + 1).toString().padStart(2, '0')}`,
+            text: `Which number is greater: ${a} or ${b}?`,
+            correctAnswer: `${greater}`,
+            distractors: {
+              L1: `${lesser}`,
+              L2: `They are equal`,
+              L3: `Can't determine`
+            }
+          });
+        } else if (isSequence) {
+          // Sequence questions
+          const start = 1 + Math.floor(Math.random() * 5);
+          const step = 1 + Math.floor(Math.random() * 3);
+          
+          enhancedQuestions.push({
+            id: `${stitchId}-q${(enhancedQuestions.length + 1).toString().padStart(2, '0')}`,
+            text: `What comes next in the sequence: ${start}, ${start + step}, ${start + 2*step}?`,
+            correctAnswer: `${start + 3*step}`,
+            distractors: {
+              L1: `${start + 3*step + 1}`,
+              L2: `${start + 3*step - 1}`,
+              L3: `${start + 4*step}`
+            }
+          });
+        } else {
+          // Default number questions for any other stitch
+          const a = Math.floor(Math.random() * 10);
+          const b = Math.floor(Math.random() * 10);
+          
+          enhancedQuestions.push({
+            id: `${stitchId}-q${(enhancedQuestions.length + 1).toString().padStart(2, '0')}`,
+            text: `What is ${a} + ${b}?`,
+            correctAnswer: `${a + b}`,
+            distractors: {
+              L1: `${a + b + 1}`,
+              L2: `${a + b - 1}`,
+              L3: `${a * b}`
+            }
+          });
+        }
+      }
+      
+      // Create enhanced stitch with additional questions
+      const enhancedStitch: StitchContent = {
+        ...originalStitch,
+        questions: enhancedQuestions.slice(0, QUESTIONS_PER_STITCH) // Limit to desired count
+      };
+      
+      this.cachedStitches[stitchId] = enhancedStitch;
+      console.log(`Enhanced stitch ${stitchId} with ${enhancedStitch.questions.length} questions`);
+      return enhancedStitch;
+    }
+    
+    // If we don't have the original stitch, create a generic fallback
+    return this.generateGenericFallbackStitch(stitchId);
+  }
+  
+  /**
+   * Generate a generic fallback stitch when no bundled content is available
+   * This is a last resort option
+   */
+  private generateGenericFallbackStitch(stitchId: string): StitchContent | null {
     // Check if this is a first stitch of a tube (pattern: stitch-T{n}-001-01)
     const tubeMatch = stitchId.match(/stitch-T(\d+)-001-01/);
     if (tubeMatch) {
       const tubeNumber = tubeMatch[1];
       console.warn(`Using generated content for first stitch of tube ${tubeNumber}`);
+      
+      // Generate a stitch with multiple questions
+      const questions = [];
+      for (let i = 1; i <= 20; i++) {
+        questions.push({
+          id: `${stitchId}-q${i.toString().padStart(2, '0')}`,
+          text: `What is ${i} + ${i}?`,
+          correctAnswer: `${i+i}`,
+          distractors: { 
+            L1: `${i+i+1}`, 
+            L2: `${i+i-1}`, 
+            L3: `${i*i}` 
+          }
+        });
+      }
       
       // Generate a simple stitch with minimal content
       const emergencyStitch: StitchContent = {
@@ -440,14 +718,7 @@ export class OfflineFirstContentBuffer {
         title: `Basic Content for Tube ${tubeNumber}`,
         content: `Basic content for learning tube ${tubeNumber}`,
         order: 1,
-        questions: [
-          {
-            id: `${stitchId}-q01`,
-            text: 'What is 2 + 2?',
-            correctAnswer: '4',
-            distractors: { L1: '3', L2: '5', L3: '6' }
-          }
-        ]
+        questions: questions
       };
       
       this.cachedStitches[stitchId] = emergencyStitch;
@@ -463,21 +734,32 @@ export class OfflineFirstContentBuffer {
       const tubeNumber = threadMatch ? threadMatch[1] : '1';
       const threadNumber = threadMatch ? threadMatch[2] : '001';
       
-      // Create a very basic fallback stitch
+      // Generate multiple questions
+      const questions = [];
+      for (let i = 1; i <= 20; i++) {
+        const a = Math.floor(Math.random() * 10);
+        const b = Math.floor(Math.random() * 10);
+        
+        questions.push({
+          id: `${stitchId}-fallback-q${i.toString().padStart(2, '0')}`,
+          text: `What is ${a} + ${b}?`,
+          correctAnswer: `${a + b}`,
+          distractors: { 
+            L1: `${a + b + 1}`, 
+            L2: `${a + b - 1}`, 
+            L3: `${a * b}` 
+          }
+        });
+      }
+      
+      // Create a fallback stitch with multiple questions
       const fallbackStitch: StitchContent = {
         id: stitchId,
         threadId: `thread-T${tubeNumber}-${threadNumber}`,
         title: 'Offline Content',
         content: 'This content is available offline.',
         order: parseInt(stitchId.split('-').pop() || '1', 10),
-        questions: [
-          {
-            id: `${stitchId}-fallback-q01`,
-            text: 'What is 1 + 1?',
-            correctAnswer: '2',
-            distractors: { L1: '3', L2: '1', L3: '0' }
-          }
-        ]
+        questions: questions
       };
       
       this.cachedStitches[stitchId] = fallbackStitch;

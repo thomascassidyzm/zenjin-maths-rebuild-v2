@@ -15,8 +15,11 @@ import { enhanceStateWithSubscription, needsSubscriptionRefresh } from '../lib/e
 const SUBSCRIPTION_REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
 export function useSubscriptionAwarePlayer(options: any = {}) {
+  // Extract options for the hook
+  const { disableAutoRefresh = false, ...playerOptions } = options;
+  
   // Get base player hooks
-  const player = useTripleHelixPlayer(options);
+  const player = useTripleHelixPlayer(playerOptions);
   const router = useRouter();
   
   // Additional state for subscription and premium content
@@ -53,7 +56,14 @@ export function useSubscriptionAwarePlayer(options: any = {}) {
       }
     };
     
+    // Initial load
     loadSubscription();
+    
+    // Skip setting up refresh interval if disabled
+    if (disableAutoRefresh) {
+      console.log('Automatic subscription refresh disabled');
+      return;
+    }
     
     // Set up periodic refresh of subscription status
     const refreshInterval = setInterval(() => {
@@ -63,7 +73,7 @@ export function useSubscriptionAwarePlayer(options: any = {}) {
     }, SUBSCRIPTION_REFRESH_INTERVAL);
     
     return () => clearInterval(refreshInterval);
-  }, [player.isLoading, player.state]);
+  }, [player.isLoading, player.state, disableAutoRefresh]);
   
   // Update enhanced state when player state changes
   useEffect(() => {
