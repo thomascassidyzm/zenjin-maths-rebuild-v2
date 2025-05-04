@@ -652,14 +652,14 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     
     // CRITICAL FIX: Use the actual question count rather than inferring from results
     // This ensures we always report 20 questions when there are 20 questions
+    
+    // Check if this is an anonymous user
+    const isAnonymous = !userId || userId.startsWith('anon-');
+    
     // Get current session stats
     const correctResults = sessionResults.filter(r => r.correct);
     const currentSessionCorrectAnswers = correctResults.length;
     const currentSessionFirstTimeCorrect = sessionResults.filter(r => r.firstTimeCorrect).length;
-    
-    // For anonymous users, we need to count accumulated stats across all sessions
-    // in this gaming period (since the user started playing until they clicked "Finish")
-    const isAnonymous = !userId || userId.startsWith('anon-');
     
     // Calculate the total questions completed in the current session
     const currentSessionQuestions = Math.max(
@@ -721,7 +721,6 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     );
     
     // Save anonymous user data using our helper function
-    const isAnonymous = !userId || userId.startsWith('anon-');
     if (isAnonymous) {
       // Use calculated basePoints instead of accumulated points for consistency
       const calculatedBasePoints = calculateBasePoints(firstTimeCorrect, correctAnswers - firstTimeCorrect);
