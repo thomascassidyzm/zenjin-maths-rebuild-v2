@@ -18,6 +18,17 @@ export const createClient = () => {
   const supabaseUrl = 'https://ggwoupzaruiaaliylyxga.supabase.co';
   const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdnd291cHphcnVpYWFsaXlseGdhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE5MTczNDAsImV4cCI6MjA1NzQ5MzM0MH0.gXtiM5b3YZoV5SMRrMmY59Qp7VjadOxkJ5an0Q3Og_c';
   
-  supabaseInstance = createBrowserClient(supabaseUrl, supabaseAnonKey);
+  // Create client with cookie options to prevent empty cookie issue
+  supabaseInstance = createBrowserClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      // Set cookie options to avoid empty name/value in cookie
+      name: 'sb-auth-token',
+      domain: typeof window !== 'undefined' ? window.location.hostname : undefined,
+      path: '/',
+      sameSite: 'lax',
+      secure: true
+    }
+  });
+  
   return supabaseInstance;
 };

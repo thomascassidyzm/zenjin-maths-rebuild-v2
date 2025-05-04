@@ -309,16 +309,25 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     try {
       console.log('AuthContext: Signing in anonymously');
       
-      // Generate random credentials
+      // Generate random credentials with more robust IDs
       const timestamp = Date.now();
-      const randomSuffix = Math.floor(Math.random() * 10000);
+      const randomSuffix = Math.floor(Math.random() * 1000000);
       const anonymousEmail = `anonymous-${timestamp}-${randomSuffix}@example.com`;
       const password = `anon-${timestamp}-${randomSuffix}`;
-      const anonymousId = `anon-${timestamp}-${randomSuffix}`;
+      const anonymousId = `anonymous-${timestamp}-${randomSuffix}`;
       
       // Store anonymous ID in localStorage for tracking progress
+      // Store in multiple locations for redundancy
       if (typeof window !== 'undefined') {
+        // Store anonymous ID in all common locations
         localStorage.setItem('anonymousId', anonymousId);
+        localStorage.setItem('zenjin_anonymous_id', anonymousId);
+        
+        // Also store for API access
+        localStorage.setItem('zenjin_user_id', anonymousId);
+        localStorage.setItem('zenjin_auth_state', 'anonymous');
+        
+        console.log(`AuthContext: Created anonymous ID ${anonymousId} and stored in localStorage`);
         
         // Initialize empty progress data for anonymous user
         const progressData = {
@@ -334,8 +343,9 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
           lastSessionDate: new Date().toISOString()
         };
         
-        // Save initial progress data
+        // Save initial progress data in all possible locations for redundancy
         localStorage.setItem(`progressData_${anonymousId}`, JSON.stringify(progressData));
+        localStorage.setItem('zenjin_anonymous_progress', JSON.stringify(progressData));
       }
       
       // Update loading state
@@ -345,29 +355,148 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         error: null
       }));
       
-      // Sign up anonymous user
-      const { data, error } = await supabase.auth.signUp({
-        email: anonymousEmail,
-        password
-      });
-      
-      if (error) {
-        console.error('AuthContext: Anonymous sign up error:', error);
+      // Sign up anonymous user (with error handling)
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email: anonymousEmail,
+          password,
+          options: {
+            // Add data property to store anonymous ID with the user
+            data: {
+              anonymous_id: anonymousId
+            }
+          }
+        });
         
-        // Update error state
+        if (error) {
+          console.error('AuthContext: Anonymous sign up error:', error);
+          
+          // Update error state
+          setAuthState(prev => ({
+            ...prev,
+            loading: false,
+            error: error.message
+          }));
+          
+          // Fall back to local anonymous mode if signup fails
+          if (typeof window !== 'undefined') {
+            console.log('AuthContext: Falling back to local anonymous mode');
+            // Create pseudo-user with the anonymous ID
+            setAuthState(prev => ({
+              ...prev,
+              user: { 
+                id: anonymousId,
+                email: anonymousEmail
+              },
+              isAuthenticated: false, // Not truly authenticated but has an ID
+              loading: false,
+              error: null,
+              userData: {
+                progressData: {
+                  totalPoints: 0,
+                  blinkSpeed: 2.5,
+                  evolution: {
+                    currentLevel: 'Mind Spark',
+                    levelNumber: 1,
+                    progress: 0
+                  }
+                }
+              },
+              userDataLoading: false
+            }));
+            
+            return { 
+              success: true, 
+              data: null, 
+              anonymousId,
+              localOnly: true 
+            };
+          }
+          
+          return { success: false, error };
+        }
+        
+        // If successful registration but no session yet, manually set anonymous user
+        if (!data.session) {
+          console.log('AuthContext: No session after anonymous signup - creating manual anonymous state');
+          
+          // Set anonymous user in auth state
+          setAuthState(prev => ({
+            ...prev,
+            user: { 
+              id: anonymousId,
+              email: anonymousEmail
+            },
+            isAuthenticated: false, // Not authenticated but has anonymous ID
+            loading: false,
+            error: null,
+            userData: {
+              progressData: {
+                totalPoints: 0,
+                blinkSpeed: 2.5,
+                evolution: {
+                  currentLevel: 'Mind Spark',
+                  levelNumber: 1,
+                  progress: 0
+                }
+              }
+            },
+            userDataLoading: false
+          }));
+        }
+        
+        // Auth state will be updated by onAuthStateChange listener if session exists
+        return { success: true, data, anonymousId };
+      } catch (signupError) {
+        console.error('AuthContext: Exception during anonymous signup:', signupError);
+        
+        // Fall back to local anonymous mode
+        if (typeof window !== 'undefined') {
+          console.log('AuthContext: Falling back to local anonymous mode after exception');
+          
+          // Create pseudo-user with the anonymous ID
+          setAuthState(prev => ({
+            ...prev,
+            user: { 
+              id: anonymousId,
+              email: anonymousEmail
+            },
+            isAuthenticated: false, // Not authenticated but has ID
+            loading: false,
+            error: null,
+            userData: {
+              progressData: {
+                totalPoints: 0,
+                blinkSpeed: 2.5,
+                evolution: {
+                  currentLevel: 'Mind Spark',
+                  levelNumber: 1,
+                  progress: 0
+                }
+              }
+            },
+            userDataLoading: false
+          }));
+          
+          return { 
+            success: true, 
+            data: null, 
+            anonymousId,
+            localOnly: true 
+          };
+        }
+        
+        // Update error state if local fallback not possible
         setAuthState(prev => ({
           ...prev,
           loading: false,
-          error: error.message
+          error: signupError.message || 'Error during anonymous sign up'
         }));
         
-        return { success: false, error };
+        return { success: false, error: signupError };
       }
-      
-      // Auth state will be updated by onAuthStateChange listener
-      return { success: true, data, anonymousId };
     } catch (error: any) {
-      console.error('AuthContext: Anonymous sign up exception:', error);
+      console.error('AuthContext: Anonymous sign up outer exception:', error);
       
       // Update error state
       setAuthState(prev => ({

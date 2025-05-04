@@ -645,65 +645,61 @@ export function useTripleHelixPlayer({
         setIsLoading(true);
         setLoadError(null);
         
-        // For anonymous users, use pre-embedded data first, then cached data, then API
+        // For anonymous users, use pre-embedded data and cached data only, no API calls
         let data;
         if (isAnonymous) {
-          // First, use the pre-embedded data for immediate display
-          data = ANONYMOUS_INITIAL_DATA;
-          debug('Using pre-embedded initial stitch data for anonymous user');
+          // First, check if we have cached data in localStorage
+          let usePreEmbeddedData = true;
           
-          // If we're not in a browser context, stop here
-          if (typeof window === 'undefined') {
-            // Server-side rendering case - just use pre-embedded data
-            debug('Server-side rendering detected, using pre-embedded data only');
-          } else {
-            // Try to get better/updated cached data from localStorage
+          if (typeof window !== 'undefined') {
+            // Try to get data from localStorage first
             const cachedData = localStorage.getItem('anonymous_initial_stitch');
             
             if (cachedData) {
               try {
                 const parsedData = JSON.parse(cachedData);
+                
                 // Use cached data if it exists and appears valid
                 if (parsedData && parsedData.success) {
                   data = parsedData;
-                  debug('Replaced pre-embedded data with cached data from localStorage');
+                  usePreEmbeddedData = false;
+                  debug('Using cached stitch data from localStorage for anonymous user');
                 }
               } catch (e) {
                 console.error('Error parsing cached initial stitch:', e);
-                // Continue with pre-embedded data if parse fails
+                // Will fall back to pre-embedded data
               }
             }
             
-            // Regardless of whether we have pre-embedded or cached data,
-            // fetch fresh data in the background for future use
-            // This happens in parallel with showing the pre-embedded content
-            try {
-              const url = `/api/user-stitches?userId=${userId}&prefetch=5&isAnonymous=true`;
-              const response = await fetch(url);
-              
-              if (response.ok) {
-                const freshData = await response.json();
-                if (freshData.success) {
-                  // Cache this fresh data for future visits
-                  localStorage.setItem('anonymous_initial_stitch', JSON.stringify(freshData));
-                  debug('Updated cached initial stitch data in background');
-                  
-                  // Only update current view if it's substantially different
-                  // This prevents flickering if the data is basically the same
-                  const currentStitchId = data?.data?.[0]?.stitches?.[0]?.id;
-                  const freshStitchId = freshData?.data?.[0]?.stitches?.[0]?.id;
-                  
-                  if (currentStitchId !== freshStitchId) {
-                    debug('Fresh data is different, updating view');
-                    data = freshData;
-                  }
+            // Check for user state in localStorage which may have positions stored
+            const userStateData = localStorage.getItem('zenjin_anonymous_state');
+            if (userStateData && !data) {
+              try {
+                const parsedState = JSON.parse(userStateData);
+                if (parsedState && parsedState.state) {
+                  debug('Found user state data in localStorage, will use for initial load');
+                  // We still use pre-embedded data but will apply positions from state later
                 }
+              } catch (e) {
+                console.error('Error parsing anonymous state:', e);
               }
-            } catch (backgroundError) {
-              console.error('Background refresh failed:', backgroundError);
-              // Non-critical error, continue with pre-embedded/cached data
             }
           }
+          
+          // If we didn't find valid cached data, use pre-embedded data
+          if (usePreEmbeddedData) {
+            data = ANONYMOUS_INITIAL_DATA;
+            debug('Using pre-embedded initial stitch data for anonymous user');
+            
+            if (typeof window !== 'undefined') {
+              // Cache the pre-embedded data in localStorage for future visits
+              localStorage.setItem('anonymous_initial_stitch', JSON.stringify(ANONYMOUS_INITIAL_DATA));
+              debug('Cached pre-embedded data in localStorage');
+            }
+          }
+          
+          // No API calls for anonymous users - completely offline first
+          debug('Skipping API call for anonymous user - using offline-first approach');
         } else {
           // For authenticated users, always fetch from API
           const url = `/api/user-stitches?userId=${userId}&prefetch=5`;

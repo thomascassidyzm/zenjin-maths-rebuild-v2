@@ -125,12 +125,22 @@ export async function withAnonymousAuth(
     }
     
     // If not authenticated, use anonymous ID from request
-    const { anonymousId } = req.body;
+    // Check for anonymousId in both request body and query parameters
+    const anonymousIdFromBody = req.body?.anonymousId;
+    const anonymousIdFromQuery = req.query?.userId;
+    const isAnonymous = req.query?.isAnonymous === 'true';
+    
+    // Use anonymousId from body first, then userId from query if flagged as anonymous
+    const anonymousId = anonymousIdFromBody || (isAnonymous ? anonymousIdFromQuery : null);
+    
     if (!anonymousId) {
+      console.error('Anonymous auth failed: No anonymousId in body or query params');
       return res.status(HTTP_STATUS.BAD_REQUEST).json(
-        errorResponse('Anonymous ID required')
+        errorResponse('Anonymous ID required in request body or query parameters')
       );
     }
+    
+    console.log(`Anonymous auth: Using ID ${anonymousId}`);
     
     // Allow operation with anonymous ID
     return callback(anonymousId, supabaseAdmin, false);

@@ -1,4 +1,4 @@
-# Zenjin Maths Offline-First Implementation Summary
+# Zenjin Maths Project Guide
 
 ## Project Overview
 
@@ -7,39 +7,47 @@ The Zenjin Maths app is an educational application that uses a Triple Helix lear
 ## Key Files Modified/Created
 
 1. `/lib/client/offline-first-content-buffer.ts` - The core implementation that preloads all bundled content for immediate access
-2. `/components/PlayerComponent.tsx` - Updated to eliminate loading screens and start instantly
+2. `/components/MinimalDistinctionPlayer.tsx` - Modified to properly use bundled content for questions
 3. `/lib/tube-config-integration.js` - Enhanced to use the offline-first content buffer and detect user tiers
 4. `/lib/feature-flags.ts` - Updated to ensure consistent experience for anonymous and free users
 5. `/lib/expanded-bundled-content.ts` - Contains bundled content for 30 stitches (10 per tube)
-6. `/pages/offline-first-test.tsx` - Test page for verifying the implementation
-7. `/pages/simple-offline-test.tsx` - Simplified test page that only uses bundled content
-8. `/OFFLINE-FIRST-IMPLEMENTATION.md` - Comprehensive documentation of the implementation
+6. `/lib/triple-helix/StateMachine.js` - Handles stitch advancement and spaced repetition logic
+7. `/lib/load-bundled-stitches.js` - Ensures proper loading of bundled stitches with correct positions
+8. `/pages/offline-first-test.tsx` - Test page for verifying the implementation
+9. `/pages/simple-offline-test.tsx` - Simplified test page that only uses bundled content
 
 ## Core Implementation Features
 
 1. **Immediate Startup**: App starts instantly without loading or waiting screens
 2. **Bundled Content**: 10 stitches per tube (30 total) bundled with the application
-3. **Offline First**: All content available without network connection
-4. **User Tier Detection**: System detects anonymous/free/premium users and delivers appropriate content
-5. **Feature Flags**: Easy to enable/disable offline-first features
+3. **Complete Question Sets**: Each stitch has 20 questions with 3 distractor levels (1,800 total variations)
+4. **Offline First**: All content available without network connection
+5. **User Tier Detection**: System detects anonymous/free/premium users and delivers appropriate content
+6. **Feature Flags**: Easy to enable/disable offline-first features
 
 ## Technical Architecture
 
 - The `offlineFirstContentBuffer` preloads all bundled content at initialization time
 - Stitch retrieval prioritizes cached content over network requests
-- Content manager in the tube config integration uses the offline-first buffer
-- PlayerComponent shows content placeholder instead of loading screen during initialization
+- Bundled content is positioned based on user_state (default positions on first load)
+- StateMachine implements spaced repetition algorithm with positions and skip numbers
+- Position 0 always has the current stitch, position 1 has the next stitch
+- When answering 20/20 correctly, stitch's skip number increases (1→3→5→10→25→100)
+- Completed stitches move back in sequence based on their skip number
 - Feature flags enforce consistent experience for anonymous and free users
 
-## Implementation Changes (May 3-4, 2025)
+## Stitch Advancement Fix (May 4, 2025)
 
-1. Created `expanded-bundled-content.ts` with actual mathematics content for all 30 stitches (10 per tube)
-2. Fixed URL format in Supabase client to ensure hardcoded credentials are used properly
-3. Created a simplified test page (`simple-offline-test.tsx`) that directly uses bundled content
-4. Fixed syntax error in `freeTierAccess.ts` that was causing build failure
-5. Added comprehensive documentation in `OFFLINE-FIRST-IMPLEMENTATION.md`
-6. Created `DEPLOY-FIXES.md` with deployment instructions and troubleshooting steps
-7. Ensured all 30 stitches are properly structured and immediately available
+We implemented a focused fix for stitch advancement that ensures the app correctly:
+1. Loads all stitches from bundled content with proper positions
+2. Respects user_state for positioning stitches after first session
+3. Always has the next stitch available at position 1
+4. Follows the existing reordering logic to maintain the spaced repetition system
+
+Key changes:
+- Created `load-bundled-stitches.js` utility to ensure all stitches are properly loaded
+- Enhanced StateMachine to handle "No next stitch available" error by loading missing stitches
+- Fixed tube-config-integration.js to use the bundled stitch loader consistently
 
 ## Supabase Integration Fixes (May 4, 2025)
 

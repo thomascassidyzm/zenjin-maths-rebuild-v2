@@ -14,8 +14,49 @@ function AppStateInitializer() {
     // Register visibility and unload events for state persistence
     stateManager.registerPageEvents();
     
-    // Initialize legacy global queues for backward compatibility
+    // Initialize anonymous user ID if not already present
     if (typeof window !== 'undefined') {
+      // Generate anonymous ID on first visit
+      const existingAnonId = 
+        localStorage.getItem('zenjin_anonymous_id') || 
+        localStorage.getItem('anonymousId');
+      
+      if (!existingAnonId) {
+        console.log('First visit detected - creating anonymous user ID');
+        const timestamp = Date.now();
+        const randomSuffix = Math.floor(Math.random() * 1000000);
+        const anonymousId = `anonymous-${timestamp}-${randomSuffix}`;
+        
+        // Store in multiple localStorage keys for backward compatibility
+        localStorage.setItem('zenjin_anonymous_id', anonymousId);
+        localStorage.setItem('anonymousId', anonymousId);
+        localStorage.setItem('zenjin_user_id', anonymousId);
+        localStorage.setItem('zenjin_auth_state', 'anonymous');
+        
+        // Initialize empty progress data
+        const progressData = {
+          totalPoints: 0,
+          blinkSpeed: 2.5,
+          blinkSpeedTrend: 'steady',
+          evolution: {
+            currentLevel: 'Mind Spark',
+            levelNumber: 1,
+            progress: 0,
+            nextLevel: 'Thought Weaver'
+          },
+          lastSessionDate: new Date().toISOString()
+        };
+        
+        // Store progress data in localStorage
+        localStorage.setItem(`progressData_${anonymousId}`, JSON.stringify(progressData));
+        localStorage.setItem('zenjin_anonymous_progress', JSON.stringify(progressData));
+        
+        console.log(`Anonymous user created with ID: ${anonymousId}`);
+      } else {
+        console.log(`Using existing anonymous ID: ${existingAnonId}`);
+      }
+      
+      // Initialize legacy global queues for backward compatibility
       // @ts-ignore - Add global window properties
       window.__STITCH_UPDATE_QUEUE = window.__STITCH_UPDATE_QUEUE || [];
       // @ts-ignore - Add global window properties
