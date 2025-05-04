@@ -1161,20 +1161,17 @@ export function useTripleHelixPlayer({
   const handleSessionComplete = (results: any, isEndSession = false) => {
     debug(`Session completed with results: ${JSON.stringify(results)}`);
     
-    // CRITICAL FIX: Always use 20 for question count
-    // All stitches in this application always have 20 questions
-    const EXPECTED_QUESTION_COUNT = 20;
+    // Use actual number of questions answered from the results
+    // Do not force to 20 questions since a session can end mid-stitch
+    // We want the summary to show the actual number of questions answered by the user
     
-    // Check if the reported count is not 20
-    if (results.totalQuestions !== EXPECTED_QUESTION_COUNT) {
-      debug(`CRITICAL FIX: All stitches have 20 questions - correcting count from ${results.totalQuestions} to ${EXPECTED_QUESTION_COUNT}`);
-      results.totalQuestions = EXPECTED_QUESTION_COUNT;
+    // Get the number of unique question IDs from results to count actual questions answered
+    if (results.results) {
+      const uniqueQuestionIds = new Set(results.results.map(r => r.id));
+      const actualQuestionCount = uniqueQuestionIds.size;
       
-      // If perfect score but count is off, fix that too
-      if (results.correctAnswers === results.totalQuestions - 1) {
-        debug(`CRITICAL FIX: Correcting correct answers from ${results.correctAnswers} to ${EXPECTED_QUESTION_COUNT}`);
-        results.correctAnswers = EXPECTED_QUESTION_COUNT;
-      }
+      debug(`Actual questions answered in this session: ${actualQuestionCount}`);
+      results.totalQuestions = actualQuestionCount;
     }
     
     // Accumulate session data immediately to avoid state delays
@@ -1277,14 +1274,20 @@ export function useTripleHelixPlayer({
             // Pass scores to ensure the stitch completion is recorded properly
             await persistStateToServer(correctAnswers, totalQuestions);
             
-            // 3. Clear localStorage to ensure next session starts fresh from server
-            debug('Step 3: Clearing localStorage cache to ensure fresh state next session');
+            // 3. For authenticated users only, clear localStorage to ensure next session starts fresh from server
+            // For anonymous users, we MUST preserve their state in localStorage
+            debug('Step 3: Clearing localStorage cache for authenticated user to ensure fresh state next session');
             try {
               if (typeof window !== 'undefined') {
-                // Clear all triple-helix state from localStorage
+                // Clear only the authenticated user state from localStorage
+                // Keep the anonymous state intact as it's needed for continuity
                 localStorage.removeItem(`triple_helix_state_${userId}`);
-                localStorage.removeItem('zenjin_anonymous_state');
-                debug('Successfully cleared local state cache');
+                
+                // Do NOT remove zenjin_anonymous_state for authenticated users either
+                // as they might switch back to anonymous mode in another window/session
+                // localStorage.removeItem('zenjin_anonymous_state');
+                
+                debug('Successfully cleared authenticated user state cache');
               }
             } catch (clearError) {
               debug(`Non-critical error clearing localStorage: ${clearError}`);

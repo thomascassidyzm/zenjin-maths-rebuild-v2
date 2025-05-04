@@ -497,10 +497,8 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     
     console.log(`FINAL STATS: Total questions=${totalQuestions}, Correct answers=${correctAnswers}, First time correct=${firstTimeCorrect}`);
     
-    // Ensure all questions from this session are included in the count
-    if (totalQuestions < sessionQuestions.length) {
-      console.log(`CRITICAL FIX: Corrected total questions from ${totalQuestions} to ${sessionQuestions.length}`);
-    }
+    // We count actual questions answered and don't force to match the stitch length
+    // Important: A session can end mid-stitch, so use the real question count
     
     // Calculate average time for correctly answered questions
     const totalCorrectTime = correctResults.reduce((sum, r) => sum + r.timeToAnswer, 0);
@@ -661,78 +659,51 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     const currentSessionCorrectAnswers = correctResults.length;
     const currentSessionFirstTimeCorrect = sessionResults.filter(r => r.firstTimeCorrect).length;
     
-    // Calculate the total questions completed in the current session
-    const currentSessionQuestions = Math.max(
-      new Set(sessionResults.map(r => r.id)).size,
-      sessionQuestions.length
-    );
+    // Calculate the number of questions actually answered in the current session
+    // This will count the number of unique question IDs in the sessionResults
+    // A session can end mid-stitch, so we can't assume all questions in a stitch were answered
+    const currentSessionQuestions = new Set(sessionResults.map(r => r.id)).size;
     
     // Initialize with current session values
     let totalQuestions = currentSessionQuestions;
     let correctAnswers = currentSessionCorrectAnswers;
     let firstTimeCorrect = currentSessionFirstTimeCorrect;
     
-    // For anonymous users, get the total accumulated sessions data from playerUtils
-    if (isAnonymous && typeof window !== 'undefined') {
-      try {
-        // First try to get the data directly from window.__PLAYER_STATE__
-        const accumulatedData = window.__PLAYER_STATE__?.accumulatedSessionData;
-        
-        if (accumulatedData) {
-          // Add the current session's values to what was already accumulated
-          // But subtract the current session values first to avoid double counting
-          // This is needed because accumulatedData may already include current session values
-          totalQuestions = currentSessionQuestions + Math.max(0, (accumulatedData.totalQuestions || 0) - currentSessionQuestions);
-          correctAnswers = currentSessionCorrectAnswers + Math.max(0, (accumulatedData.correctAnswers || 0) - currentSessionCorrectAnswers);
-          firstTimeCorrect = currentSessionFirstTimeCorrect + Math.max(0, (accumulatedData.firstTimeCorrect || 0) - currentSessionFirstTimeCorrect);
-          
-          console.log(`Anonymous user with accumulated stats from window.__PLAYER_STATE__: 
-            Total questions: ${totalQuestions}
-            Correct answers: ${correctAnswers}
-            First time correct: ${firstTimeCorrect}`);
-        }
-        // Fallback to localStorage if window.__PLAYER_STATE__ doesn't have the accumulated data
-        else {
-          console.log('No accumulated data found in window.__PLAYER_STATE__, falling back to localStorage');
-          
-          // Try to get the accumulated data from localStorage
-          const savedState = localStorage.getItem('zenjin_anonymous_state');
-          if (savedState) {
-            const parsedState = JSON.parse(savedState);
-            if (parsedState.state && parsedState.state.accumulatedSessionData) {
-              const storedAccData = parsedState.state.accumulatedSessionData;
-              
-              // Add previously accumulated stats to current session stats
-              totalQuestions = currentSessionQuestions + (storedAccData.totalQuestions || 0);
-              correctAnswers = currentSessionCorrectAnswers + (storedAccData.correctAnswers || 0);
-              firstTimeCorrect = currentSessionFirstTimeCorrect + (storedAccData.firstTimeCorrect || 0);
-              
-              console.log(`Anonymous user with accumulated stats from localStorage: 
-                Total questions: ${totalQuestions}
-                Correct answers: ${correctAnswers}
-                First time correct: ${firstTimeCorrect}`);
-            } else {
-              console.log('No accumulated session data found in localStorage');
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error processing accumulated session data:', error);
-        // Fall back to current session values if there was an error
-        totalQuestions = currentSessionQuestions;
-        correctAnswers = currentSessionCorrectAnswers;
-        firstTimeCorrect = currentSessionFirstTimeCorrect;
-      }
-    }
+    // For the session summary, we only need the current session's stats
+    // We don't add accumulated stats from previous sessions here
+    // This is because the session summary shows only the current session,
+    // while accumulated stats are used for overall progress tracking
+    
+    // Log for debugging
+    console.log(`Using current session stats for summary:
+      Questions answered: ${currentSessionQuestions}
+      Correct answers: ${currentSessionCorrectAnswers}
+      First-time correct: ${currentSessionFirstTimeCorrect}
+    `);
+    
+    // Use current session values only - don't add accumulated data
+    totalQuestions = currentSessionQuestions;
+    correctAnswers = currentSessionCorrectAnswers;
+    firstTimeCorrect = currentSessionFirstTimeCorrect;
     
     const eventuallyCorrect = correctAnswers - firstTimeCorrect;
     
-    console.log(`FINAL STATS (manual end): Total questions=${totalQuestions}, Correct answers=${correctAnswers}, First time correct=${firstTimeCorrect}`);
+    console.log(`FINAL STATS FOR SESSION SUMMARY:
+      Current session questions answered: ${currentSessionQuestions}
+      Current session correct answers: ${currentSessionCorrectAnswers}
+      Current session first time correct: ${currentSessionFirstTimeCorrect}
+      
+      ACCUMULATED TOTALS:
+      Total questions answered: ${totalQuestions}
+      Total correct answers: ${correctAnswers}
+      Total first time correct: ${firstTimeCorrect}
+      Total eventually correct: ${eventuallyCorrect}
+      
+      Base points calculation: (${firstTimeCorrect} × 3) + (${eventuallyCorrect} × 1) = ${firstTimeCorrect * 3 + eventuallyCorrect}
+    `);
     
-    // Ensure all questions from this session are included in the count
-    if (totalQuestions < sessionQuestions.length) {
-      console.log(`CRITICAL FIX: Corrected total questions from ${totalQuestions} to ${sessionQuestions.length}`);
-    }
+    // We no longer force total questions to match the stitch length
+    // A session can end mid-stitch, so we count the actual number of questions answered
     
     // Calculate blink speed (average time for correct answers in milliseconds)
     const correctTimes = correctResults.map(r => r.timeToAnswer);
