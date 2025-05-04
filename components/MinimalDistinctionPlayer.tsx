@@ -85,25 +85,36 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     };
   }, []);
 
-  // Keep track of which stitches we've already initialized
-  const initializedStitchRef = useRef(new Set());
+  // Keep track of which stitches we've already initialized for each thread
+  const initializedStitchRef = useRef({});
+  const previousThreadRef = useRef(null);
   
   // Initialize questions for the session
   useEffect(() => {
     if (thread && thread.stitches && thread.stitches.length > 0) {
       const stitch = thread.stitches[0]; // Use first stitch for now
+      const threadId = thread.id;
       
-      // CRITICAL FIX: Skip re-initialization if this stitch has already been processed
-      // This prevents the cycling multiple questions issue during transitions
-      if (initializedStitchRef.current.has(stitch.id)) {
-        console.log(`Skipping re-initialization for stitch ${stitch.id} - already initialized`);
+      // Check if we're switching to a different thread (tube)
+      const isNewThread = previousThreadRef.current !== threadId;
+      
+      // Track if this specific thread+stitch combination has been initialized
+      const threadStitchKey = `${threadId}:${stitch.id}`;
+      const alreadyInitialized = initializedStitchRef.current[threadStitchKey];
+      
+      // Update the previous thread ref for next time
+      previousThreadRef.current = threadId;
+      
+      // Allow re-initialization when switching threads/tubes, or for first initialization
+      if (alreadyInitialized && !isNewThread) {
+        console.log(`Skipping re-initialization for stitch ${stitch.id} in thread ${threadId} - already initialized and not a thread change`);
         return;
       }
       
-      // Mark this stitch as initialized
-      initializedStitchRef.current.add(stitch.id);
+      // Mark this thread-stitch combination as initialized
+      initializedStitchRef.current[threadStitchKey] = true;
       
-      console.log(`Initializing with thread ${thread.id}, stitch ${stitch.id} (FIRST TIME)`);
+      console.log(`Initializing with thread ${threadId}, stitch ${stitch.id}${isNewThread ? ' (NEW THREAD)' : ' (SAME THREAD)'}`);
       
       // Reset state for the new thread/stitch - but keep points and session results accumulated from previous stitches
       setCurrentQuestionIndex(0);

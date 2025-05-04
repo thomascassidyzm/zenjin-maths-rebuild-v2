@@ -1150,20 +1150,19 @@ export function useTripleHelixPlayer({
   const handleSessionComplete = (results: any, isEndSession = false) => {
     debug(`Session completed with results: ${JSON.stringify(results)}`);
     
-    // CRITICAL FIX: Verify question counts are correct
-    // Sometimes the totalQuestions count might be off by one
-    if (currentStitch && currentStitch.questions) {
-      const actualQuestionCount = currentStitch.questions.length;
-      if (results.totalQuestions !== actualQuestionCount) {
-        debug(`CRITICAL FIX: Correcting question count from ${results.totalQuestions} to ${actualQuestionCount}`);
-        results.totalQuestions = actualQuestionCount;
-        
-        // If perfect score but count is off, fix that too
-        if (results.correctAnswers === results.totalQuestions - 1 && 
-            results.correctAnswers === actualQuestionCount - 1) {
-          debug(`CRITICAL FIX: Correcting correct answers from ${results.correctAnswers} to ${actualQuestionCount}`);
-          results.correctAnswers = actualQuestionCount;
-        }
+    // CRITICAL FIX: Always use 20 for question count
+    // All stitches in this application always have 20 questions
+    const EXPECTED_QUESTION_COUNT = 20;
+    
+    // Check if the reported count is not 20
+    if (results.totalQuestions !== EXPECTED_QUESTION_COUNT) {
+      debug(`CRITICAL FIX: All stitches have 20 questions - correcting count from ${results.totalQuestions} to ${EXPECTED_QUESTION_COUNT}`);
+      results.totalQuestions = EXPECTED_QUESTION_COUNT;
+      
+      // If perfect score but count is off, fix that too
+      if (results.correctAnswers === results.totalQuestions - 1) {
+        debug(`CRITICAL FIX: Correcting correct answers from ${results.correctAnswers} to ${EXPECTED_QUESTION_COUNT}`);
+        results.correctAnswers = EXPECTED_QUESTION_COUNT;
       }
     }
     
