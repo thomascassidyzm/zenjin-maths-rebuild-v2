@@ -5,13 +5,16 @@ This document outlines several fixes implemented to improve the anonymous user e
 ## 1. Fixed Session Summary Dashboard Redirection
 
 **Problem**:
-- The fallback error handler in the Session Summary was redirecting anonymous users to the authenticated user dashboard
+- The Session Summary "Go to Dashboard" button was sometimes redirecting anonymous users to the authenticated user dashboard
 - This led to anonymous users seeing a dashboard that doesn't correctly track their progress between sessions
+- Even when the code attempted to redirect to `/anon-dashboard`, URL rewrites or other factors would redirect to the wrong dashboard
 
 **Solution**:
 - Enhanced the error handling in the `finishSession` function to check the user type even when errors occur
-- Ensured anonymous users are redirected to `/anon-dashboard` and authenticated users to `/dashboard`
-- This maintains correct progress tracking for anonymous users regardless of error conditions
+- Implemented a direct navigation approach with hardcoded absolute URL for anonymous users
+- Added explicit state saving before navigation to ensure progress is preserved
+- Used full URL (`https://zenjin-maths-v1-zenjin.vercel.app/anon-dashboard`) to bypass any potential URL rewrites
+- Maintained the standard finishSession flow for authenticated users
 
 **Files Changed**:
 - `/components/MinimalDistinctionPlayer.tsx`

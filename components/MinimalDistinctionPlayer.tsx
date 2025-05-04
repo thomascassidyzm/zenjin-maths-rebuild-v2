@@ -1394,8 +1394,20 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
                         totalPoints: totalPoints
                       };
                       
-                      // Use finishSession to navigate properly
-                      finishSession(stats);
+                      // Force direct navigation based on user type
+                      const isAnonymous = !userId || userId.startsWith('anon-');
+                      
+                      if (isAnonymous) {
+                        console.log('DIRECT NAVIGATION: Anonymous user detected - going to /anon-dashboard');
+                        // Force save state first
+                        saveAnonymousSessionData(totalPoints, stats.blinkSpeed || 2.5, sessionResults);
+                        // Direct navigation to anonymous dashboard using full URL to avoid any rewrites
+                        window.location.href = 'https://zenjin-maths-v1-zenjin.vercel.app/anon-dashboard';
+                      } else {
+                        console.log('DIRECT NAVIGATION: Authenticated user - using finishSession');
+                        // Use standard finishSession flow for authenticated users
+                        finishSession(stats);
+                      }
                     }}
                     className="py-3 px-4 bg-gradient-to-r from-teal-600 to-emerald-500 hover:from-teal-500 hover:to-emerald-400 text-white font-bold rounded-xl transition-colors"
                   >
