@@ -9,15 +9,21 @@ This document explains the fixes made to address the unintended "in-play bonus" 
 We identified a double-counting issue in the points calculation system:
 
 1. Points were accumulating in real-time in the MinimalDistinctionPlayer component as users answered questions correctly (3 points for first-time correct, 1 point for retry)
-2. Additional points were being added at stitch completion in the StateMachine implementations
+2. Additional points were being added at stitch completion in two places:
+   - In the StateMachine implementations
+   - In the handleSessionComplete function in playerUtils.ts
 
 This resulted in players seeing more points than expected. For example, a perfect score on a 20-question stitch would add:
 - 60 points during gameplay (20 questions × 3 points each)
-- Then an additional 57 points at stitch completion
+- Then an additional 57 points at stitch completion (19 first-time correct answers × 3 points)
 
 ## Root Cause Analysis
 
-The issue existed because multiple StateMachine implementations were adding points in their `handleStitchCompletion` method:
+The issue existed in two places:
+
+### 1. StateMachine Implementations
+
+Multiple StateMachine implementations were adding points in their `handleStitchCompletion` method:
 
 ```javascript
 // Add points
@@ -30,9 +36,32 @@ While the main `StateMachine.js` file had already been fixed, three other implem
 2. `lib/triple-helix/InfinitePlayStateMachine.js`
 3. `lib/triple-helix/core/StateMachine.js`
 
+### 2. PlayerUtils.ts Double Counting
+
+Even after fixing the StateMachine implementations, we discovered that the `handleSessionComplete` function in `playerUtils.ts` was also adding points a second time:
+
+```javascript
+// Accumulate session data immediately to avoid state delays
+setAccumulatedSessionData(prev => {
+  const newData = {
+    totalPoints: resetPoints 
+      ? (results.totalPoints || 0) 
+      : prev.totalPoints + (results.totalPoints || 0), // Adding points again here
+    // ...other metrics
+  };
+  // ...
+});
+```
+
+This was causing exactly 57 points (19 first-time correct answers × 3 points) to be added again at stitch completion, just before the celebration effect was shown.
+
 ## Fix Implementation
 
-We've commented out the problematic line in all StateMachine implementations to prevent the double-counting of points:
+We implemented fixes in both locations:
+
+### 1. StateMachine Fixes
+
+We commented out the problematic line in all StateMachine implementations:
 
 ```javascript
 // We no longer accumulate points in the state machine
@@ -45,6 +74,24 @@ The line numbers where changes were made:
 1. `PositionBasedStateMachine.js`: Lines 466-469
 2. `InfinitePlayStateMachine.js`: Lines 191-194
 3. `core/StateMachine.js`: Lines 321-324
+
+### 2. PlayerUtils.ts Fix
+
+We modified the handleSessionComplete function in playerUtils.ts to prevent it from adding points a second time:
+
+```javascript
+// FIXED: Prevent double-counting points at stitch completion
+// Points are already accumulated in real-time during gameplay in MinimalDistinctionPlayer.tsx
+// We only want to increment other metrics, not add points again
+const newData = {
+  totalPoints: prev.totalPoints, // Don't add results.totalPoints again - keep existing points
+  correctAnswers: prev.correctAnswers + (results.correctAnswers || 0),
+  firstTimeCorrect: prev.firstTimeCorrect + (results.firstTimeCorrect || 0),
+  totalQuestions: prev.totalQuestions + (results.totalQuestions || 0),
+  totalAttempts: prev.totalAttempts + (results.totalAttempts || 0),
+  stitchesCompleted: prev.stitchesCompleted + 1
+};
+```
 
 ## Corrected Points System Flow
 
@@ -60,6 +107,7 @@ After these changes, the points system now follows a clean, consistent pattern:
    - No additional points are added
    - Progress state is updated
    - The next stitch is loaded
+   - The celebration effect is shown
 
 3. **At Session End** (when user clicks "Finish"):
    - Bonus multipliers are calculated based on:

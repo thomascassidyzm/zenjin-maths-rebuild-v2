@@ -1164,12 +1164,11 @@ export function useTripleHelixPlayer({
     
     // Accumulate session data immediately to avoid state delays
     setAccumulatedSessionData(prev => {
-      // If resetPoints is true, don't accumulate points from previous sessions
-      // For all other metrics (correctAnswers, etc.), still accumulate them
+      // FIXED: Prevent double-counting points at stitch completion
+      // Points are already accumulated in real-time during gameplay in MinimalDistinctionPlayer.tsx
+      // We only want to increment other metrics, not add points again
       const newData = {
-        totalPoints: resetPoints 
-          ? (results.totalPoints || 0) // Only use current session points if resetPoints is true
-          : prev.totalPoints + (results.totalPoints || 0), // Otherwise add to accumulated points
+        totalPoints: prev.totalPoints, // Don't add results.totalPoints again - keep existing points
         correctAnswers: prev.correctAnswers + (results.correctAnswers || 0),
         firstTimeCorrect: prev.firstTimeCorrect + (results.firstTimeCorrect || 0),
         totalQuestions: prev.totalQuestions + (results.totalQuestions || 0),
