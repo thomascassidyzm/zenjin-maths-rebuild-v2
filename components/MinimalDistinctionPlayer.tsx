@@ -672,28 +672,53 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     let correctAnswers = currentSessionCorrectAnswers;
     let firstTimeCorrect = currentSessionFirstTimeCorrect;
     
-    // If anonymous, get accumulated data from localStorage
+    // For anonymous users, get the total accumulated sessions data from playerUtils
     if (isAnonymous && typeof window !== 'undefined') {
       try {
-        // Check if we have accumulated data in localStorage
-        const savedState = localStorage.getItem('zenjin_anonymous_state');
-        if (savedState) {
-          const parsedState = JSON.parse(savedState);
-          // Add previously accumulated stats to current session stats
-          if (parsedState.state && parsedState.state.accumulatedSessionData) {
-            const accData = parsedState.state.accumulatedSessionData;
-            totalQuestions += (accData.totalQuestions || 0);
-            correctAnswers += (accData.correctAnswers || 0);
-            firstTimeCorrect += (accData.firstTimeCorrect || 0);
-          }
-          console.log(`Anonymous user accumulated stats: 
+        // First try to get the data directly from window.__PLAYER_STATE__
+        const accumulatedData = window.__PLAYER_STATE__?.accumulatedSessionData;
+        
+        if (accumulatedData) {
+          // Add the current session's values to what was already accumulated
+          // But subtract the current session values first to avoid double counting
+          // This is needed because accumulatedData may already include current session values
+          totalQuestions = currentSessionQuestions + Math.max(0, (accumulatedData.totalQuestions || 0) - currentSessionQuestions);
+          correctAnswers = currentSessionCorrectAnswers + Math.max(0, (accumulatedData.correctAnswers || 0) - currentSessionCorrectAnswers);
+          firstTimeCorrect = currentSessionFirstTimeCorrect + Math.max(0, (accumulatedData.firstTimeCorrect || 0) - currentSessionFirstTimeCorrect);
+          
+          console.log(`Anonymous user with accumulated stats from window.__PLAYER_STATE__: 
             Total questions: ${totalQuestions}
             Correct answers: ${correctAnswers}
             First time correct: ${firstTimeCorrect}`);
         }
+        // Fallback to localStorage if window.__PLAYER_STATE__ doesn't have the accumulated data
+        else {
+          console.log('No accumulated data found in window.__PLAYER_STATE__, falling back to localStorage');
+          
+          // Try to get the accumulated data from localStorage
+          const savedState = localStorage.getItem('zenjin_anonymous_state');
+          if (savedState) {
+            const parsedState = JSON.parse(savedState);
+            if (parsedState.state && parsedState.state.accumulatedSessionData) {
+              const storedAccData = parsedState.state.accumulatedSessionData;
+              
+              // Add previously accumulated stats to current session stats
+              totalQuestions = currentSessionQuestions + (storedAccData.totalQuestions || 0);
+              correctAnswers = currentSessionCorrectAnswers + (storedAccData.correctAnswers || 0);
+              firstTimeCorrect = currentSessionFirstTimeCorrect + (storedAccData.firstTimeCorrect || 0);
+              
+              console.log(`Anonymous user with accumulated stats from localStorage: 
+                Total questions: ${totalQuestions}
+                Correct answers: ${correctAnswers}
+                First time correct: ${firstTimeCorrect}`);
+            } else {
+              console.log('No accumulated session data found in localStorage');
+            }
+          }
+        }
       } catch (error) {
-        console.error('Error reading accumulated data from localStorage:', error);
-        // Fall back to current session values
+        console.error('Error processing accumulated session data:', error);
+        // Fall back to current session values if there was an error
         totalQuestions = currentSessionQuestions;
         correctAnswers = currentSessionCorrectAnswers;
         firstTimeCorrect = currentSessionFirstTimeCorrect;

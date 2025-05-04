@@ -75,14 +75,29 @@ export function useTripleHelixPlayer({
         const savedState = localStorage.getItem('zenjin_anonymous_state');
         if (savedState) {
           const parsedState = JSON.parse(savedState);
-          return {
-            totalPoints: parsedState.totalPoints || 0,
-            correctAnswers: 0,
-            firstTimeCorrect: 0,
-            totalQuestions: 0,
-            totalAttempts: 0,
-            stitchesCompleted: 0
-          };
+          // Check for accumulatedSessionData in the stored state
+          if (parsedState.state && parsedState.state.accumulatedSessionData) {
+            // Use all accumulated stats from localStorage
+            const accData = parsedState.state.accumulatedSessionData;
+            return {
+              totalPoints: parsedState.totalPoints || accData.totalPoints || 0,
+              correctAnswers: accData.correctAnswers || 0,
+              firstTimeCorrect: accData.firstTimeCorrect || 0,
+              totalQuestions: accData.totalQuestions || 0,
+              totalAttempts: accData.totalAttempts || 0,
+              stitchesCompleted: accData.stitchesCompleted || 0
+            };
+          } else {
+            // Fallback to just using totalPoints if no accumulated data
+            return {
+              totalPoints: parsedState.totalPoints || 0,
+              correctAnswers: 0,
+              firstTimeCorrect: 0,
+              totalQuestions: 0,
+              totalAttempts: 0,
+              stitchesCompleted: 0
+            };
+          }
         }
       } catch (error) {
         console.error('Error loading previous session data:', error);
@@ -1872,10 +1887,16 @@ export function useTripleHelixPlayer({
     
     try {
       const stateData = tubeCycler.getState();
+      // Create a copy of stateData with the accumulated session data
+      const stateWithSessionData = {
+        ...stateData,
+        accumulatedSessionData: accumulatedSessionData
+      };
+      
       localStorage.setItem('zenjin_anonymous_state', JSON.stringify({
-        state: stateData,
+        state: stateWithSessionData,
         timestamp: Date.now(),
-        totalPoints: accumulatedSessionData.totalPoints
+        totalPoints: accumulatedSessionData.totalPoints // Keep this for backward compatibility
       }));
     } catch (error) {
       debug(`Error saving anonymous state to localStorage: ${error}`);
@@ -2012,9 +2033,24 @@ export function useTripleHelixPlayer({
     if (isAnonymous && tubeCycler) {
       // Save state periodically for anonymous users
       const intervalId = setInterval(persistAnonymousState, 30000);
+      
+      // Expose accumulated session data via window.__PLAYER_STATE__ for MinimalDistinctionPlayer
+      if (typeof window !== 'undefined') {
+        window.__PLAYER_STATE__ = window.__PLAYER_STATE__ || {};
+        window.__PLAYER_STATE__.accumulatedSessionData = accumulatedSessionData;
+      }
+      
       return () => clearInterval(intervalId);
     }
   }, [isAnonymous, tubeCycler, accumulatedSessionData.totalPoints]);
+  
+  // Update the window.__PLAYER_STATE__ whenever accumulatedSessionData changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.__PLAYER_STATE__ = window.__PLAYER_STATE__ || {};
+      window.__PLAYER_STATE__.accumulatedSessionData = accumulatedSessionData;
+    }
+  }, [accumulatedSessionData]);
   
   // Reference to track transitions
   const isInTransitionRef = useRef(false);
