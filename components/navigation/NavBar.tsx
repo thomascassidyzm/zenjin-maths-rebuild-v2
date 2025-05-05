@@ -113,14 +113,14 @@ const NavBar: React.FC = () => {
             ) : (
               <div className="flex items-center">
                 <Link 
-                  href="/account/login"
+                  href="/signin"
                   className="px-3 py-2 rounded-md text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white"
                 >
                   Sign In
                 </Link>
                 
                 <Link 
-                  href="/account/login"
+                  href="/signin"
                   className="ml-3 px-3 py-2 rounded-md text-sm font-medium text-indigo-900 bg-white hover:bg-gray-100 transition-colors"
                 >
                   Sign Up
@@ -235,9 +235,9 @@ const NavBar: React.FC = () => {
           ) : (
             <>
               <Link 
-                href="/account/login"
+                href="/signin"
                 className={`block px-3 py-2 rounded-md text-base font-medium ${
-                  router.pathname === '/account/login' 
+                  router.pathname === '/signin' 
                     ? 'bg-blue-800 text-white' 
                     : 'text-white/80 hover:bg-blue-800 hover:text-white'
                 }`}
@@ -246,9 +246,9 @@ const NavBar: React.FC = () => {
               </Link>
               
               <Link 
-                href="/account/login"
+                href="/signin"
                 className={`block px-3 py-2 rounded-md text-base font-medium ${
-                  router.pathname === '/account/login' 
+                  router.pathname === '/signin' 
                     ? 'bg-blue-800 text-white' 
                     : 'text-white/80 hover:bg-blue-800 hover:text-white'
                 }`}

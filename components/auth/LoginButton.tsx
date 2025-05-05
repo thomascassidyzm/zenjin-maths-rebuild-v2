@@ -65,7 +65,7 @@ export default function LoginButton() {
         // User is not logged in - show login button
         <div className="flex space-x-2">
           <Link
-            href="/account/login"
+            href="/signin"
             className="py-2 px-4 bg-teal-600 hover:bg-teal-500 text-white rounded-lg transition-colors"
           >
             Sign In

@@ -60,8 +60,9 @@ export default function MinimalPlayer() {
   const { user, isAuthenticated, signOut } = useAuth();
   const { isSubscribed, tier } = useSubscriptionStatus();
   
-  // Determine if we should force anonymous mode even if logged in
-  const forceAnonymous = force === 'true' && mode === 'anonymous';
+  // Only force anonymous mode if explicitly requested AND the user isn't authenticated
+  // This ensures authenticated users always use their account, regardless of URL parameters
+  const forceAnonymous = force === 'true' && mode === 'anonymous' && !isAuthenticated;
   
   // Check if we should reset points but maintain stitch progress
   const shouldResetPoints = resetPoints === 'true';
@@ -69,9 +70,21 @@ export default function MinimalPlayer() {
   // Check if dev mode is enabled
   const showDevTools = dev === 'true';
   
+  // Determine the appropriate mode - authenticated users should never use anonymous mode
+  let playerMode = 'default';
+  if (isAuthenticated) {
+    // Authenticated users always use their account
+    playerMode = 'default';
+    console.log('Using authenticated mode for logged-in user');
+  } else if (forceAnonymous || mode === 'anonymous') {
+    // Only use anonymous mode for non-authenticated users
+    playerMode = 'anonymous';
+    console.log('Using anonymous mode for non-authenticated user');
+  }
+  
   // Use the shared player hook with the appropriate mode
   const player = useTripleHelixPlayer({ 
-    mode: forceAnonymous ? 'anonymous' : (mode as string || 'default'),
+    mode: playerMode,
     resetPoints: shouldResetPoints, // Reset points but maintain stitch progress
     debug: console.log 
   });
@@ -186,8 +199,9 @@ export default function MinimalPlayer() {
                   // First record the session
                   player.handleSessionComplete(results, true);
                 
-                  // Determine which dashboard to navigate to based on authentication state and forced mode
-                  const isAnonymous = forceAnonymous || player.isAnonymous || (!user && mode === 'anonymous');
+                  // Determine which dashboard to navigate to based on authentication state
+                  // Authenticated users should always go to the authenticated dashboard
+                  const isAnonymous = !isAuthenticated && (player.isAnonymous || mode === 'anonymous');
                   const dashboardUrl = isAnonymous ? '/anon-dashboard' : '/dashboard';
                   
                   console.log(`🚪 Preparing navigation to ${dashboardUrl} (user is ${isAnonymous ? 'anonymous' : 'authenticated'})`);

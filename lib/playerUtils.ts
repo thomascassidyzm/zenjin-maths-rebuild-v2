@@ -17,26 +17,32 @@ export function useTripleHelixPlayer({
   
   // State for tubes and user
   const [userId, setUserId] = useState(() => {
-    // Use authenticated user ID if available and not in forced anonymous mode
-    if (user?.id && mode !== 'anonymous') {
+    // Always prioritize authenticated user if available
+    if (user?.id && isAuthenticated) {
       console.log(`Using authenticated user ID: ${user.id}`);
       return user.id;
     }
+    // Use authenticated user ID if available and not in forced anonymous mode
+    else if (user?.id && mode !== 'anonymous') {
+      console.log(`Using user ID (not yet authenticated): ${user.id}`);
+      return user.id;
+    }
     // Generate anonymous ID if in anonymous mode
-    if (mode === 'anonymous') {
+    else if (mode === 'anonymous' || !isAuthenticated) {
       const anonId = `anonymous-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
       console.log(`Using generated anonymous ID: ${anonId}`);
       return anonId;
     }
     // If user object exists but ID isn't available yet, use fallback
-    if (user) {
+    else if (user) {
       console.log(`User object exists but ID not available yet - using fallback`);
       return 'anonymous-pending';
     }
     console.log(`No user ID available - using anonymous placeholder`);
     return 'anonymous'; // Default placeholder until we get real user ID
   });
-  const [isAnonymous, setIsAnonymous] = useState(mode === 'anonymous' || !user?.id);
+  // Authenticated users should NEVER be treated as anonymous
+  const [isAnonymous, setIsAnonymous] = useState(isAuthenticated ? false : (mode === 'anonymous' || !user?.id));
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
@@ -317,7 +323,15 @@ export function useTripleHelixPlayer({
     const query = router.query;
     const queryUserId = query.userId as string;
     
-    // First check URL parameters (highest priority)
+    // Authenticated users always use their authenticated ID regardless of URL params
+    if (isAuthenticated && user?.id) {
+      debug(`Using authenticated user ID (top priority): ${user.id}`);
+      setUserId(user.id);
+      setIsAnonymous(false);
+      return;
+    }
+    
+    // For non-authenticated users, check URL parameters
     if (queryUserId) {
       // Check if switching from anonymous to authenticated
       if (isAnonymous && queryUserId !== 'anonymous' && queryUserId.indexOf('anonymous-') !== 0) {
