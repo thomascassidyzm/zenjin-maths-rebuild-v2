@@ -21,17 +21,43 @@ export async function loadUserData(userId: string) {
       const storedHeaders = localStorage.getItem('zenjin_auth_headers');
       if (storedHeaders) {
         headers = JSON.parse(storedHeaders);
-      } else if (userId) {
-        // Add user ID header if no auth headers but we have userId
+      }
+      
+      // Always include user ID and auth state headers
+      if (userId) {
         headers['X-User-ID'] = userId;
       }
+      
+      // Add auth state header - this helps APIs determine if this is an authenticated or anonymous request
+      const authState = localStorage.getItem('zenjin_auth_state') || 'anonymous';
+      headers['X-Zenjin-Auth-State'] = authState;
+      
+      console.log(`Loading user data with auth state: ${authState}`);
     } catch (e) {
       console.warn('Failed to parse auth headers from localStorage', e);
     }
     
     // Load tube configurations
     console.log('Step 1: Loading tube configuration');
-    const tubeConfigRes = await fetch(`/api/user-stitches?prefetch=10${userId ? `&userId=${userId}` : ''}`, {
+    
+    // For authenticated users, ensure we're not sending the isAnonymous flag
+    const authState = localStorage.getItem('zenjin_auth_state');
+    const queryParams = new URLSearchParams();
+    queryParams.append('prefetch', '10');
+    
+    if (userId) {
+      queryParams.append('userId', userId);
+      // Only include isAnonymous flag if we're actually anonymous
+      if (authState === 'anonymous' || userId.startsWith('anonymous-')) {
+        queryParams.append('isAnonymous', 'true');
+      }
+    }
+    
+    // Log the API request for debugging
+    console.log(`API Request: /api/user-stitches?${queryParams.toString()}`);
+    console.log('Headers:', JSON.stringify(headers));
+    
+    const tubeConfigRes = await fetch(`/api/user-stitches?${queryParams.toString()}`, {
       method: 'GET',
       headers: headers,
       credentials: 'include'
@@ -47,7 +73,22 @@ export async function loadUserData(userId: string) {
     
     // Load user progress data
     console.log('Step 2: Loading user progress data');
-    const progressRes = await fetch(`/api/user-progress${userId ? `?userId=${userId}` : ''}`, {
+    
+    // Create query params for progress API
+    const progressQueryParams = new URLSearchParams();
+    
+    if (userId) {
+      progressQueryParams.append('userId', userId);
+      // Only include isAnonymous flag if we're actually anonymous
+      if (authState === 'anonymous' || userId.startsWith('anonymous-')) {
+        progressQueryParams.append('isAnonymous', 'true');
+      }
+    }
+    
+    // Log the API request for debugging
+    console.log(`API Request: /api/user-progress?${progressQueryParams.toString()}`);
+    
+    const progressRes = await fetch(`/api/user-progress?${progressQueryParams.toString()}`, {
       method: 'GET',
       headers: headers,
       credentials: 'include'

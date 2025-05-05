@@ -34,6 +34,7 @@ export async function transferAnonymousData(userId: string) {
     // the StateMachine from clearing localStorage state during authentication
     console.log('Setting transfer flag before anonymous data migration');
     localStorage.setItem('zenjin_auth_transfer_in_progress', 'true');
+    localStorage.setItem('zenjin_auth_transfer_start_time', Date.now().toString());
     
     // Get anonymous session data from localStorage - try multiple key patterns
     // since different parts of the app might use different patterns
@@ -133,11 +134,13 @@ export async function transferAnonymousData(userId: string) {
       
       // IMPORTANT: Clear the transfer flag now that we're done
       localStorage.removeItem('zenjin_auth_transfer_in_progress');
+      localStorage.removeItem('zenjin_auth_transfer_start_time');
       console.log('Cleared transfer-in-progress flag');
     } else {
       console.warn('Transfer API call succeeded but returned non-200 status - keeping anonymous data as backup');
       // Clear the transfer flag even on failure to prevent getting stuck
       localStorage.removeItem('zenjin_auth_transfer_in_progress');
+      localStorage.removeItem('zenjin_auth_transfer_start_time');
     }
     
     return true;
@@ -148,6 +151,7 @@ export async function transferAnonymousData(userId: string) {
     if (typeof window !== 'undefined') {
       try {
         localStorage.removeItem('zenjin_auth_transfer_in_progress');
+        localStorage.removeItem('zenjin_auth_transfer_start_time');
         console.log('Cleared transfer flag due to error');
       } catch (err) {
         console.warn('Could not clear transfer flag:', err);

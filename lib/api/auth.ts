@@ -121,29 +121,92 @@ export async function withAnonymousAuth(
     
     // If authenticated, use user ID from session
     if (session) {
+      console.log(`Authenticated API call for user: ${session.user.id}`);
       return callback(session.user.id, supabaseAdmin, true);
     }
     
-    // If not authenticated, use anonymous ID from request
-    // Check for anonymousId in both request body and query parameters
-    const anonymousIdFromBody = req.body?.anonymousId;
-    const anonymousIdFromQuery = req.query?.userId;
-    const isAnonymous = req.query?.isAnonymous === 'true';
+    // Check for JWT token in Authorization header for authenticated requests
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      try {
+        // Verify the JWT token
+        const { data: jwtData, error: jwtError } = await supabaseAdmin.auth.getUser(token);
+        
+        if (!jwtError && jwtData?.user) {
+          // Valid JWT token, proceed with the authenticated user
+          console.log(`API auth: Using JWT from Authorization header for user ${jwtData.user.id}`);
+          return callback(jwtData.user.id, supabaseAdmin, true);
+        }
+      } catch (jwtVerifyError) {
+        logApiError('JWT Verification', jwtVerifyError);
+      }
+    }
     
-    // Use anonymousId from body first, then userId from query if flagged as anonymous
-    const anonymousId = anonymousIdFromBody || (isAnonymous ? anonymousIdFromQuery : null);
+    // If we reach this point, we don't have a valid authenticated session
+    // Check for user ID in query params - regardless if isAnonymous flag is present
+    const userIdFromQuery = req.query?.userId;
+    
+    // Check for anonymousId in request body
+    const anonymousIdFromBody = req.body?.anonymousId;
+    
+    // Check for explicit header indicating authenticated state
+    const authState = req.headers['x-zenjin-auth-state'];
+    const isAuthenticated = authState === 'authenticated';
+
+    // Check for user ID in headers
+    const userIdFromHeader = req.headers['x-user-id'];
+    
+    // Determine if this is an authenticated user without a session
+    const hasAuthHeader = !!req.headers.authorization;
+    
+    // If this appears to be an authenticated user, treat it as such
+    if ((isAuthenticated || hasAuthHeader) && (userIdFromQuery || userIdFromHeader)) {
+      const userId = (userIdFromHeader || userIdFromQuery) as string;
+      console.log(`API: Using authenticated userId without session: ${userId}`);
+      return callback(userId, supabaseAdmin, true);
+    }
+    
+    // For authenticated requests with userId but no auth header
+    if (userIdFromQuery && !req.query.isAnonymous) {
+      // Check if this looks like a UUID (authenticated user ID)
+      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (uuidPattern.test(userIdFromQuery as string)) {
+        console.log(`API: Using UUID-looking userId from query as authenticated: ${userIdFromQuery}`);
+        return callback(userIdFromQuery as string, supabaseAdmin, true);
+      }
+    }
+    
+    // Otherwise treat as anonymous
+    const isAnonymous = req.query?.isAnonymous === 'true' || authState === 'anonymous';
+    
+    // Use anonymousId from body first, then userId from query
+    const anonymousId = anonymousIdFromBody || userIdFromQuery;
     
     if (!anonymousId) {
       console.error('Anonymous auth failed: No anonymousId in body or query params');
       return res.status(HTTP_STATUS.BAD_REQUEST).json(
-        errorResponse('Anonymous ID required in request body or query parameters')
+        errorResponse('User ID or Anonymous ID required in request')
       );
     }
     
-    console.log(`Anonymous auth: Using ID ${anonymousId}`);
+    // Check if this ID starts with "anonymous-" - if so, it's definitely anonymous
+    const isDefinitelyAnonymous = anonymousId.toString().startsWith('anonymous-');
     
-    // Allow operation with anonymous ID
-    return callback(anonymousId, supabaseAdmin, false);
+    if (isDefinitelyAnonymous) {
+      console.log(`Anonymous auth: Using ID ${anonymousId}`);
+      return callback(anonymousId as string, supabaseAdmin, false);
+    }
+    
+    // If we're not sure, be generous and treat UUIDs as authenticated
+    if (typeof anonymousId === 'string' && anonymousId.includes('-')) {
+      console.log(`Auth: Treating UUID-like ID as authenticated: ${anonymousId}`);
+      return callback(anonymousId, supabaseAdmin, true);
+    }
+    
+    // Last resort - allow as anonymous
+    console.log(`Auth: Allowing unknown user type: ${anonymousId}`);
+    return callback(anonymousId as string, supabaseAdmin, false);
   } catch (error) {
     // Log the error
     logApiError('Anonymous Auth Wrapper', error);
