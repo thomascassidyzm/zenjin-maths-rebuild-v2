@@ -14,8 +14,15 @@ export function cleanupAnonymousData() {
   
   console.log('AuthUtils: Cleaning up anonymous data after authentication');
   
-  // Store the authenticated user ID before cleanup
+  // Preserve authenticated state
   const authenticatedUserId = localStorage.getItem('zenjin_user_id');
+  const authHeaders = localStorage.getItem('zenjin_auth_headers');
+  
+  // Check if transfer is in progress - if so, don't cleanup yet
+  if (localStorage.getItem('zenjin_auth_transfer_in_progress') === 'true') {
+    console.log('AuthUtils: Transfer in progress - delaying cleanup');
+    return;
+  }
   
   // Get all potential anonymous IDs
   const anonymousId = localStorage.getItem('anonymousId');
@@ -26,36 +33,51 @@ export function cleanupAnonymousData() {
     // User identification
     'anonymousId',
     'zenjin_anonymous_id',
-    'zenjin_auth_state',
     
     // Progress data keys
     'zenjin_anonymous_progress',
+    'zenjin_anonymous_state',
+    'zenjin_auth_transfer_in_progress',
   ];
   
   // Add any dynamic keys based on anonymousId
   if (anonymousId) {
     anonymousKeys.push(`progressData_${anonymousId}`);
+    anonymousKeys.push(`zenjin_state_${anonymousId}`);
+    anonymousKeys.push(`triple_helix_state_${anonymousId}`);
+    anonymousKeys.push(`sessionData_${anonymousId}`);
   }
   
-  if (zenjinanonId) {
+  if (zenjinanonId && zenjinanonId !== anonymousId) {
     anonymousKeys.push(`progressData_${zenjinanonId}`);
+    anonymousKeys.push(`zenjin_state_${zenjinanonId}`);
+    anonymousKeys.push(`triple_helix_state_${zenjinanonId}`);
+    anonymousKeys.push(`sessionData_${zenjinanonId}`);
   }
   
   // Get all localStorage keys
   const allKeys = Object.keys(localStorage);
   
-  // Find any keys that relate to anonymous data
+  // Find any keys that relate to anonymous data (use broad patterns to catch all)
   const dynamicAnonymousKeys = allKeys.filter(key => 
     key.startsWith('progressData_anonymous') || 
     key.includes('anonymous') ||
-    key.startsWith('anon_')
+    key.startsWith('anon_') ||
+    key.includes('_anonymous_') ||
+    (anonymousId && key.includes(anonymousId)) ||
+    (zenjinanonId && key.includes(zenjinanonId))
   );
   
-  // Combine with our predefined keys
+  // Combine with our predefined keys and remove duplicates
   const allAnonymousKeys = [...new Set([...anonymousKeys, ...dynamicAnonymousKeys])];
   
   // Remove all anonymous data
   allAnonymousKeys.forEach(key => {
+    // Skip explicitly authenticated keys
+    if (key === 'zenjin_user_id' || key === 'zenjin_auth_headers') {
+      return;
+    }
+    
     try {
       localStorage.removeItem(key);
       console.log(`AuthUtils: Removed ${key} from localStorage`);
@@ -64,10 +86,15 @@ export function cleanupAnonymousData() {
     }
   });
   
-  // Restore the authenticated user ID if it was removed
+  // Restore the authenticated user state
   if (authenticatedUserId) {
     localStorage.setItem('zenjin_user_id', authenticatedUserId);
     localStorage.setItem('zenjin_auth_state', 'authenticated');
+  }
+  
+  // Restore auth headers
+  if (authHeaders) {
+    localStorage.setItem('zenjin_auth_headers', authHeaders);
   }
   
   // Force a cache refresh on user data
@@ -239,6 +266,8 @@ export function getAnonymousData(): any {
 
 /**
  * Transfers anonymous data to an authenticated user
+ * This leverages the existing transferAnonymousData function in supabaseClient.ts
+ * 
  * @param userId Authenticated user ID to transfer data to
  * @returns Promise with the transfer result
  */
@@ -252,28 +281,17 @@ export async function transferAnonymousDataToUser(userId: string): Promise<boole
       return false;
     }
     
-    // Collect anonymous data
-    const anonymousData = getAnonymousData();
+    // Import the function from supabaseClient (using dynamic import to avoid circular dependencies)
+    const { transferAnonymousData } = await import('./auth/supabaseClient');
     
-    if (!anonymousData || Object.keys(anonymousData).length === 0) {
-      console.log('AuthUtils: No valid anonymous data found');
-      return false;
-    }
+    // Call the existing implementation that has been tested in production
+    const result = await transferAnonymousData(userId);
     
-    // Call the transfer API
-    const response = await callAuthenticatedApi('/api/transfer-anonymous-data', {
-      method: 'POST',
-      body: JSON.stringify({
-        userId,
-        anonymousData
-      })
-    });
-    
-    if (response.ok) {
+    if (result) {
       console.log('AuthUtils: Anonymous data transferred successfully');
       return true;
     } else {
-      console.error('AuthUtils: Failed to transfer anonymous data:', await response.text());
+      console.error('AuthUtils: Failed to transfer anonymous data');
       return false;
     }
   } catch (error) {

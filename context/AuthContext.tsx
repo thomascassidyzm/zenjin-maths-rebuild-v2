@@ -5,8 +5,11 @@ import {
   cleanupAnonymousData, 
   transferAnonymousDataToUser,
   getAnonymousData,
-  hasAnonymousData 
+  hasAnonymousData,
+  withAuthHeaders 
 } from '../lib/authUtils';
+// Import the transferAnonymousData function directly to avoid confusion
+import { transferAnonymousData as supabaseTransferData } from '../lib/auth/supabaseClient';
 
 // Initialize the Supabase client with hardcoded values for build process
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ggwoupzaruiaaliylyxga.supabase.co';
@@ -343,14 +346,14 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     try {
       console.log('AuthContext: Transferring anonymous data to authenticated user');
       
-      // Check if we have anonymous data to transfer using our utility function
+      // Check if we have anonymous data to transfer
       if (!hasAnonymousData()) {
         console.log('AuthContext: No anonymous data to transfer');
         return;
       }
       
-      // Use our enhanced utility function to transfer data with better error handling
-      const transferred = await transferAnonymousDataToUser(userId);
+      // Use the imported supabaseTransferData function directly for consistency
+      const transferred = await supabaseTransferData(userId);
       
       if (transferred) {
         console.log('AuthContext: Anonymous data transferred successfully');

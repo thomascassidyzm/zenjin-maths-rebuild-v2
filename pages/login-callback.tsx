@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { supabase } from '../lib/auth/supabaseClient';
-import { cleanupAnonymousData, transferAnonymousDataToUser } from '../lib/authUtils';
+import { supabase, transferAnonymousData } from '../lib/auth/supabaseClient';
+import { cleanupAnonymousData } from '../lib/authUtils';
 import AnonymousToAuthMigration from '../components/auth/AnonymousToAuthMigration';
 
 export default function LoginCallback() {
@@ -74,8 +74,8 @@ export default function LoginCallback() {
                 localStorage.setItem('zenjin_auth_headers', JSON.stringify(authHeaders));
               }
               
-              // Transfer anonymous data using our enhanced utility
-              await transferAnonymousDataToUser(data.user.id);
+              // Transfer anonymous data
+              await transferAnonymousData(data.user.id);
               
               // Create or update user profile
               try {
@@ -157,8 +157,8 @@ export default function LoginCallback() {
                 localStorage.setItem('zenjin_auth_headers', JSON.stringify(authHeaders));
               }
               
-              // Transfer anonymous data using our enhanced utility
-              await transferAnonymousDataToUser(data.user.id);
+              // Transfer anonymous data
+              await transferAnonymousData(data.user.id);
               
               // Create or update user profile
               try {
@@ -245,8 +245,8 @@ export default function LoginCallback() {
                 localStorage.setItem('zenjin_auth_headers', JSON.stringify(authHeaders));
               }
               
-              // Transfer anonymous data using our enhanced utility
-              await transferAnonymousDataToUser(data.user.id);
+              // Transfer anonymous data
+              await transferAnonymousData(data.user.id);
               
               // Create or update user profile
               try {

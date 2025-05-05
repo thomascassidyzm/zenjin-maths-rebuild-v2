@@ -1,10 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { 
-  hasAnonymousData,
-  transferAnonymousDataToUser,
-  cleanupAnonymousData 
-} from '../../lib/authUtils';
+import { hasAnonymousData, cleanupAnonymousData } from '../../lib/authUtils';
+import { transferAnonymousData } from '../../lib/auth/supabaseClient';
 
 interface AnonymousToAuthMigrationProps {
   onComplete?: (success: boolean) => void;
@@ -46,8 +43,8 @@ const AnonymousToAuthMigration: React.FC<AnonymousToAuthMigrationProps> = ({
         
         console.log('Starting migration of anonymous data to authenticated user', user.id);
         
-        // Transfer the data
-        const success = await transferAnonymousDataToUser(user.id);
+        // Transfer the data using the supabase function
+        const success = await transferAnonymousData(user.id);
         
         if (success) {
           setMigrationState('success');
