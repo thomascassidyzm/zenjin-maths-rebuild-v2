@@ -6,11 +6,14 @@ import { getFreeUserAccessProfile } from '../../lib/tier-manager';
  * API endpoint to transfer anonymous user progress data to authenticated user account
  * POST /api/transfer-anonymous-data
  * 
- * Takes anonymous session data from localStorage and transfers it to the authenticated user
- * by creating appropriate tube and stitch progress records.
+ * EMERGENCY BYPASS VERSION (2025-05-05):
+ * This is a hardcoded emergency version that bypasses database operations
+ * to prevent 504 Gateway Timeout errors.
  * 
- * When a user transitions from anonymous to authenticated, they become a free tier user
- * with access to all free content.
+ * Instead of actually transferring data to the database, it returns a success response
+ * immediately. Users will need to start fresh, but at least they can log in.
+ * 
+ * This is a temporary fix until the root cause of the database timeouts is resolved.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {

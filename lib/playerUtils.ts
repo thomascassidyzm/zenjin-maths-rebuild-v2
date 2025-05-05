@@ -833,10 +833,31 @@ export function useTripleHelixPlayer({
           debug('Skipping API call for anonymous user - using offline-first approach');
         } else {
           // For authenticated users, always fetch from API
-          const url = `/api/user-stitches?userId=${userId}&prefetch=5`;
-          
-          // Fetch user stitches from API
-          const response = await fetch(url);
+          // CRITICAL FIX: Use relative URL to prevent URL transformation issues
+          // Also remove prefetch parameter to reduce server load
+          let response;
+          try {
+            // First try with AuthUtils if available
+            debug('Attempting to use callAuthenticatedApi to fetch user stitches');
+            const authUtils = await import('./authUtils');
+            response = await authUtils.callAuthenticatedApi(`/api/user-stitches?userId=${userId}`);
+            debug('Successfully fetched user stitches with callAuthenticatedApi');
+          } catch (authError) {
+            debug(`Could not use callAuthenticatedApi: ${authError}, falling back to direct fetch`);
+            
+            // Fall back to direct fetch with relative URL 
+            const url = `/api/user-stitches?userId=${userId}`;
+            debug(`Fetching from ${url} with relative URL`);
+            
+            // Use regular fetch but with cache busting and credentials
+            response = await fetch(url, {
+              headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Content-Type': 'application/json'
+              },
+              credentials: 'include'
+            });
+          }
           
           if (!response.ok) {
             throw new Error(`Failed to fetch data: ${response.status}`);
