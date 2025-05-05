@@ -315,7 +315,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     // Call the user-stitches API to ensure everything is properly initialized
     try {
-      await fetch(`${req.headers.origin}/api/user-stitches?userId=${userId}&prefetch=5`, {
+      // Use relative URL instead of absolute URL with origin
+      // This prevents cross-origin issues when app is accessed via different domains
+      await fetch(`/api/user-stitches?userId=${userId}&prefetch=5`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
