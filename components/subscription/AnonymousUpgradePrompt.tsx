@@ -86,40 +86,17 @@ const AnonymousUpgradePrompt: React.FC<AnonymousUpgradePromptProps> = ({
     <div className={`bg-gradient-to-r from-blue-600/90 to-indigo-700/90 backdrop-blur-sm rounded-lg shadow-lg overflow-hidden ${className}`}>
       <div className="p-6">
         <h3 className="text-xl font-bold text-white mb-3">
-          You're using Zenjin Maths in Guest Mode
+          Save Your Progress
         </h3>
         
-        <div className="mb-4 text-white/90">
-          <p className="mb-2">
-            You've earned <span className="font-bold text-yellow-300">{formattedPoints} points</span> and 
-            spent <span className="font-bold text-teal-300">{formattedHours} hours</span> learning mathematics.
-          </p>
+        <div className="mb-5 text-white/90">
           <p>
-            Create an account to save your progress, unlock premium content, and continue your learning journey.
+            You've earned <span className="font-bold text-yellow-300">{formattedPoints} points</span>. 
+            Create an account to save progress and access more content.
           </p>
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-          <div className="bg-white/10 rounded-lg p-3">
-            <h4 className="font-bold text-white">What You'll Keep</h4>
-            <ul className="text-sm text-white/80 mt-1 space-y-1">
-              <li>• All your earned points</li>
-              <li>• Your progress level</li>
-              <li>• Your learning history</li>
-            </ul>
-          </div>
-          
-          <div className="bg-white/10 rounded-lg p-3">
-            <h4 className="font-bold text-white">What You'll Gain</h4>
-            <ul className="text-sm text-white/80 mt-1 space-y-1">
-              <li>• Sync across devices</li>
-              <li>• Premium content access</li>
-              <li>• Personalized learning path</li>
-            </ul>
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="flex flex-col gap-3">
           <button
             onClick={handleSignUp}
             className="py-3 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-white font-medium rounded-lg transition-colors"
@@ -128,8 +105,8 @@ const AnonymousUpgradePrompt: React.FC<AnonymousUpgradePromptProps> = ({
           </button>
           
           <button
-            onClick={() => router.push('/subscription')}
-            className="py-3 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-medium rounded-lg transition-colors"
+            onClick={() => router.push('/subscribe')}
+            className="py-3 bg-white/10 hover:bg-white/20 text-white font-medium rounded-lg transition-colors border border-white/20"
           >
             View Premium Plans
           </button>

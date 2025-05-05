@@ -151,14 +151,14 @@ export default function AnonDashboard() {
   return (
     <div className="min-h-screen dashboard-bg flex flex-col text-white">
       <Head>
-        <title>{isAuthenticated ? 'Guest Mode | Zenjin Maths' : 'Your Progress | Zenjin Maths'}</title>
+        <title>{isAuthenticated ? 'Anonymous Mode | Zenjin Maths' : 'Your Progress | Zenjin Maths'}</title>
         <meta name="description" content="View your anonymous learning progress with Zenjin Maths" />
       </Head>
       
       {/* Special notification for authenticated users viewing anonymous dashboard */}
       {isAuthenticated && (
         <div className="bg-indigo-600 text-white px-4 py-2 text-center text-sm">
-          You're viewing content in Guest Mode while logged in as {user?.email}. 
+          You're viewing content in Anonymous Mode while logged in as {user?.email}. 
           <button onClick={() => router.push('/dashboard')} className="underline ml-2 font-bold">
             Return to My Dashboard
           </button>
@@ -197,32 +197,24 @@ export default function AnonDashboard() {
       
       {/* Main content */}
       <div className="container max-w-5xl mx-auto px-4 py-8">
-        {/* Progress warning banner */}
+        {/* Progress warning banner - Simplified to remove duplicate button */}
         <div className="bg-amber-500/20 border border-amber-300/30 rounded-xl p-4 mb-6">
           <h2 className="text-amber-300 font-semibold text-lg mb-1">Anonymous Mode</h2>
           <p className="text-white/80 mb-3">
-            You're in Anonymous Mode! Your learning journey is saved on this device. 
+            Your learning journey is saved on this device. 
             Create a free account anytime to save your progress across all devices.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Link 
-              href="/minimal-player?mode=anonymous" 
-              className="inline-block px-4 py-2 bg-gradient-to-r from-teal-600 to-emerald-500 hover:from-teal-500 hover:to-emerald-400 text-white font-medium rounded-lg transition-colors"
+          {isAuthenticated && (
+            <button
+              onClick={() => {
+                localStorage.removeItem('anonymousId');
+                router.push('/dashboard');
+              }} 
+              className="inline-block px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg transition-colors"
             >
-              Continue Playing
-            </Link>
-            {isAuthenticated && (
-              <button
-                onClick={() => {
-                  localStorage.removeItem('anonymousId');
-                  router.push('/dashboard');
-                }} 
-                className="inline-block px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg transition-colors"
-              >
-                Switch to My Account
-              </button>
-            )}
-          </div>
+              Switch to My Account
+            </button>
+          )}
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -251,13 +243,13 @@ export default function AnonDashboard() {
               </div>
             </div>
             
-            {/* Continue Learning Button */}
+            {/* Continue Playing Button - Primary call to action */}
             <div className="mt-6">
               <Link 
                 href="/minimal-player?mode=anonymous" 
                 className="block bg-gradient-to-r from-teal-600 to-emerald-500 hover:from-teal-500 hover:to-emerald-400 text-white font-bold py-4 px-6 rounded-xl transition-colors text-lg text-center shadow-lg"
               >
-                Continue Learning
+                Continue Playing
               </Link>
             </div>
           </div>
@@ -275,7 +267,7 @@ export default function AnonDashboard() {
             <div className="rounded-xl border border-white/20 bg-white/10 p-4">
               <div className="space-y-2">
                 <Link 
-                  href="/subscription" 
+                  href="/subscribe" 
                   className="w-full block py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium rounded-lg transition-colors text-center"
                 >
                   View Premium Plans
