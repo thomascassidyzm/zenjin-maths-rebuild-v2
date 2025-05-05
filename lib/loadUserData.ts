@@ -17,11 +17,11 @@ export async function loadUserData(userId: string) {
     const authState = localStorage.getItem('zenjin_auth_state');
     
     // Load tube configurations
-    console.log('Step 1: Loading tube configuration');
+    console.log('Step 1: Loading tube configuration (lightweight version)');
     
-    // Create query parameters
+    // Create query parameters - NO NEED for prefetch parameter anymore
+    // The API has been simplified to only return position data for free tier users
     const queryParams = new URLSearchParams();
-    queryParams.append('prefetch', '10');
     
     if (userId) {
       queryParams.append('userId', userId);
@@ -45,7 +45,7 @@ export async function loadUserData(userId: string) {
     }
     
     const tubeConfigData = await tubeConfigRes.json();
-    console.log('Tube configuration loaded successfully');
+    console.log('Tube configuration loaded successfully (lightweight version)');
     
     // Load user progress data
     console.log('Step 2: Loading user progress data');

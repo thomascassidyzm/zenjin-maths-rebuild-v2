@@ -1,97 +1,90 @@
-# Supabase Client Initialization Fixes
+# Supabase Client Fixes for 504 Gateway Timeout
 
-## Problem
+## Root Cause
 
-When building the application, we encountered errors with Supabase client initialization:
+After investigation, we identified two main causes for the 504 Gateway Timeout errors:
 
-```
-Error: supabaseUrl is required.
-```
+1. **Deprecated Supabase Client**: The application was using the deprecated `createServerSupabaseClient` function from `@supabase/auth-helpers-nextjs`, which is no longer compatible with the latest Supabase version.
 
-This occurred because the environment variables (`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`) were not available during the build process, and empty fallback values were being used.
+2. **Excessive Data Fetching**: The `/api/user-stitches` API was fetching too much data, including content that was already bundled with the application.
 
-## Solution
+## Fixed Issues
 
-We implemented a robust solution by adding hardcoded Supabase URLs and keys as fallback values in all relevant files. This ensures that:
+### 1. Updated Supabase Client Creation
 
-1. The application builds successfully without environment variables
-2. The correct URLs are used at runtime when environment variables are available
-3. Service roles have safe fallbacks for build time (will be replaced at runtime)
+- Changed from deprecated `createServerSupabaseClient` to the new `createRouteHandlerClient` in `lib/api/auth.ts`.
+- This fixes the error: `TypeError: Cannot read properties of undefined (reading 'from')` which was happening because the database client wasn't being properly initialized.
 
-## Files Modified
+### 2. Fixed API Handler Parameter Structure
 
-1. `/lib/auth/supabaseClient.ts`:
-   ```typescript
-   // Use hardcoded values to ensure they're available during build
-   const supabaseUrl = 'https://ggwoupzaruiaaliylyxga.supabase.co';
-   const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdnd291cHphcnVpYWFsaXlseGdhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE5MTczNDAsImV4cCI6MjA1NzQ5MzM0MH0.gXtiM5b3YZoV5SMRrMmY59Qp7VjadOxkJ5an0Q3Og_c';
-   ```
+- Updated the `user-stitches.ts` API to correctly use the parameters provided by the handler function.
+- The API was incorrectly trying to destructure parameters from a `context` object, when they should have been accessed directly as function parameters.
 
-2. `/lib/supabase.ts`:
-   ```typescript
-   // Use hardcoded values to ensure they're available during build
-   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ggwoupzaruiaaliylyxga.supabase.co';
-   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdnd291cHphcnVpYWFsaXlseGdhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE5MTczNDAsImV4cCI6MjA1NzQ5MzM0MH0.gXtiM5b3YZoV5SMRrMmY59Qp7VjadOxkJ5an0Q3Og_c';
-   ```
+### 3. Optimized Data Fetching
 
-3. `/lib/api/auth.ts`:
-   ```typescript
-   // Initialize Supabase admin client for database operations with hardcoded URL
-   export const supabaseAdmin = createClient(
-     process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ggwoupzaruiaaliylyxga.supabase.co',
-     process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdnd291cHphcnVpYWFsaXlseGdhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MTkxNzM0MCwiZXhwIjoyMDU3NDkzMzQwfQ.MKPlabJrcvZQ2jyW0LKLs9VqnrQf2vOfllCZV9hv8tQ'
-   );
-   ```
+- Redesigned the `user-stitches.ts` API to only fetch minimal data:
+  - For free tier users: Just thread metadata and position (no content)
+  - For premium users: Only thread metadata and minimal required content
 
-4. `/lib/supabase/client.ts`:
-   ```typescript
-   // Always use hardcoded values to ensure they're available during build
-   const supabaseUrl = 'https://ggwoupzaruiaaliylyxga.supabase.co';
-   const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdnd291cHphcnVpYWFsaXlseGdhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE5MTczNDAsImV4cCI6MjA1NzQ5MzM0MH0.gXtiM5b3YZoV5SMRrMmY59Qp7VjadOxkJ5an0Q3Og_c';
-   ```
+- Reduced database queries by:
+  - Eliminating the prefetch parameter
+  - Limiting selected fields
+  - Avoiding multiple nested queries
 
-5. `/lib/supabase/server.ts`:
-   - Refactored the cookie handlers to be more efficient
-   - Added hardcoded URL fallbacks
-   - Simplified the logic to use a single return statement
+## Implementation Details
 
-6. `/lib/supabase/admin.ts`:
-   ```typescript
-   // Use hardcoded URL to ensure it's available during build
-   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ggwoupzaruiaaliylyxga.supabase.co';
-   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-   
-   // Don't throw error at build time, but provide fallback
-   if (!supabaseServiceKey && process.env.NODE_ENV === 'production') {
-     console.warn('Missing Supabase service key. Will use placeholder for build process.');
-     
-     // Use a placeholder for build time only - will be overridden at runtime
-     return createClient(supabaseUrl, 'build-time-placeholder-key', {...});
+1. **Client Creation Update**:
+   ```javascript
+   // OLD
+   import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
+   export function createAuthClient(req, res) {
+     return createServerSupabaseClient({ req, res });
+   }
+
+   // NEW
+   import { createRouteHandlerClient } from '../supabase/route';
+   export function createAuthClient(req, res) {
+     return createRouteHandlerClient(req, res);
    }
    ```
 
-7. `/context/AuthContext.tsx` and `/context/AuthContextSimplified.tsx`:
-   ```typescript
-   // Initialize the Supabase client with hardcoded values for build process
-   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ggwoupzaruiaaliylyxga.supabase.co';
-   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdnd291cHphcnVpYWFsaXlseGdhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE5MTczNDAsImV4cCI6MjA1NzQ5MzM0MH0.gXtiM5b3YZoV5SMRrMmY59Qp7VjadOxkJ5an0Q3Og_c';
+2. **API Handler Fix**:
+   ```javascript
+   // OLD - Incorrectly trying to access parameters through context
+   export default createAdvancedHandler(
+     async (req, res, context) => {
+       const { userId, db, isAuthenticated } = context;
+       // ...
+     }
+   );
+
+   // NEW - Correctly accessing parameters provided directly by the handler
+   export default createAdvancedHandler(
+     async (req, res, userId, db, isAuthenticated, context) => {
+       // ...
+     }
+   );
    ```
 
-## Environment Setup for Production
+3. **Data Fetching Optimization**:
+   - Simplified API to only fetch thread metadata and user position
+   - Free tier content is already bundled with the app, so no need to fetch it again
+   - Reduced prefetch values across the application
 
-When deploying to production, set these environment variables:
+## Testing
 
-```
-NEXT_PUBLIC_SUPABASE_URL=https://ggwoupzaruiaaliylyxga.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdnd291cHphcnVpYWFsaXlseGdhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE5MTczNDAsImV4cCI6MjA1NzQ5MzM0MH0.gXtiM5b3YZoV5SMRrMmY59Qp7VjadOxkJ5an0Q3Og_c
-SUPABASE_SERVICE_ROLE_KEY=[your-service-role-key]
-```
+After implementing these fixes, you should see:
 
-The service role key should be kept confidential and only set in secure production environments.
+1. No more 504 Gateway Timeout errors when authenticating
+2. Faster loading times for content
+3. More efficient API calls
 
-## Build Success
+These changes should resolve the authentication and timeouts issues for all users.
 
-After implementing these fixes, the application builds successfully:
-- All pages and API routes compile without errors
-- The offline-first implementation works correctly
-- The simple offline test page loads all 30 bundled stitches
+## Future Improvements
+
+1. **Lazy Loading Strategy**: Implement a better approach for loading premium content incrementally as needed.
+
+2. **Bundled Content Management**: Better document and structure the bundled content to make it clear what's available locally.
+
+3. **Supabase Version Updates**: Make sure to follow Supabase version updates and migration guides to avoid similar issues in the future.

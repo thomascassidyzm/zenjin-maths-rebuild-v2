@@ -5,7 +5,8 @@
  */
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
-import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
+// FIXED: Using the new recommended client creation method instead of deprecated one
+import { createRouteHandlerClient } from '../supabase/route';
 import { logApiError } from './logging';
 import { errorResponse } from './responses';
 import { HTTP_STATUS, ERROR_MESSAGES } from './responses';
@@ -20,7 +21,8 @@ export const supabaseAdmin = createClient(
  * Creates a Supabase client with request/response context for cookie handling
  */
 export function createAuthClient(req: NextApiRequest, res: NextApiResponse) {
-  return createServerSupabaseClient({ req, res });
+  // FIXED: Using new recommended client creation method
+  return createRouteHandlerClient(req, res);
 }
 
 /**

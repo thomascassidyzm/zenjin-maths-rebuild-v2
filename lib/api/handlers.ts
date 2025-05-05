@@ -125,6 +125,7 @@ export function createAdvancedHandler(
   options: HandlerOptions & {
     requireAuth?: boolean;
     contextBuilder?: (req: NextApiRequest) => Record<string, any>;
+    allowAnonymous?: boolean;
   } = {}
 ) {
   return async (req: NextApiRequest, res: NextApiResponse) => {

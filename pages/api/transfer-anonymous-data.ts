@@ -317,7 +317,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       // Use relative URL instead of absolute URL with origin
       // This prevents cross-origin issues when app is accessed via different domains
-      await fetch(`/api/user-stitches?userId=${userId}&prefetch=5`, {
+      // MAJOR SIMPLIFICATION: No prefetch parameter needed - API now only returns position data
+      await fetch(`/api/user-stitches?userId=${userId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
