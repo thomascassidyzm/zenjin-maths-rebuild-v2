@@ -10,14 +10,30 @@ export async function loadUserData(userId: string) {
   try {
     console.log(`Loading essential data for user ${userId}`);
     
+    // Get auth headers if available
+    let headers = {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache, no-store'
+    };
+    
+    // Try to get stored auth headers
+    try {
+      const storedHeaders = localStorage.getItem('zenjin_auth_headers');
+      if (storedHeaders) {
+        headers = JSON.parse(storedHeaders);
+      } else if (userId) {
+        // Add user ID header if no auth headers but we have userId
+        headers['X-User-ID'] = userId;
+      }
+    } catch (e) {
+      console.warn('Failed to parse auth headers from localStorage', e);
+    }
+    
     // Load tube configurations
     console.log('Step 1: Loading tube configuration');
-    const tubeConfigRes = await fetch('/api/user-stitches?prefetch=10', {
+    const tubeConfigRes = await fetch(`/api/user-stitches?prefetch=10${userId ? `&userId=${userId}` : ''}`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache, no-store'
-      },
+      headers: headers,
       credentials: 'include'
     });
     
@@ -31,12 +47,9 @@ export async function loadUserData(userId: string) {
     
     // Load user progress data
     console.log('Step 2: Loading user progress data');
-    const progressRes = await fetch('/api/user-progress', {
+    const progressRes = await fetch(`/api/user-progress${userId ? `?userId=${userId}` : ''}`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache, no-store'
-      },
+      headers: headers,
       credentials: 'include'
     });
     
@@ -62,6 +75,10 @@ export async function loadUserData(userId: string) {
     localStorage.setItem('zenjin_tube_data', JSON.stringify(tubeConfigData));
     localStorage.setItem('zenjin_user_progress', JSON.stringify(progressData));
     localStorage.setItem('zenjin_data_timestamp', Date.now().toString());
+    
+    // Store user ID for offline mode
+    localStorage.setItem('zenjin_user_id', userId);
+    localStorage.setItem('zenjin_auth_state', 'authenticated');
     
     console.log('All user data loaded and cached successfully');
     

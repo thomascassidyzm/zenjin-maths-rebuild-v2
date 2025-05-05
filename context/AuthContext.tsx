@@ -1,6 +1,12 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { loadUserData } from '../lib/loadUserData';
+import { loadUserData, clearUserData } from '../lib/loadUserData';
+import { 
+  cleanupAnonymousData, 
+  transferAnonymousDataToUser,
+  getAnonymousData,
+  hasAnonymousData 
+} from '../lib/authUtils';
 
 // Initialize the Supabase client with hardcoded values for build process
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ggwoupzaruiaaliylyxga.supabase.co';
@@ -117,10 +123,41 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         userDataLoading: true
       }));
       
+      // Make sure we have a clean authentication state before proceeding
+      // This is critical for ensuring API calls work correctly
+      
+      // First clean up any remaining anonymous data to prevent conflicts
+      cleanupAnonymousData();
+      
+      // Ensure that zenjin_auth_state is 'authenticated' and user ID is set in localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('zenjin_auth_state', 'authenticated');
+        localStorage.setItem('zenjin_user_id', userId);
+      }
+      
+      // Get session token for API calls that need authorization
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.access_token) {
+        // Set auth headers for all upcoming API calls
+        const defaultHeaders = {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store',
+          'Authorization': `Bearer ${session.access_token}`
+        };
+        
+        // Store the headers in localStorage for potential use by other components
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('zenjin_auth_headers', JSON.stringify(defaultHeaders));
+        }
+      } else {
+        console.warn('AuthContext: No access token available - API calls may fail');
+      }
+      
       // Create a profile for the user (will do nothing if profile already exists)
       await createUserProfile(userId);
       
-      // Load user data
+      // Load user data using the authenticated user ID
       const userData = await loadUserData(userId);
       
       // Update state with loaded data
@@ -130,9 +167,10 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         userDataLoading: false
       }));
       
+      console.log('AuthContext: User data loaded successfully');
       return userData;
     } catch (error) {
-      console.error('Failed to load user data after auth:', error);
+      console.error('AuthContext: Failed to load user data after auth:', error);
       
       // Update state with error
       setAuthState(prev => ({
@@ -218,6 +256,38 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         if (event === 'SIGNED_IN' && session?.user) {
           console.log('AuthContext: User signed in:', session.user.email);
           
+          // Transfer anonymous data and clean up properly
+          if (typeof window !== 'undefined') {
+            const currentAuthState = localStorage.getItem('zenjin_auth_state');
+            const storedUserId = localStorage.getItem('zenjin_user_id');
+            
+            // If previously anonymous or different user, handle data migration
+            if (currentAuthState === 'anonymous' || storedUserId !== session.user.id) {
+              console.log('AuthContext: Detected auth state transition, handling data migration');
+              
+              // Store auth token for API calls
+              const { data: { session: currentSession } } = await supabase.auth.getSession();
+              if (currentSession?.access_token) {
+                const authHeaders = {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${currentSession.access_token}`
+                };
+                localStorage.setItem('zenjin_auth_headers', JSON.stringify(authHeaders));
+              }
+              
+              // Update localStorage with new auth state BEFORE API calls
+              // This ensures subsequent API calls use authenticated credentials
+              localStorage.setItem('zenjin_auth_state', 'authenticated');
+              localStorage.setItem('zenjin_user_id', session.user.id);
+              if (session.user.email) {
+                localStorage.setItem('zenjin_user_email', session.user.email);
+              }
+              
+              // Attempt data migration - this will use the authentication we just set up
+              await transferAnonymousData(session.user.id);
+            }
+          }
+          
           // Update auth state
           setAuthState(prev => ({
             ...prev,
@@ -233,6 +303,18 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         // Handle sign out
         else if (event === 'SIGNED_OUT') {
           console.log('AuthContext: User signed out');
+          
+          // Clean up authenticated user data from localStorage
+          if (typeof window !== 'undefined') {
+            // Remove authenticated state markers
+            localStorage.removeItem('zenjin_auth_state');
+            localStorage.removeItem('zenjin_user_id');
+            localStorage.removeItem('zenjin_user_email');
+            localStorage.removeItem('zenjin_auth_headers');
+            
+            // Also remove auth-related cached data
+            clearUserData();
+          }
           
           // Reset auth state
           setAuthState({
@@ -253,6 +335,35 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     };
   }, [loadUserDataAfterAuth]);
   
+  /**
+   * Transfer anonymous data to authenticated user account
+   * @param userId - The authenticated user ID
+   */
+  const transferAnonymousData = useCallback(async (userId: string) => {
+    try {
+      console.log('AuthContext: Transferring anonymous data to authenticated user');
+      
+      // Check if we have anonymous data to transfer using our utility function
+      if (!hasAnonymousData()) {
+        console.log('AuthContext: No anonymous data to transfer');
+        return;
+      }
+      
+      // Use our enhanced utility function to transfer data with better error handling
+      const transferred = await transferAnonymousDataToUser(userId);
+      
+      if (transferred) {
+        console.log('AuthContext: Anonymous data transferred successfully');
+        // Clean up anonymous data after successful transfer
+        cleanupAnonymousData();
+      } else {
+        console.log('AuthContext: Anonymous data transfer was not completed');
+      }
+    } catch (e) {
+      console.error('AuthContext: Exception in anonymous data transfer:', e);
+    }
+  }, []);
+
   /**
    * Sign in with email and password
    */
@@ -284,6 +395,20 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         }));
         
         return { success: false, error };
+      }
+      
+      // If sign-in successful, check for anonymous data to transfer
+      if (data.user) {
+        // Attempt to transfer anonymous data to the authenticated account
+        await transferAnonymousData(data.user.id);
+        
+        // Set proper auth state in localStorage
+        localStorage.setItem('zenjin_auth_state', 'authenticated');
+        localStorage.setItem('zenjin_user_email', email);
+        localStorage.setItem('zenjin_user_id', data.user.id);
+        
+        // Clean up any remaining anonymous data
+        cleanupAnonymousData();
       }
       
       // Auth state will be updated by onAuthStateChange listener
@@ -640,7 +765,8 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       }));
       
       // Get the email from localStorage (needed for Supabase OTP verification)
-      const email = typeof window !== 'undefined' ? localStorage.getItem('auth_email') : null;
+      const email = typeof window !== 'undefined' ? 
+        localStorage.getItem('auth_email') || localStorage.getItem('zenjin_signup_email') : null;
       
       if (!email && !code.includes('@')) {
         console.error('AuthContext: Missing email for OTP verification');
@@ -680,12 +806,22 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       
       console.log('AuthContext: OTP verification successful', data);
       
-      // Store auth state for app
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('zenjin_auth_state', 'authenticated');
-        if (email) {
-          localStorage.setItem('zenjin_user_email', email);
+      // If verification successful, transfer anonymous data
+      if (data?.user) {
+        // Attempt to transfer anonymous data to the authenticated account
+        await transferAnonymousData(data.user.id);
+        
+        // Store auth state for app
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('zenjin_auth_state', 'authenticated');
+          localStorage.setItem('zenjin_user_id', data.user.id);
+          if (email) {
+            localStorage.setItem('zenjin_user_email', email);
+          }
         }
+        
+        // Clean up any remaining anonymous data
+        cleanupAnonymousData();
       }
       
       // Auth state will be updated by onAuthStateChange listener

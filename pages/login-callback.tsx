@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/auth/supabaseClient';
-import { transferAnonymousData } from '../lib/auth/supabaseClient';
+import { cleanupAnonymousData, transferAnonymousDataToUser } from '../lib/authUtils';
+import AnonymousToAuthMigration from '../components/auth/AnonymousToAuthMigration';
 
 export default function LoginCallback() {
   const router = useRouter();
@@ -59,29 +60,50 @@ export default function LoginCallback() {
           
           // Handle anonymous data transfer if user is new
           if (data.user?.id) {
-            await transferAnonymousData(data.user.id);
-            
-            // Create or update user profile
             try {
-              const profileResponse = await fetch('/api/auth/create-profile', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${data.session?.access_token || ''}`
-                },
-                body: JSON.stringify({
-                  displayName: data.user.email?.split('@')[0] || 'User',
-                  anonymousId: localStorage.getItem('zenjin_anonymous_id') || null
-                })
-              });
+              // Set auth state and headers for API calls
+              localStorage.setItem('zenjin_auth_state', 'authenticated');
+              localStorage.setItem('zenjin_user_id', data.user.id);
               
-              if (!profileResponse.ok) {
-                console.error('Failed to create/update user profile');
-              } else {
-                console.log('User profile created/updated successfully');
+              if (data.session?.access_token) {
+                // Store auth headers for API calls
+                const authHeaders = {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${data.session.access_token}`
+                };
+                localStorage.setItem('zenjin_auth_headers', JSON.stringify(authHeaders));
               }
-            } catch (profileError) {
-              console.error('Error creating user profile:', profileError);
+              
+              // Transfer anonymous data using our enhanced utility
+              await transferAnonymousDataToUser(data.user.id);
+              
+              // Create or update user profile
+              try {
+                const profileResponse = await fetch('/api/auth/create-profile', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${data.session?.access_token || ''}`
+                  },
+                  body: JSON.stringify({
+                    displayName: data.user.email?.split('@')[0] || 'User',
+                    anonymousId: localStorage.getItem('zenjin_anonymous_id') || null
+                  })
+                });
+                
+                if (!profileResponse.ok) {
+                  console.error('Failed to create/update user profile');
+                } else {
+                  console.log('User profile created/updated successfully');
+                }
+              } catch (profileError) {
+                console.error('Error creating user profile:', profileError);
+              }
+              
+              // Clean up anonymous data after successful transfer
+              cleanupAnonymousData();
+            } catch (transferError) {
+              console.error('Error during data transfer:', transferError);
             }
           }
           
@@ -121,29 +143,50 @@ export default function LoginCallback() {
           
           // Handle anonymous data transfer if user is new
           if (data.user?.id) {
-            await transferAnonymousData(data.user.id);
-            
-            // Create or update user profile
             try {
-              const profileResponse = await fetch('/api/auth/create-profile', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${data.session?.access_token || ''}`
-                },
-                body: JSON.stringify({
-                  displayName: data.user.email?.split('@')[0] || 'User',
-                  anonymousId: localStorage.getItem('zenjin_anonymous_id') || null
-                })
-              });
+              // Set auth state and headers for API calls
+              localStorage.setItem('zenjin_auth_state', 'authenticated');
+              localStorage.setItem('zenjin_user_id', data.user.id);
               
-              if (!profileResponse.ok) {
-                console.error('Failed to create/update user profile');
-              } else {
-                console.log('User profile created/updated successfully');
+              if (data.session?.access_token) {
+                // Store auth headers for API calls
+                const authHeaders = {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${data.session.access_token}`
+                };
+                localStorage.setItem('zenjin_auth_headers', JSON.stringify(authHeaders));
               }
-            } catch (profileError) {
-              console.error('Error creating user profile:', profileError);
+              
+              // Transfer anonymous data using our enhanced utility
+              await transferAnonymousDataToUser(data.user.id);
+              
+              // Create or update user profile
+              try {
+                const profileResponse = await fetch('/api/auth/create-profile', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${data.session?.access_token || ''}`
+                  },
+                  body: JSON.stringify({
+                    displayName: data.user.email?.split('@')[0] || 'User',
+                    anonymousId: localStorage.getItem('zenjin_anonymous_id') || null
+                  })
+                });
+                
+                if (!profileResponse.ok) {
+                  console.error('Failed to create/update user profile');
+                } else {
+                  console.log('User profile created/updated successfully');
+                }
+              } catch (profileError) {
+                console.error('Error creating user profile:', profileError);
+              }
+              
+              // Clean up anonymous data after successful transfer
+              cleanupAnonymousData();
+            } catch (transferError) {
+              console.error('Error during data transfer:', transferError);
             }
           }
           
@@ -188,29 +231,50 @@ export default function LoginCallback() {
           
           // Handle anonymous data transfer if user is new
           if (data.user?.id) {
-            await transferAnonymousData(data.user.id);
-            
-            // Create or update user profile
             try {
-              const profileResponse = await fetch('/api/auth/create-profile', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${data.session?.access_token || ''}`
-                },
-                body: JSON.stringify({
-                  displayName: data.user.email?.split('@')[0] || 'User',
-                  anonymousId: localStorage.getItem('zenjin_anonymous_id') || null
-                })
-              });
+              // Set auth state and headers for API calls
+              localStorage.setItem('zenjin_auth_state', 'authenticated');
+              localStorage.setItem('zenjin_user_id', data.user.id);
               
-              if (!profileResponse.ok) {
-                console.error('Failed to create/update user profile');
-              } else {
-                console.log('User profile created/updated successfully');
+              if (data.session?.access_token) {
+                // Store auth headers for API calls
+                const authHeaders = {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${data.session.access_token}`
+                };
+                localStorage.setItem('zenjin_auth_headers', JSON.stringify(authHeaders));
               }
-            } catch (profileError) {
-              console.error('Error creating user profile:', profileError);
+              
+              // Transfer anonymous data using our enhanced utility
+              await transferAnonymousDataToUser(data.user.id);
+              
+              // Create or update user profile
+              try {
+                const profileResponse = await fetch('/api/auth/create-profile', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${data.session?.access_token || ''}`
+                  },
+                  body: JSON.stringify({
+                    displayName: data.user.email?.split('@')[0] || 'User',
+                    anonymousId: localStorage.getItem('zenjin_anonymous_id') || null
+                  })
+                });
+                
+                if (!profileResponse.ok) {
+                  console.error('Failed to create/update user profile');
+                } else {
+                  console.log('User profile created/updated successfully');
+                }
+              } catch (profileError) {
+                console.error('Error creating user profile:', profileError);
+              }
+              
+              // Clean up anonymous data after successful transfer
+              cleanupAnonymousData();
+            } catch (transferError) {
+              console.error('Error during data transfer:', transferError);
             }
           }
           
@@ -247,6 +311,13 @@ export default function LoginCallback() {
   
   return (
     <div className="min-h-screen flex items-center justify-center dashboard-bg">
+      {/* Add the migration component to handle data transfer */}
+      <AnonymousToAuthMigration 
+        showStatus={true}
+        onComplete={() => console.log('Migration complete in callback page')}
+        onError={(err) => console.error('Migration error in callback page:', err)}
+      />
+      
       <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 max-w-md w-full mx-auto text-center shadow-xl">
         <h1 className="text-2xl font-bold text-white mb-4">{status}</h1>
         

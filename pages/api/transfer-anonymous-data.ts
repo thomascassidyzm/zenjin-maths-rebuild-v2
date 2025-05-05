@@ -24,11 +24,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
     
-    console.log(`API: Transferring anonymous data to user ${userId}`);
-    
     // Create a Supabase client
     const supabase = createRouteHandlerClient(req, res);
     const adminClient = createAdminClient();
+    
+    // Get authenticated user session
+    const { data: { session } } = await supabase.auth.getSession();
+    const authenticatedUserId = session?.user?.id;
+    
+    // Security check: For non-diagnostic users, ensure they can only transfer data to their own account
+    const isDiagnosticUser = userId.toString().startsWith('diag-');
+    
+    if (!isDiagnosticUser && authenticatedUserId && userId !== authenticatedUserId) {
+      return res.status(403).json({
+        success: false,
+        error: 'You can only transfer data to your own account'
+      });
+    }
+    
+    console.log(`API: Transferring anonymous data to user ${userId}`)
     
     // Validate the user exists
     const { data: userData, error: userError } = await supabase
@@ -299,19 +313,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.error('Exception setting user tier:', e);
     }
     
+    // Call the user-stitches API to ensure everything is properly initialized
+    try {
+      await fetch(`${req.headers.origin}/api/user-stitches?userId=${userId}&prefetch=5`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+    } catch (apiError) {
+      console.error('API: Error calling user-stitches for validation:', apiError);
+      // Continue anyway, this is just for extra validation
+    }
+
     return res.status(200).json({ 
       success: true, 
       message: 'Anonymous data transferred successfully',
       recordsTransferred: progressRecords.length,
       tier: 'free',
-      accessibleThreads: freeUserProfile.hasAccessToThreads
+      accessibleThreads: freeUserProfile.hasAccessToThreads,
+      userId: userId
     });
     
   } catch (error) {
     console.error('Error transferring anonymous data:', error);
     return res.status(500).json({ 
       success: false, 
-      error: 'Internal server error during data transfer' 
+      error: 'Internal server error during data transfer',
+      details: error instanceof Error ? error.message : String(error)
     });
   }
 }
