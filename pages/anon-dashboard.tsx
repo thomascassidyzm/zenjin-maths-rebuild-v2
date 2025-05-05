@@ -180,6 +180,12 @@ export default function AnonDashboard() {
             <div className="w-3 h-3 mr-1.5 rounded-full bg-blue-500"></div>
             <span className="text-blue-300 font-medium">Free Tier</span>
           </div>
+          
+          {/* Migration info badge */}
+          <div className="ml-3 inline-flex items-center rounded-full bg-emerald-600/20 text-sm py-1 px-3">
+            <div className="w-3 h-3 mr-1.5 rounded-full bg-emerald-500"></div>
+            <span className="text-emerald-300 font-medium">Savable Progress</span>
+          </div>
         </div>
         
         <div className="flex items-center gap-2">
@@ -200,21 +206,37 @@ export default function AnonDashboard() {
         {/* Progress warning banner - Simplified to remove duplicate button */}
         <div className="bg-amber-500/20 border border-amber-300/30 rounded-xl p-4 mb-6">
           <h2 className="text-amber-300 font-semibold text-lg mb-1">Anonymous Mode</h2>
-          <p className="text-white/80 mb-3">
-            Your learning journey is saved on this device. 
-            Create a free account anytime to save your progress across all devices.
-          </p>
-          {isAuthenticated && (
-            <button
-              onClick={() => {
-                localStorage.removeItem('anonymousId');
-                router.push('/dashboard');
-              }} 
-              className="inline-block px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg transition-colors"
-            >
-              Switch to My Account
-            </button>
-          )}
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <p className="text-white/80 mb-2">
+                Your learning journey is saved on this device. 
+                <strong className="text-white"> Create a free account to save your progress permanently across all devices.</strong>
+              </p>
+              <p className="text-emerald-300 text-sm">
+                ✓ All your points, progress and achievements will transfer automatically to your new account!
+              </p>
+            </div>
+            <div className="md:w-1/3 flex items-center">
+              {isAuthenticated ? (
+                <button
+                  onClick={() => {
+                    localStorage.removeItem('anonymousId');
+                    router.push('/dashboard');
+                  }} 
+                  className="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg transition-colors"
+                >
+                  Switch to My Account
+                </button>
+              ) : (
+                <button
+                  onClick={() => router.push('/signin?mode=signup')} 
+                  className="w-full px-4 py-3 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-white font-medium rounded-lg transition-colors"
+                >
+                  Create Free Account
+                </button>
+              )}
+            </div>
+          </div>
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

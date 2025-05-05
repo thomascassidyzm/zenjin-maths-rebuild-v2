@@ -127,7 +127,46 @@ export const getAnonymousProgressData = (anonymousId?: string): any => {
   // Get progress data
   const progressData = localStorage.getItem(`progressData_${id}`);
   
-  return progressData ? JSON.parse(progressData) : null;
+  // Try to parse the progress data
+  let parsedData = null;
+  try {
+    parsedData = progressData ? JSON.parse(progressData) : null;
+  } catch (e) {
+    console.error('Error parsing anonymous progress data:', e);
+    return null;
+  }
+  
+  // Check for legacy format (with zenjin_anonymous_progress)
+  if (!parsedData) {
+    try {
+      const legacyData = localStorage.getItem('zenjin_anonymous_progress');
+      if (legacyData) {
+        console.log('Found legacy anonymous progress data format');
+        parsedData = JSON.parse(legacyData);
+      }
+    } catch (e) {
+      console.error('Error parsing legacy anonymous progress data:', e);
+    }
+  }
+  
+  // Ensure it has the expected shape
+  if (parsedData) {
+    // Add default values for any missing properties
+    return {
+      totalPoints: parsedData.totalPoints || 0,
+      blinkSpeed: parsedData.blinkSpeed || 2.5,
+      blinkSpeedTrend: parsedData.blinkSpeedTrend || 'steady',
+      evolution: parsedData.evolution || {
+        currentLevel: 'Mind Spark',
+        levelNumber: 1,
+        progress: 0,
+        nextLevel: 'Thought Weaver'
+      },
+      lastSessionDate: parsedData.lastSessionDate || new Date().toISOString()
+    };
+  }
+  
+  return null;
 };
 
 /**

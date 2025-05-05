@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '../context/AuthContext';
 import BackgroundBubbles from '../components/BackgroundBubbles';
+import AnonymousToAuthMigration from '../components/auth/AnonymousToAuthMigration';
 
 /**
  * SignIn Page
@@ -31,17 +32,42 @@ export default function SignIn() {
   // Get redirect path from query params or default to the minimal player for anonymous users
   const redirectPath = router.query.redirect as string || '/minimal-player?mode=anonymous';
   
+  // State for migration
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [migrationComplete, setMigrationComplete] = useState(false);
+  
+  // Check if anonymous data exists
+  const hasAnonymousData = typeof window !== 'undefined' && Boolean(localStorage.getItem('anonymousId'));
+  
   // Redirect if already authenticated
   useEffect(() => {
     if (!loading && isAuthenticated) {
       // Clean up new user flag if present
       if (localStorage.getItem('zenjin_is_new_user') === 'true') {
         localStorage.removeItem('zenjin_is_new_user');
+        
+        // Check if we have anonymous data to migrate
+        if (hasAnonymousData) {
+          setIsMigrating(true);
+          // Delay redirect to allow time for migration
+          return;
+        }
       }
+      
       // Redirect to minimal player by default unless a specific redirect is provided
-      router.replace(redirectPath);
+      if (!isMigrating || migrationComplete) {
+        router.replace(redirectPath);
+      }
     }
-  }, [isAuthenticated, loading, router, redirectPath]);
+  }, [isAuthenticated, loading, router, redirectPath, hasAnonymousData, isMigrating, migrationComplete]);
+  
+  // Handle migration completion
+  const handleMigrationComplete = (results) => {
+    console.log('Migration completed with results:', results);
+    setMigrationComplete(true);
+    // Redirect after successful migration
+    router.replace(redirectPath);
+  };
   
   // Handle OTP request
   const handleOtpRequest = async (e: React.FormEvent) => {
@@ -189,11 +215,21 @@ export default function SignIn() {
     setEmailSent(false);
   };
   
-  // Show loading state while checking auth
-  if (loading) {
+  // Show loading state while checking auth or migrating
+  if (loading || (isMigrating && !migrationComplete)) {
     return (
-      <div className="min-h-screen flex items-center justify-center dashboard-bg">
-        <div className="animate-spin h-12 w-12 border-4 border-t-teal-500 border-teal-200 rounded-full"></div>
+      <div className="min-h-screen flex flex-col items-center justify-center dashboard-bg">
+        <div className="animate-spin h-12 w-12 border-4 border-t-teal-500 border-teal-200 rounded-full mb-4"></div>
+        
+        {isMigrating && (
+          <div className="text-white text-lg mt-4">
+            Migrating your progress data...
+            <AnonymousToAuthMigration 
+              showStatus={true}
+              onComplete={handleMigrationComplete}
+            />
+          </div>
+        )}
       </div>
     );
   }
@@ -208,6 +244,9 @@ export default function SignIn() {
       
       {/* Background bubbles like in the player */}
       <BackgroundBubbles />
+      
+      {/* Add the hidden migration component to handle the migration on successful authentication */}
+      <AnonymousToAuthMigration onComplete={handleMigrationComplete} />
       
       {/* Simple header with back button */}
       <header className="py-4 px-6 relative z-10 flex justify-between items-center">

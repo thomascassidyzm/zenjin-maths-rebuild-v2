@@ -93,7 +93,10 @@ const AnonymousUpgradePrompt: React.FC<AnonymousUpgradePromptProps> = ({
         <div className="mb-5 text-white/90">
           <p>
             You've earned <span className="font-bold text-yellow-300">{formattedPoints} points</span>. 
-            Create an account to save progress and access more content.
+            Create an account to <span className="text-teal-300 font-semibold">save your progress permanently</span> and access more content.
+          </p>
+          <p className="mt-2 bg-indigo-900/30 px-3 py-2 rounded-md border border-indigo-400/20 text-sm">
+            <span className="text-indigo-300">✓</span> Your anonymous progress, including points and level will be automatically transferred to your new account
           </p>
         </div>
         
