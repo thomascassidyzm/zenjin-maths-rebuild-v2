@@ -56,7 +56,7 @@ const LoadingMessage = ({ isAnonymous }: { isAnonymous: boolean }) => {
  */
 export default function MinimalPlayer() {
   const router = useRouter();
-  const { mode, force, resetPoints, dev } = router.query;
+  const { mode, force, resetPoints, dev, continue: shouldContinue } = router.query;
   const { user, isAuthenticated, signOut } = useAuth();
   const { isSubscribed, tier } = useSubscriptionStatus();
   
@@ -66,6 +66,9 @@ export default function MinimalPlayer() {
   
   // Check if we should reset points but maintain stitch progress
   const shouldResetPoints = resetPoints === 'true';
+  
+  // Check if we should continue from previous state (important for "Continue Playing" button)
+  const continuePreviousState = shouldContinue === 'true';
   
   // Check if dev mode is enabled
   const showDevTools = dev === 'true';
@@ -86,6 +89,7 @@ export default function MinimalPlayer() {
   const player = useTripleHelixPlayer({ 
     mode: playerMode,
     resetPoints: shouldResetPoints, // Reset points but maintain stitch progress
+    continuePreviousState: continuePreviousState, // Continue from previous state (for Continue Playing button)
     debug: console.log 
   });
 

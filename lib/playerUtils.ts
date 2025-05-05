@@ -10,6 +10,7 @@ const StateMachineTubeCyclerAdapter = require('./adapters/StateMachineTubeCycler
 export function useTripleHelixPlayer({ 
   mode = 'default',
   resetPoints = false, // Reset points but maintain stitch progress
+  continuePreviousState = false, // Continue from previous state (used by "Continue Playing" button)
   debug = (message: string) => { console.log(message); }
 }) {
   const router = useRouter();
@@ -81,28 +82,61 @@ export function useTripleHelixPlayer({
         const savedState = localStorage.getItem('zenjin_anonymous_state');
         if (savedState) {
           const parsedState = JSON.parse(savedState);
-          // Check for accumulatedSessionData in the stored state
-          if (parsedState.state && parsedState.state.accumulatedSessionData) {
-            // Use all accumulated stats from localStorage
-            const accData = parsedState.state.accumulatedSessionData;
-            return {
-              totalPoints: parsedState.totalPoints || accData.totalPoints || 0,
-              correctAnswers: accData.correctAnswers || 0,
-              firstTimeCorrect: accData.firstTimeCorrect || 0,
-              totalQuestions: accData.totalQuestions || 0,
-              totalAttempts: accData.totalAttempts || 0,
-              stitchesCompleted: accData.stitchesCompleted || 0
-            };
-          } else {
-            // Fallback to just using totalPoints if no accumulated data
-            return {
-              totalPoints: parsedState.totalPoints || 0,
-              correctAnswers: 0,
-              firstTimeCorrect: 0,
-              totalQuestions: 0,
-              totalAttempts: 0,
-              stitchesCompleted: 0
-            };
+          
+          // If continuePreviousState is true, we MUST use the saved data to ensure
+          // the Continue Playing button works correctly
+          if (continuePreviousState) {
+            debug('Using saved state for accumulatedSessionData because continuePreviousState=true');
+            
+            // Check for accumulatedSessionData in the stored state
+            if (parsedState.state && parsedState.state.accumulatedSessionData) {
+              // Use all accumulated stats from localStorage
+              const accData = parsedState.state.accumulatedSessionData;
+              return {
+                totalPoints: parsedState.totalPoints || accData.totalPoints || 0,
+                correctAnswers: accData.correctAnswers || 0,
+                firstTimeCorrect: accData.firstTimeCorrect || 0,
+                totalQuestions: accData.totalQuestions || 0,
+                totalAttempts: accData.totalAttempts || 0,
+                stitchesCompleted: accData.stitchesCompleted || 0
+              };
+            } else {
+              // Fallback to just using totalPoints if no accumulated data
+              return {
+                totalPoints: parsedState.totalPoints || 0,
+                correctAnswers: 0,
+                firstTimeCorrect: 0,
+                totalQuestions: 0,
+                totalAttempts: 0,
+                stitchesCompleted: 0
+              };
+            }
+          } 
+          // If not continuing, just look for accumulatedSessionData
+          else {
+            // Check for accumulatedSessionData in the stored state
+            if (parsedState.state && parsedState.state.accumulatedSessionData) {
+              // Use all accumulated stats from localStorage
+              const accData = parsedState.state.accumulatedSessionData;
+              return {
+                totalPoints: parsedState.totalPoints || accData.totalPoints || 0,
+                correctAnswers: accData.correctAnswers || 0,
+                firstTimeCorrect: accData.firstTimeCorrect || 0,
+                totalQuestions: accData.totalQuestions || 0,
+                totalAttempts: accData.totalAttempts || 0,
+                stitchesCompleted: accData.stitchesCompleted || 0
+              };
+            } else {
+              // Fallback to just using totalPoints if no accumulated data
+              return {
+                totalPoints: parsedState.totalPoints || 0,
+                correctAnswers: 0,
+                firstTimeCorrect: 0,
+                totalQuestions: 0,
+                totalAttempts: 0,
+                stitchesCompleted: 0
+              };
+            }
           }
         }
       } catch (error) {
@@ -681,36 +715,104 @@ export function useTripleHelixPlayer({
           let usePreEmbeddedData = true;
           
           if (typeof window !== 'undefined') {
-            // Try to get data from localStorage first
-            const cachedData = localStorage.getItem('anonymous_initial_stitch');
-            
-            if (cachedData) {
-              try {
-                const parsedData = JSON.parse(cachedData);
-                
-                // Use cached data if it exists and appears valid
-                if (parsedData && parsedData.success) {
-                  data = parsedData;
-                  usePreEmbeddedData = false;
-                  debug('Using cached stitch data from localStorage for anonymous user');
+            // IMPORTANT: If continuePreviousState is true, try to use the full state from zenjin_anonymous_state first
+            if (continuePreviousState) {
+              const userStateData = localStorage.getItem('zenjin_anonymous_state');
+              if (userStateData) {
+                try {
+                  const parsedState = JSON.parse(userStateData);
+                  if (parsedState && parsedState.state) {
+                    debug('Found user state data in localStorage and continuePreviousState is true - using this state directly');
+                    // For continue mode, build the data structure needed from the anonymous state
+                    
+                    // Initialize success flag
+                    data = { success: true, data: [], tubePosition: { tubeNumber: 1, threadId: "" } };
+                    
+                    // Extract tube and thread information from state
+                    if (parsedState.state.activeTubeNumber) {
+                      data.tubePosition.tubeNumber = parsedState.state.activeTubeNumber;
+                    }
+                    
+                    // Convert state tubes to data structure
+                    if (parsedState.state.tubes) {
+                      Object.entries(parsedState.state.tubes).forEach(([tubeNumber, tubeData]) => {
+                        const tube = tubeData as any;
+                        if (tube && tube.threadId && tube.stitches && tube.stitches.length > 0) {
+                          // Set threadId in tubePosition for active tube
+                          if (parseInt(tubeNumber) === data.tubePosition.tubeNumber) {
+                            data.tubePosition.threadId = tube.threadId;
+                          }
+                          
+                          // Add thread data
+                          data.data.push({
+                            thread_id: tube.threadId,
+                            stitches: tube.stitches.map((stitch: any) => ({
+                              id: stitch.id,
+                              thread_id: tube.threadId,
+                              content: stitch.content || `Content for stitch ${stitch.id}`,
+                              description: stitch.title || `Stitch ${stitch.id}`,
+                              order_number: stitch.position || 0,
+                              skip_number: stitch.skipNumber || 3,
+                              distractor_level: stitch.distractorLevel || 'L1',
+                              questions: stitch.questions || []
+                            })),
+                            orderMap: tube.stitches.map((stitch: any) => ({
+                              stitch_id: stitch.id,
+                              order_number: stitch.position || 0
+                            }))
+                          });
+                        }
+                      });
+                    }
+                    
+                    // If we successfully created the data structure, skip pre-embedded data
+                    if (data.data.length > 0) {
+                      usePreEmbeddedData = false;
+                      debug('Successfully converted anonymous state to usable data structure for continuation');
+                    } else {
+                      debug('Anonymous state did not contain enough data to continue, falling back to standard loading');
+                    }
+                  }
+                } catch (e) {
+                  console.error('Error parsing anonymous state for continuation:', e);
+                  // Will fall back to standard anonymous loading
                 }
-              } catch (e) {
-                console.error('Error parsing cached initial stitch:', e);
-                // Will fall back to pre-embedded data
               }
             }
             
-            // Check for user state in localStorage which may have positions stored
-            const userStateData = localStorage.getItem('zenjin_anonymous_state');
-            if (userStateData && !data) {
-              try {
-                const parsedState = JSON.parse(userStateData);
-                if (parsedState && parsedState.state) {
-                  debug('Found user state data in localStorage, will use for initial load');
-                  // We still use pre-embedded data but will apply positions from state later
+            // If we didn't use the anonymous state or there was an error, try simpler cached data
+            if (usePreEmbeddedData) {
+              // Try to get data from localStorage first
+              const cachedData = localStorage.getItem('anonymous_initial_stitch');
+              
+              if (cachedData) {
+                try {
+                  const parsedData = JSON.parse(cachedData);
+                  
+                  // Use cached data if it exists and appears valid
+                  if (parsedData && parsedData.success) {
+                    data = parsedData;
+                    usePreEmbeddedData = false;
+                    debug('Using cached stitch data from localStorage for anonymous user');
+                  }
+                } catch (e) {
+                  console.error('Error parsing cached initial stitch:', e);
+                  // Will fall back to pre-embedded data
                 }
-              } catch (e) {
-                console.error('Error parsing anonymous state:', e);
+              }
+              
+              // Also check for user state in localStorage which may have positions stored
+              const userStateData = localStorage.getItem('zenjin_anonymous_state');
+              if (userStateData && !data) {
+                try {
+                  const parsedState = JSON.parse(userStateData);
+                  if (parsedState && parsedState.state) {
+                    debug('Found user state data in localStorage, will use for initial load');
+                    // We still use pre-embedded data but will apply positions from state later
+                  }
+                } catch (e) {
+                  console.error('Error parsing anonymous state:', e);
+                }
               }
             }
           }
