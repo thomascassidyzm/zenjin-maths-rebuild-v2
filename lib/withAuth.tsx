@@ -18,7 +18,7 @@ export default function withAuth(Component: any, options: { requireAuth: boolean
       if (options.requireAuth && !isAuthenticated && !loading) {
         // Redirect to the new login page with return URL
         router.push({
-          pathname: '/account/login',
+          pathname: '/signin',
           query: { returnUrl: router.asPath }
         });
       }

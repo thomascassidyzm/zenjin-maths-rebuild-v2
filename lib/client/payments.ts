@@ -142,8 +142,8 @@ export async function cancelSubscription(): Promise<any> {
  */
 export async function subscribeToPlay(
   plan: SubscriptionPlan,
-  successUrl: string = `${window.location.origin}/subscription/success`,
-  cancelUrl: string = `${window.location.origin}/subscription/canceled`
+  successUrl: string = `/subscription/success`,
+  cancelUrl: string = `/subscription/canceled`
 ): Promise<void> {
   try {
     // Try to create checkout directly, this will fail if user has no customer ID

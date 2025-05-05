@@ -243,11 +243,6 @@ export async function signInWithEmail(email: string, password?: string) {
       return { success: true, user: data.user, session: data.session };
     }
     
-    // Get origin for proper redirect
-    const origin = typeof window !== 'undefined' 
-      ? window.location.origin 
-      : process.env.NEXT_PUBLIC_SITE_URL;
-    
     // Store email in localStorage consistently
     if (typeof window !== 'undefined') {
       localStorage.setItem('auth_email', cleanEmail);
@@ -265,8 +260,8 @@ export async function signInWithEmail(email: string, password?: string) {
       email: cleanEmail,
       options: {
         shouldCreateUser: true,
-        // Provide a valid redirect URL for security requirements
-        emailRedirectTo: `${origin}/api/auth/callback`,
+        // Use relative URL for callback to avoid cross-domain issues
+        emailRedirectTo: `/api/auth/callback`,
       }
     });
     

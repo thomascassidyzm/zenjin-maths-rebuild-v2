@@ -148,13 +148,12 @@ export function useSubscription(options: UseSubscriptionOptions = {}) {
    * Subscribe to premium plan
    */
   const subscribe = useCallback(async () => {
-    // Get current URL components for redirect
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    // Get current path components for redirect
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/subscribe';
     
-    // Use provided URLs or construct defaults
-    const successUrl = propSuccessUrl || `${origin}${currentPath}?success=true`;
-    const cancelUrl = propCancelUrl || `${origin}${currentPath}?canceled=true`;
+    // Use provided URLs or construct defaults with relative paths
+    const successUrl = propSuccessUrl || `${currentPath}?success=true`;
+    const cancelUrl = propCancelUrl || `${currentPath}?canceled=true`;
     
     try {
       setState(prev => ({ ...prev, isProcessing: true, error: null }));

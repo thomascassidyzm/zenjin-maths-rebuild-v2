@@ -16,7 +16,7 @@ function TubeSimulator() {
         // to ensure it's a full page load (not a Next.js client-side navigation)
         window.location.href = '/tube-simulator.html';
       } else {
-        router.push('/account/login');
+        router.push('/signin');
       }
     }
   }, [isAuthenticated, loading, router]);

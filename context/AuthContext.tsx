@@ -709,10 +709,8 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         options: {
           // Create user if they don't exist
           shouldCreateUser: true,
-          // Redirect after email click (for magic link option)
-          emailRedirectTo: typeof window !== 'undefined' 
-            ? `${window.location.origin}/login-callback` 
-            : undefined,
+          // Use relative URL for callback to avoid cross-domain issues
+          emailRedirectTo: `/login-callback`,
         }
       });
       

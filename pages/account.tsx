@@ -662,8 +662,8 @@ export default function Account() {
               
               <div className="mb-4">
                 <SubscriptionManager 
-                  redirectToSuccess={`${typeof window !== 'undefined' ? window.location.origin : ''}/account`}
-                  redirectToCancel={`${typeof window !== 'undefined' ? window.location.origin : ''}/account`}
+                  redirectToSuccess="/account"
+                  redirectToCancel="/account"
                 />
               </div>
             </div>

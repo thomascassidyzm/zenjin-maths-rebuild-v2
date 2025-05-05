@@ -55,8 +55,8 @@ const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({
       setError(null);
       await subscribeToPlay(
         plan,
-        redirectToSuccess || `${window.location.origin}/subscription/success`,
-        redirectToCancel || `${window.location.origin}/subscription/canceled`
+        redirectToSuccess || `/subscription/success`,
+        redirectToCancel || `/subscription/canceled`
       );
     } catch (err: any) {
       setError(err.message || 'Failed to start subscription process');
