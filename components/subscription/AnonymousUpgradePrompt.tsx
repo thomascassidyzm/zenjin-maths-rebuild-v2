@@ -7,6 +7,7 @@
  */
 import React from 'react';
 import { useRouter } from 'next/router';
+import { startFreshAnonymousSession } from '../../lib/anonymousData';
 
 interface AnonymousUpgradePromptProps {
   /**
@@ -109,6 +110,18 @@ const AnonymousUpgradePrompt: React.FC<AnonymousUpgradePromptProps> = ({
             className="py-3 bg-white/10 hover:bg-white/20 text-white font-medium rounded-lg transition-colors border border-white/20"
           >
             View Premium Plans
+          </button>
+          
+          <button 
+            onClick={() => {
+              // Start a completely fresh anonymous session
+              startFreshAnonymousSession();
+              // Reload the page to show the reset state
+              window.location.href = '/anon-dashboard?reset=true';
+            }}
+            className="py-3 bg-red-800/30 hover:bg-red-700/30 text-white font-medium rounded-lg transition-colors border border-red-500/30 text-sm"
+          >
+            Start Fresh Session
           </button>
         </div>
       </div>

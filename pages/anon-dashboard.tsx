@@ -263,29 +263,7 @@ export default function AnonDashboard() {
               onSignUp={() => router.push('/signin?mode=signup')}
             />
             
-            {/* Quick actions */}
-            <div className="rounded-xl border border-white/20 bg-white/10 p-4">
-              <div className="space-y-2">
-                <Link 
-                  href="/subscribe" 
-                  className="w-full block py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium rounded-lg transition-colors text-center"
-                >
-                  View Premium Plans
-                </Link>
-                
-                <button 
-                  onClick={() => {
-                    // Start a completely fresh anonymous session
-                    startFreshAnonymousSession();
-                    // Reload the page to show the reset state
-                    window.location.href = '/anon-dashboard?reset=true';
-                  }}
-                  className="w-full block py-2 bg-red-800/30 hover:bg-red-700/30 text-white font-medium rounded-lg transition-colors text-center border border-red-500/30 text-sm"
-                >
-                  Start Fresh Session
-                </button>
-              </div>
-            </div>
+{/* Removed redundant Quick actions card as it duplicated functionality already in the AnonymousUpgradePrompt component */}
           </div>
         </div>
       </div>
