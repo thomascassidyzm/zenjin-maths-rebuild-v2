@@ -182,14 +182,38 @@ export async function callAuthenticatedApi(
 ): Promise<Response> {
   const enhancedOptions = withAuthHeaders(options);
   
+  // Ensure endpoint uses relative paths to avoid service worker URL transformation issues
+  let apiEndpoint = endpoint;
+  
+  // If the endpoint starts with http or https, make it relative
+  if (apiEndpoint.startsWith('http')) {
+    try {
+      const url = new URL(apiEndpoint);
+      // Only modify our own domain URLs
+      if (url.hostname === 'maths.zenjin.cymru' || 
+          url.hostname === 'zenjin-maths-v1-zenjin.vercel.app') {
+        // Convert to relative URL
+        apiEndpoint = url.pathname + url.search;
+        console.log(`AuthUtils: Converted absolute URL to relative: ${apiEndpoint}`);
+      }
+    } catch (e) {
+      console.error('AuthUtils: Error parsing URL:', e);
+    }
+  }
+  
   // Log the API call for debugging
-  console.log(`AuthUtils: Calling authenticated API ${endpoint}`);
+  console.log(`AuthUtils: Calling authenticated API ${apiEndpoint}`);
   
   try {
-    const response = await fetch(endpoint, enhancedOptions);
+    // Add a cache-busting parameter to avoid service worker caching
+    const cacheBuster = `_cb=${Date.now()}`;
+    const separator = apiEndpoint.includes('?') ? '&' : '?';
+    const urlWithCacheBuster = `${apiEndpoint}${separator}${cacheBuster}`;
+    
+    const response = await fetch(urlWithCacheBuster, enhancedOptions);
     
     if (!response.ok) {
-      console.error(`AuthUtils: API call to ${endpoint} failed with status ${response.status}`);
+      console.error(`AuthUtils: API call to ${apiEndpoint} failed with status ${response.status}`);
       
       // Attempt to get error details
       try {
@@ -203,7 +227,7 @@ export async function callAuthenticatedApi(
     
     return response;
   } catch (error) {
-    console.error(`AuthUtils: Exception calling API ${endpoint}:`, error);
+    console.error(`AuthUtils: Exception calling API ${apiEndpoint}:`, error);
     throw error;
   }
 }

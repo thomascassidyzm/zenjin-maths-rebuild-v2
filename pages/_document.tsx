@@ -18,6 +18,9 @@ export default function Document() {
       <body>
         <Main />
         <NextScript />
+        
+        {/* Unregister service worker to fix API URL issues */}
+        <script src="/unregister-sw.js"></script>
       </body>
     </Html>
   );

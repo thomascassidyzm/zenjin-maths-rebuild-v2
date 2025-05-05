@@ -5,7 +5,10 @@
  * the registration lifecycle. It should be included in the main application.
  */
 
-// Register the service worker
+// Temporarily disabled service worker to resolve domain issues
+console.log('Service worker registration temporarily disabled to fix API URL issues');
+
+/* DISABLED FOR TESTING
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     // Check for existing service workers but don't automatically unregister them
