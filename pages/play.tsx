@@ -18,9 +18,13 @@ export default function Play() {
   const { isAuthenticated, loading, user, signOut } = useAuth();
   const router = useRouter();
 
+  // Check if we should continue from previous state
+  const continuePreviousState = router.query.continue === 'true';
+
   // Use the shared player hook
   const player = useTripleHelixPlayer({ 
-    debug: console.log 
+    debug: console.log,
+    continuePreviousState // Pass the parameter to the hook
   });
 
   // Check authentication

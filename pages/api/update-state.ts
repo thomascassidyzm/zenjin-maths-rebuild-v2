@@ -1,6 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
-import { createRouteHandlerClient } from '../../lib/supabase/route';
+import { createRouteHandlerClient, createAdminClient } from '../../lib/supabase/route';
 
 /**
  * Update state API endpoint - Enhanced Version
@@ -15,6 +14,10 @@ import { createRouteHandlerClient } from '../../lib/supabase/route';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Check if debug mode is enabled via query param
   const isDebug = req.query.debug === 'true' || process.env.NODE_ENV === 'development';
+  
+  // Enhanced logging for debugging state persistence issues
+  console.log(`API: update-state called - method: ${req.method}, debug: ${isDebug}`);
+  console.log(`API: update-state request URL: ${req.url}`);
   
   try {
     // Only allow POST requests
@@ -37,11 +40,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Create Supabase client with proper auth context
     const supabase = createRouteHandlerClient(req, res);
     
-    // Create a direct admin client to use when auth fails
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ggwoupzaruiaaliylxga.supabase.co',
-      process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdnd291cHphcnVpYWFsaXlseGdhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MTkxNzM0MCwiZXhwIjoyMDU3NDkzMzQwfQ.3bvfZGkTc9nVtf1I7A0TwYy9pMFudJTrp974RZIwrq0'
-    );
+    // Create admin client for bypassing RLS
+    const supabaseAdmin = createAdminClient();
     
     // Get authenticated user
     const { data: { session } } = await supabase.auth.getSession();
@@ -189,7 +189,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             completed_at: c.timestamp ? new Date(c.timestamp).toISOString() : new Date().toISOString()
           }));
           
-          const { error: completionError } = await supabase
+          const { error: completionError } = await supabaseAdmin
             .from('stitch_completions')
             .insert(completionRecords);
             
@@ -222,7 +222,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               
               if (tubeNumber) {
                 // Upsert to tube_position table
-                const { error: positionError } = await supabase
+                const { error: positionError } = await supabaseAdmin
                   .from('user_tube_position')
                   .upsert({
                     user_id: userId,
@@ -280,15 +280,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
         
         // Upsert the user state
-        const { error: stateError } = await supabaseAdmin
+        console.log(`API: Attempting to upsert user state for userId: ${userId}`);
+        console.log(`API: State structure contains keys: ${Object.keys(updatedState).join(', ')}`);
+        
+        const { data: upsertData, error: stateError } = await supabaseAdmin
           .from('user_state')
           .upsert({
             user_id: userId,
             state: updatedState
-          });
+          })
+          .select();
           
-        if (stateError && isDebug) {
-          console.error('Error updating user state:', stateError);
+        if (stateError) {
+          console.error('ERROR in update-state: Failed to update user state:', stateError);
+          console.error('ERROR in update-state: Error code:', stateError.code);
+          console.error('ERROR in update-state: Error details:', stateError.details);
+          console.error('ERROR in update-state: Error hint:', stateError.hint);
+        } else {
+          console.log(`API: Successfully updated user state for userId: ${userId}`);
+          if (isDebug && upsertData) {
+            console.log(`API: Upsert response data:`, upsertData);
+          }
         }
         
         // Return success

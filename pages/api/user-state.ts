@@ -14,6 +14,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // Enable debug mode for troubleshooting
   const isDebug = req.query.debug === 'true';
   
+  // Enhanced logging for debugging state persistence issues
+  console.log(`API: user-state called - method: ${req.method}, debug: ${isDebug}`);
+  console.log(`API: user-state request URL: ${req.url}`);
+  
   try {
     // Create supabase clients
     const supabase = createRouteHandlerClient(req, res);
@@ -56,6 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
       
       // Get user state based on effective user ID
+      console.log(`API: Retrieving user state for effectiveUserId: ${effectiveUserId}`);
       return getUserState(effectiveUserId as string, supabaseAdmin, res, isDebug);
     }
     
@@ -129,7 +134,9 @@ async function getUserState(userId: string, supabase: any, res: NextApiResponse,
     // Get user state
     let data;
     try {
-      const { data: stateData, error } = await supabase
+      console.log(`API: Querying database for user state - userId: ${userId}`);
+      
+      const { data: stateData, error } = await supabaseAdmin
         .from('user_state')
         .select('state, last_updated')
         .eq('user_id', userId)
@@ -138,10 +145,19 @@ async function getUserState(userId: string, supabase: any, res: NextApiResponse,
         .maybeSingle();
         
       if (error) {
-        console.error(`Error retrieving state for user ${userId}:`, error);
+        console.error(`ERROR in user-state: Error retrieving state for user ${userId}:`, error);
+        console.error('ERROR in user-state: Error code:', error.code);
+        console.error('ERROR in user-state: Error details:', error.details);
+        console.error('ERROR in user-state: Error hint:', error.hint);
         // Don't fail - just use default state
         data = null;
       } else {
+        if (stateData) {
+          console.log(`API: Successfully retrieved state for user ${userId} - last updated: ${stateData.last_updated}`);
+          console.log(`API: State contains keys:`, Object.keys(stateData.state || {}).join(', '));
+        } else {
+          console.log(`API: No existing state found for user ${userId}`);
+        }
         data = stateData;
       }
     } catch (queryError) {
@@ -156,7 +172,7 @@ async function getUserState(userId: string, supabase: any, res: NextApiResponse,
       
       // Store the default state in the database for future use
       try {
-        const { error: saveError } = await supabase
+        const { error: saveError } = await supabaseAdmin
           .from('user_state')
           .upsert({
             user_id: userId,
@@ -268,7 +284,7 @@ async function updateUserState(state: any, supabase: any, res: NextApiResponse, 
  */
 async function ensureTableExists(supabase: any, isDebug: boolean) {
   try {
-    // Check if the table exists
+    // Check if the table exists - always use admin client for these operations
     const { error: checkError } = await supabase
       .from('user_state')
       .select('count', { count: 'exact', head: true });

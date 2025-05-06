@@ -354,7 +354,7 @@ export default function Dashboard() {
                 animate={{ opacity: 1, x: 0 }}
                 className="flex space-x-3"
               >
-                <Link href="/play" passHref legacyBehavior>
+                <Link href="/play?continue=true" passHref legacyBehavior>
                   <a className="px-4 py-2 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 rounded-lg transition-colors flex items-center">
                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
