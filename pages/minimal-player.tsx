@@ -60,10 +60,6 @@ export default function MinimalPlayer() {
   const { user, isAuthenticated, signOut } = useAuth();
   const { isSubscribed, tier } = useSubscriptionStatus();
   
-  // Only force anonymous mode if explicitly requested AND the user isn't authenticated
-  // This ensures authenticated users always use their account, regardless of URL parameters
-  const forceAnonymous = force === 'true' && mode === 'anonymous' && !isAuthenticated;
-  
   // Check if we should reset points but maintain stitch progress
   const shouldResetPoints = resetPoints === 'true';
   
@@ -73,16 +69,15 @@ export default function MinimalPlayer() {
   // Check if dev mode is enabled
   const showDevTools = dev === 'true';
   
-  // Determine the appropriate mode - authenticated users should never use anonymous mode
-  let playerMode = 'default';
-  if (isAuthenticated) {
-    // Authenticated users always use their account
-    playerMode = 'default';
-    console.log('Using authenticated mode for logged-in user');
-  } else if (forceAnonymous || mode === 'anonymous') {
-    // Only use anonymous mode for non-authenticated users
-    playerMode = 'anonymous';
-    console.log('Using anonymous mode for non-authenticated user');
+  // We now treat all users the same way - no need for different modes
+  // Just use the userId to determine which state to load (auth or anon ID)
+  const playerMode = 'default';
+  console.log(`Using unified mode with user ID: ${user?.id || 'anonymous'}`);
+  
+  // If the user is anonymous and we have the create flag, ensure we create a proper account
+  if (!isAuthenticated && localStorage.getItem('zenjin_create_anonymous_state') === 'true') {
+    console.log('Anonymous account creation flag detected in minimal-player');
+    // Flag will be handled by _app.tsx and createAnonymousUser in anonymousData.ts
   }
   
   // Use the shared player hook with the appropriate mode

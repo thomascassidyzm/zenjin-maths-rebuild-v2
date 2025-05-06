@@ -416,13 +416,13 @@ export class StateManager {
         return null;
       }
       
-      // Check if this is an anonymous user
-      const isAnonymousUser = userId.startsWith('anonymous-');
+      // We now treat all users the same way - use unified approach
+      // Still identify anonymous users for proper ID handling in API calls
+      const isAnonymousUser = userId.startsWith('anonymous-') || userId.startsWith('anon-');
       
-      // For anonymous users, use the dedicated anonymous state endpoint
-      const endpoint = isAnonymousUser 
-        ? `/api/anonymous-state?id=${encodeURIComponent(userId)}`
-        : `/api/user-state?userId=${encodeURIComponent(userId)}`;
+      // Use the same endpoint for both anonymous and authenticated users
+      // This creates TTL accounts on the server for anonymous users
+      const endpoint = `/api/user-state?userId=${encodeURIComponent(userId)}`;
       
       // Enhanced fetch with authentication token if available
       const headers: Record<string, string> = {
@@ -581,13 +581,13 @@ export class StateManager {
     const state = this.getState();
     
     try {
-      // Check if this is an anonymous user
-      const isAnonymousUser = state.userId.startsWith('anonymous-');
+      // We now treat all users the same way - use unified approach
+      // Still identify anonymous users for proper ID handling
+      const isAnonymousUser = state.userId.startsWith('anonymous-') || state.userId.startsWith('anon-');
       
-      // Use the right endpoint based on user type
-      const endpoint = isAnonymousUser 
-        ? '/api/anonymous-state'
-        : '/api/user-state'; // Always use the user-state endpoint for authenticated users
+      // Use the same endpoint for both anonymous and authenticated users
+      // This creates TTL accounts on the server for anonymous users
+      const endpoint = '/api/user-state';
       
       // Use the Beacon API if available and page is about to unload
       if (navigator.sendBeacon && document.visibilityState === 'hidden') {
@@ -863,13 +863,13 @@ export class StateManager {
         }
       }
       
-      // Check if this is an anonymous user
-      const isAnonymousUser = state.userId.startsWith('anonymous-');
+      // We now treat all users the same way - use unified approach
+      // Still identify anonymous users for proper ID handling in API calls
+      const isAnonymousUser = state.userId.startsWith('anonymous-') || state.userId.startsWith('anon-');
       
-      // Use the right endpoint based on user type
-      const endpoint = isAnonymousUser 
-        ? '/api/anonymous-state'
-        : '/api/user-state'; // Always use user-state endpoint for authenticated users
+      // Use the same endpoint for both anonymous and authenticated users
+      // This creates TTL accounts on the server for anonymous users
+      const endpoint = '/api/user-state';
       
       console.log(`STATE MANAGER: Using endpoint ${endpoint} for user ${state.userId}`);
       

@@ -14,45 +14,18 @@ function AppStateInitializer() {
     // Register visibility and unload events for state persistence
     stateManager.registerPageEvents();
     
-    // Initialize anonymous user ID if not already present
+    // Do NOT automatically create an anonymous ID on first visit
+    // Anonymous IDs will only be created when the user explicitly clicks "Try Without Signing Up"
     if (typeof window !== 'undefined') {
-      // Generate anonymous ID on first visit
+      // Check if we have a createAnonymousState flag - if so, we're coming from "Try Without Signing Up"
+      const shouldCreateAnonymousState = localStorage.getItem('zenjin_create_anonymous_state') === 'true';
+      
+      // If we have an existing anonymous ID, log it but don't create a new one
       const existingAnonId = 
         localStorage.getItem('zenjin_anonymous_id') || 
         localStorage.getItem('anonymousId');
       
-      if (!existingAnonId) {
-        console.log('First visit detected - creating anonymous user ID');
-        const timestamp = Date.now();
-        const randomSuffix = Math.floor(Math.random() * 1000000);
-        const anonymousId = `anonymous-${timestamp}-${randomSuffix}`;
-        
-        // Store in multiple localStorage keys for backward compatibility
-        localStorage.setItem('zenjin_anonymous_id', anonymousId);
-        localStorage.setItem('anonymousId', anonymousId);
-        localStorage.setItem('zenjin_user_id', anonymousId);
-        localStorage.setItem('zenjin_auth_state', 'anonymous');
-        
-        // Initialize empty progress data
-        const progressData = {
-          totalPoints: 0,
-          blinkSpeed: 2.5,
-          blinkSpeedTrend: 'steady',
-          evolution: {
-            currentLevel: 'Mind Spark',
-            levelNumber: 1,
-            progress: 0,
-            nextLevel: 'Thought Weaver'
-          },
-          lastSessionDate: new Date().toISOString()
-        };
-        
-        // Store progress data in localStorage
-        localStorage.setItem(`progressData_${anonymousId}`, JSON.stringify(progressData));
-        localStorage.setItem('zenjin_anonymous_progress', JSON.stringify(progressData));
-        
-        console.log(`Anonymous user created with ID: ${anonymousId}`);
-      } else {
+      if (existingAnonId) {
         console.log(`Using existing anonymous ID: ${existingAnonId}`);
       }
       

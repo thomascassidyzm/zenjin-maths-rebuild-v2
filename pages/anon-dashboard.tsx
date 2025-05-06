@@ -295,7 +295,7 @@ export default function AnonDashboard() {
             {/* Continue Playing Button - Primary call to action */}
             <div className="mt-6">
               <Link 
-                href="/minimal-player?mode=anonymous&continue=true" 
+                href="/minimal-player" 
                 className="block bg-gradient-to-r from-teal-600 to-emerald-500 hover:from-teal-500 hover:to-emerald-400 text-white font-bold py-4 px-6 rounded-xl transition-colors text-lg text-center shadow-lg"
                 onClick={() => {
                   // CRITICAL FIX: Before navigation, ensure the state is properly synchronized
