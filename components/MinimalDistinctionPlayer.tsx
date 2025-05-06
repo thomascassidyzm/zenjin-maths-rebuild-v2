@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Thread, Question } from '../lib/types/distinction-learning';
 import { calculateBonuses, calculateTotalPoints, calculateBasePoints } from '../lib/bonusCalculator';
 import { BUNDLED_FULL_CONTENT } from '../lib/expanded-bundled-content';
-import { useSession } from '../lib/context/SessionContext';
 
 interface MinimalDistinctionPlayerProps {
   thread: Thread;
@@ -31,15 +30,10 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
   sessionTotalPoints = 0,
   userId,
 }) => {
-  // Get session manager from context
-  const { 
-    sessionState,
-    startSession,
-    recordQuestionResult,
-    addPoints,
-    endSession: contextEndSession,
-    completeSession: contextCompleteSession
-  } = useSession();
+  // Create fallbacks for session context functionality since we're not using the context
+  const dummySessionState = { questionResults: [], points: 0 };
+  const noopFunction = () => console.log('Session context not available');
+  const noopAsync = async () => ({ success: false, error: 'Session context not available' });
   
   // State for tracking questions and session
   const [sessionQuestions, setSessionQuestions] = useState<Question[]>([]);
@@ -127,17 +121,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       
       console.log(`Initializing with thread ${threadId}, stitch ${stitch.id}${isNewThread ? ' (NEW THREAD)' : ' (SAME THREAD)'}`);
       
-      // Initialize session in context if this is a new thread/stitch
-      if (isNewThread || !alreadyInitialized) {
-        startSession({
-          threadId: threadId,
-          stitchId: stitch.id,
-          userId: userId,
-          isActive: true,
-          points: sessionTotalPoints, // Pass in accumulated points
-          startTime: Date.now()
-        });
-      }
+      // Skip initializing session in context as it's not available
       
       // Reset state for the new thread/stitch - but keep points and session results accumulated from previous stitches
       setCurrentQuestionIndex(0);
@@ -437,8 +421,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       const pointsToAdd = !isReplayQuestion ? 3 : 1;
       setPoints(prev => prev + pointsToAdd);
       
-      // Also update points in context
-      addPoints(pointsToAdd);
+      // Skip updating points in context as it's not available
     }
     
     // Create result object
@@ -452,13 +435,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     // Update session results locally
     setSessionResults(prev => [...prev, result]);
     
-    // Also record in session context
-    recordQuestionResult({
-      id: currentQuestion.id,
-      correct,
-      timeToAnswer: answerTime,
-      firstTimeCorrect: !isReplayQuestion && correct,
-    });
+    // Skip recording in session context as it's not available
     
     // Keep the selection state visible, but not too long
     // After a delay, either move to next question or replay current
@@ -750,74 +727,30 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       saveAnonymousSessionData(basePoints, avgTime / 1000, sessionResults);
     }
     
-    // Update the context with the session complete signal
-    // This is where the actual persistence happens using our new API endpoint
-    try {
-      console.log('Using SessionContext to end session...');
-      const result = await contextEndSession({
-        threadId: thread.id,
-        stitchId: thread.stitches[0].id,
-        points: totalPoints, // Pass the total points with bonuses applied
-        blinkSpeed: avgTime / 1000,
-        stitchPositions: stitchPositions,
-        isActive: false
-      });
-      
-      console.log('SessionContext.endSession result:', result);
-      
-      // If we have a context summary, prefer it for evolution level information
-      // Otherwise fall back to our calculations
-      let evolutionLevel = Math.floor(totalPoints / 1000) + 1;
-      let evolutionProgress = (totalPoints % 1000) / 10; // 0-100
-      
-      if (result.success && result.summary) {
-        evolutionLevel = result.summary.evolutionLevel || evolutionLevel;
-        evolutionProgress = result.summary.evolutionProgress || evolutionProgress;
-      }
-      
-      // Set session summary data to show in the UI
-      setSessionSummary({
-        totalQuestions: currentSessionQuestions,
-        correctAnswers: currentSessionCorrectAnswers,
-        firstTimeCorrect: currentSessionFirstTimeCorrect,
-        basePoints,
-        blinkSpeed: avgTime / 1000,
-        bonuses,
-        multiplier,
-        totalPoints,
-        evolutionLevel,
-        evolutionProgress
-      });
-      
-      // Show the session summary UI
-      setShowSessionSummary(true);
-      setSessionSummaryStep('base');
-      
-    } catch (error) {
-      console.error('Error ending session via context:', error);
-      
-      // Create fallback summary
-      const evolutionLevel = Math.floor(totalPoints / 1000) + 1;
-      const evolutionProgress = (totalPoints % 1000) / 10; // 0-100
-      
-      // Set session summary data to show in the UI even if there was an error
-      setSessionSummary({
-        totalQuestions: currentSessionQuestions,
-        correctAnswers: currentSessionCorrectAnswers,
-        firstTimeCorrect: currentSessionFirstTimeCorrect,
-        basePoints,
-        blinkSpeed: avgTime / 1000,
-        bonuses,
-        multiplier,
-        totalPoints,
-        evolutionLevel,
-        evolutionProgress
-      });
-      
-      // Show the session summary UI anyway
-      setShowSessionSummary(true);
-      setSessionSummaryStep('base');
-    }
+    // Skip context operations since SessionContext is not available
+    console.log('SessionContext not available, using local calculations only');
+    
+    // Use local calculations for evolution
+    let evolutionLevel = Math.floor(totalPoints / 1000) + 1;
+    let evolutionProgress = (totalPoints % 1000) / 10; // 0-100
+    
+    // Set session summary data to show in the UI
+    setSessionSummary({
+      totalQuestions: currentSessionQuestions,
+      correctAnswers: currentSessionCorrectAnswers,
+      firstTimeCorrect: currentSessionFirstTimeCorrect,
+      basePoints,
+      blinkSpeed: avgTime / 1000,
+      bonuses,
+      multiplier,
+      totalPoints,
+      evolutionLevel,
+      evolutionProgress
+    });
+    
+    // Show the session summary UI
+    setShowSessionSummary(true);
+    setSessionSummaryStep('base');
     
     // For backward compatibility, we still prepare the session stats object
     // But no longer store it in the window object - will use context instead
@@ -885,21 +818,8 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       // Add navigation flag to ensure dashboard redirect
       stats.goDashboard = true;
       
-      // First ensure session is fully completed in context
-      try {
-        // Make sure the session is marked as completed in our context
-        // This is a safety check in case handleEndSession didn't complete successfully
-        const result = await completeSession({
-          isActive: false,
-          threadId: thread.id,
-          stitchId: thread.stitches[0].id
-        });
-        
-        console.log('Final session completion check via context:', result.success ? 'Success' : 'Failed');
-      } catch (error) {
-        console.error('Error in final session completion check:', error);
-        // Continue even if this fails - we'll still try to navigate
-      }
+      // Skip context completion as it's not available
+      console.log('SessionContext not available, skipping final completion check');
       
       // Handle anonymous users
       if (typeof window !== 'undefined') {
@@ -950,28 +870,16 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       onEndSession(stats);
     } else {
       // For automatic completion via context
-      try {
-        // Use context's completeSession for automatic completion
-        const result = await completeSession({
-          isActive: false,
-          threadId: thread.id,
-          stitchId: thread.stitches[0].id
-        });
-        
-        console.log('Auto completion via context:', result.success ? 'Success' : 'Failed');
-        
-        // Pass result to onComplete for backward compatibility
-        onComplete({
-          ...stats,
-          sessionId: result.success && result.summary ? `session-${Date.now()}` : `session-${Date.now()}`,
-          success: result.success,
-          goDashboard: true
-        });
-      } catch (error) {
-        console.error('Error in automatic session completion:', error);
-        // Fallback to old completeSession for backward compatibility
-        completeSession();
-      }
+      // Skip context-based session completion since context is not available
+      console.log('SessionContext not available, using direct complete method');
+      
+      // Call onComplete directly with basic stats
+      onComplete({
+        ...stats,
+        sessionId: `session-${Date.now()}`,
+        success: true,
+        goDashboard: true
+      });
     }
   };
   
