@@ -1486,25 +1486,16 @@ export function useTripleHelixPlayer({
       
       // In all cases, we want to navigate to the dashboard if "Continue to Dashboard" is clicked
       if (isAnonymous) {
-        // CRITICAL FIX: For anonymous users, make sure we properly save state before navigating
-        // First, force a state save to ensure current tube and stitch positions are recorded
+        // For anonymous users, save state to localStorage first
         persistAnonymousState();
         
-        // Double-check that state was saved properly by logging key information
-        try {
-          const savedState = localStorage.getItem('zenjin_anonymous_state');
-          if (savedState) {
-            const parsedState = JSON.parse(savedState);
-            debug(`Verified anonymous state: currentTube=${parsedState.currentTube}, currentStitch=${parsedState.currentStitch}`);
-          }
-        } catch (e) {
-          debug(`Error verifying anonymous state: ${e}`);
-        }
+        // Log the stored state info
+        debug('Anonymous user - state saved to localStorage');
         
-        // Then navigate to dashboard which will display based on localStorage
+        // Then navigate to anon-dashboard which will display based on localStorage
         // Use window.location.href instead of router.push to force a complete refresh
-        debug('Anonymous user - navigating to dashboard with full page refresh');
-        window.location.href = '/anon-dashboard';  // CRITICAL FIX: Use anon-dashboard instead of dashboard
+        debug('Anonymous user - navigating to anon-dashboard with full page refresh');
+        window.location.href = '/anon-dashboard';
       } else {
         // For logged in users, persist to server in the correct sequence
         // First save session data, then persist tube configuration
@@ -2234,38 +2225,29 @@ export function useTripleHelixPlayer({
     if (!tubeCycler || !isAnonymous) return;
     
     try {
-      // Get the current state from the tubeCycler
+      // Get the current state directly from the tubeCycler in the exact format used by StateMachine
       const stateData = tubeCycler.getState();
       
-      // CRITICAL FIX: Ensure we're capturing the current stitch position
-      // Get the current tube and stitch explicitly to ensure we have the most up-to-date values
+      // Get the current tube and stitch for logging purposes
       const currentTubeNumber = tubeCycler.getCurrentTube();
       const currentStitch = tubeCycler.getCurrentStitch();
       
-      // Create a copy of stateData with the accumulated session data
-      const stateWithSessionData = {
-        ...stateData,
-        // CRITICAL FIX: Explicitly set the active tube number 
-        activeTubeNumber: currentTubeNumber,
-        accumulatedSessionData: accumulatedSessionData
-      };
+      // Log the persisted state information
+      debug(`Persisting anonymous state for tube ${currentTubeNumber}, stitch ${currentStitch?.id}`);
       
-      // CRITICAL FIX: Ensure the current stitch ID is set for the active tube
-      if (currentStitch && currentStitch.id && stateWithSessionData.tubes[currentTubeNumber]) {
-        stateWithSessionData.tubes[currentTubeNumber].currentStitchId = currentStitch.id;
-        debug(`persistAnonymousState: Ensuring current stitch ID ${currentStitch.id} is set for tube ${currentTubeNumber}`);
-      }
-      
-      // Save the complete state to localStorage
+      // 1. Save the state with accumulatedSessionData for later reference
       localStorage.setItem('zenjin_anonymous_state', JSON.stringify({
-        state: stateWithSessionData,
+        state: { ...stateData, accumulatedSessionData },
         timestamp: Date.now(),
-        currentTube: currentTubeNumber, // CRITICAL FIX: Add explicit current tube for easier detection
-        currentStitch: currentStitch?.id, // CRITICAL FIX: Add explicit current stitch ID for easier detection
-        totalPoints: accumulatedSessionData.totalPoints // Keep this for backward compatibility
+        totalPoints: accumulatedSessionData.totalPoints
       }));
       
-      debug(`persistAnonymousState: Successfully saved state with current tube ${currentTubeNumber} and stitch ${currentStitch?.id}`);
+      // 2. MOST IMPORTANTLY: Save the state directly in the format the StateMachine expects
+      // This is the critical fix - we save to the exact key that StateMachine loads from
+      const anonymousId = localStorage.getItem('anonymousId') || userId;
+      localStorage.setItem(`triple_helix_state_${anonymousId}`, JSON.stringify(stateData));
+      
+      debug(`Successfully saved anonymous state to both localStorage keys`);
     } catch (error) {
       debug(`Error saving anonymous state to localStorage: ${error}`);
     }
