@@ -2220,7 +2220,7 @@ export function useTripleHelixPlayer({
     }, 100);
   };
 
-  // Add a function to persist state for anonymous users to localStorage only
+  // Save state for anonymous users to localStorage
   const persistAnonymousState = () => {
     if (!tubeCycler || !isAnonymous) return;
     
@@ -2235,19 +2235,20 @@ export function useTripleHelixPlayer({
       // Log the persisted state information
       debug(`Persisting anonymous state for tube ${currentTubeNumber}, stitch ${currentStitch?.id}`);
       
-      // 1. Save the state with accumulatedSessionData for later reference
+      // CRITICAL FIX: Save the state directly to the key that StateMachine loads from
+      // This is the key where the StateMachine looks for state upon initialization
+      const anonymousId = localStorage.getItem('anonymousId') || userId;
+      localStorage.setItem(`triple_helix_state_${anonymousId}`, JSON.stringify(stateData));
+      
+      // For backward compatibility and reference, we also save in the app-level key
+      // with additional metadata like totalPoints that might be useful for the dashboard
       localStorage.setItem('zenjin_anonymous_state', JSON.stringify({
         state: { ...stateData, accumulatedSessionData },
         timestamp: Date.now(),
         totalPoints: accumulatedSessionData.totalPoints
       }));
       
-      // 2. MOST IMPORTANTLY: Save the state directly in the format the StateMachine expects
-      // This is the critical fix - we save to the exact key that StateMachine loads from
-      const anonymousId = localStorage.getItem('anonymousId') || userId;
-      localStorage.setItem(`triple_helix_state_${anonymousId}`, JSON.stringify(stateData));
-      
-      debug(`Successfully saved anonymous state to both localStorage keys`);
+      debug(`Successfully saved anonymous state to localStorage - tube ${currentTubeNumber}, stitch ${currentStitch?.id}`);
     } catch (error) {
       debug(`Error saving anonymous state to localStorage: ${error}`);
     }
