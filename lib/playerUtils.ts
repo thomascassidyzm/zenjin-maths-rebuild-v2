@@ -813,8 +813,10 @@ export function useTripleHelixPlayer({
                     data = { success: true, data: [], tubePosition: { tubeNumber: 1, threadId: "" } };
                     
                     // Extract tube and thread information from state
+                    // CRITICAL FIX: Ensure we're getting the most recent tube number from the saved state
                     if (parsedState.state.activeTubeNumber) {
                       data.tubePosition.tubeNumber = parsedState.state.activeTubeNumber;
+                      debug(`Found active tube number in saved state: ${parsedState.state.activeTubeNumber}`);
                     }
                     
                     // Convert state tubes to data structure
@@ -830,6 +832,8 @@ export function useTripleHelixPlayer({
                           // Add thread data
                           data.data.push({
                             thread_id: tube.threadId,
+                            // CRITICAL FIX: Ensure current stitch ID is preserved in thread data
+                            currentStitchId: tube.currentStitchId,
                             stitches: tube.stitches.map((stitch: any) => ({
                               id: stitch.id,
                               thread_id: tube.threadId,
@@ -838,11 +842,15 @@ export function useTripleHelixPlayer({
                               order_number: stitch.position || 0,
                               skip_number: stitch.skipNumber || 3,
                               distractor_level: stitch.distractorLevel || 'L1',
+                              // Flag the current active stitch to ensure it's loaded properly
+                              isActive: stitch.id === tube.currentStitchId,
                               questions: stitch.questions || []
                             })),
                             orderMap: tube.stitches.map((stitch: any) => ({
                               stitch_id: stitch.id,
-                              order_number: stitch.position || 0
+                              order_number: stitch.position || 0,
+                              // Flag the current active stitch in the order map
+                              isActive: stitch.id === tube.currentStitchId
                             }))
                           });
                         }
@@ -852,7 +860,18 @@ export function useTripleHelixPlayer({
                     // If we successfully created the data structure, skip pre-embedded data
                     if (data.data.length > 0) {
                       usePreEmbeddedData = false;
-                      debug('Successfully converted anonymous state to usable data structure for continuation');
+                      
+                      // CRITICAL FIX: More detailed logging for debugging the continuation state
+                      const activeTube = parsedState.state.activeTubeNumber || 1;
+                      const activeThread = parsedState.state.tubes[activeTube]?.threadId || 'unknown';
+                      const activeStitchId = parsedState.state.tubes[activeTube]?.currentStitchId || 'unknown';
+                      const stitchCount = parsedState.state.tubes[activeTube]?.stitches?.length || 0;
+                      
+                      debug(`Successfully converted anonymous state to usable data structure for continuation:
+                        Active Tube: ${activeTube} 
+                        Active Thread: ${activeThread}
+                        Active Stitch: ${activeStitchId}
+                        Stitch Count in Active Tube: ${stitchCount}`);
                     } else {
                       debug('Anonymous state did not contain enough data to continue, falling back to standard loading');
                     }
@@ -1301,6 +1320,39 @@ export function useTripleHelixPlayer({
         // CRITICAL FIX: Ensure userId is properly set in the initialState
         initialState.userId = userId;
         
+        // CRITICAL FIX: Additional checks for continuePreviousState to ensure correct position loading
+        if (continuePreviousState && isAnonymous && typeof window !== 'undefined') {
+          try {
+            const savedStateJson = localStorage.getItem('zenjin_anonymous_state');
+            if (savedStateJson) {
+              const savedState = JSON.parse(savedStateJson);
+              if (savedState && savedState.state) {
+                // Ensure the active tube number is correctly set
+                if (savedState.state.activeTubeNumber) {
+                  initialState.activeTubeNumber = savedState.state.activeTubeNumber;
+                  initialState.activeTube = savedState.state.activeTubeNumber;
+                  debug(`Using active tube ${initialState.activeTubeNumber} from saved state for continuation`);
+                }
+                
+                // Ensure we restore the correct tube current stitch IDs
+                if (savedState.state.tubes) {
+                  Object.entries(savedState.state.tubes).forEach(([tubeNum, tube]: [string, any]) => {
+                    const tubeNumber = parseInt(tubeNum);
+                    if (initialState.tubes[tubeNumber] && tube.currentStitchId) {
+                      initialState.tubes[tubeNumber].currentStitchId = tube.currentStitchId;
+                      debug(`Set current stitch for tube ${tubeNumber} to ${tube.currentStitchId}`);
+                    }
+                  });
+                }
+                
+                debug('Successfully updated initialState with saved position information for continuation');
+              }
+            }
+          } catch (e) {
+            console.error('Error updating initialState from saved state:', e);
+          }
+        }
+        
         // Create adapter
         const adapter = new StateMachineTubeCyclerAdapter({
           userId,
@@ -1434,13 +1486,25 @@ export function useTripleHelixPlayer({
       
       // In all cases, we want to navigate to the dashboard if "Continue to Dashboard" is clicked
       if (isAnonymous) {
-        // For anonymous users, just save to localStorage
+        // CRITICAL FIX: For anonymous users, make sure we properly save state before navigating
+        // First, force a state save to ensure current tube and stitch positions are recorded
         persistAnonymousState();
+        
+        // Double-check that state was saved properly by logging key information
+        try {
+          const savedState = localStorage.getItem('zenjin_anonymous_state');
+          if (savedState) {
+            const parsedState = JSON.parse(savedState);
+            debug(`Verified anonymous state: currentTube=${parsedState.currentTube}, currentStitch=${parsedState.currentStitch}`);
+          }
+        } catch (e) {
+          debug(`Error verifying anonymous state: ${e}`);
+        }
         
         // Then navigate to dashboard which will display based on localStorage
         // Use window.location.href instead of router.push to force a complete refresh
         debug('Anonymous user - navigating to dashboard with full page refresh');
-        window.location.href = '/dashboard';
+        window.location.href = '/anon-dashboard';  // CRITICAL FIX: Use anon-dashboard instead of dashboard
       } else {
         // For logged in users, persist to server in the correct sequence
         // First save session data, then persist tube configuration
@@ -2170,18 +2234,38 @@ export function useTripleHelixPlayer({
     if (!tubeCycler || !isAnonymous) return;
     
     try {
+      // Get the current state from the tubeCycler
       const stateData = tubeCycler.getState();
+      
+      // CRITICAL FIX: Ensure we're capturing the current stitch position
+      // Get the current tube and stitch explicitly to ensure we have the most up-to-date values
+      const currentTubeNumber = tubeCycler.getCurrentTube();
+      const currentStitch = tubeCycler.getCurrentStitch();
+      
       // Create a copy of stateData with the accumulated session data
       const stateWithSessionData = {
         ...stateData,
+        // CRITICAL FIX: Explicitly set the active tube number 
+        activeTubeNumber: currentTubeNumber,
         accumulatedSessionData: accumulatedSessionData
       };
       
+      // CRITICAL FIX: Ensure the current stitch ID is set for the active tube
+      if (currentStitch && currentStitch.id && stateWithSessionData.tubes[currentTubeNumber]) {
+        stateWithSessionData.tubes[currentTubeNumber].currentStitchId = currentStitch.id;
+        debug(`persistAnonymousState: Ensuring current stitch ID ${currentStitch.id} is set for tube ${currentTubeNumber}`);
+      }
+      
+      // Save the complete state to localStorage
       localStorage.setItem('zenjin_anonymous_state', JSON.stringify({
         state: stateWithSessionData,
         timestamp: Date.now(),
+        currentTube: currentTubeNumber, // CRITICAL FIX: Add explicit current tube for easier detection
+        currentStitch: currentStitch?.id, // CRITICAL FIX: Add explicit current stitch ID for easier detection
         totalPoints: accumulatedSessionData.totalPoints // Keep this for backward compatibility
       }));
+      
+      debug(`persistAnonymousState: Successfully saved state with current tube ${currentTubeNumber} and stitch ${currentStitch?.id}`);
     } catch (error) {
       debug(`Error saving anonymous state to localStorage: ${error}`);
     }
