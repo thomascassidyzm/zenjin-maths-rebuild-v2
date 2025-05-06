@@ -4,13 +4,14 @@
  * This dashboard page demonstrates how to incorporate subscription components
  * and enforce access rules for premium content.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
+import useDashboard from '../hooks/useDashboard';
 import SubscriptionBadge from '../components/subscription/SubscriptionBadge';
 import SubscriptionStatus from '../components/subscription/SubscriptionStatus';
 
@@ -43,26 +44,22 @@ export default function Dashboard() {
     { id: 20, title: 'Problem Solving', description: 'Apply math to real situations', isPremium: true },
   ];
   
-  // Stats data (simulate data from API)
-  const [userStats, setUserStats] = useState({
-    totalPoints: 0,
-    sessionsCompleted: 0,
-    questionsAnswered: 0,
-    accuracy: 0,
-    streak: 0
-  });
+  // Fetch actual dashboard data using our dashboard hook
+  const dashboardData = useDashboard();
   
-  // Fetch user stats on mount (simulated API call)
-  useEffect(() => {
-    // In a real app, you'd fetch this from your API
-    setUserStats({
-      totalPoints: isSubscribed ? 2750 : 350,
-      sessionsCompleted: isSubscribed ? 28 : 4,
-      questionsAnswered: isSubscribed ? 356 : 45,
-      accuracy: isSubscribed ? 92 : 82,
-      streak: isSubscribed ? 7 : 2
-    });
-  }, [isSubscribed]);
+  // Computed user stats from dashboard data
+  const userStats = {
+    totalPoints: dashboardData.totalPoints || 0,
+    sessionsCompleted: dashboardData.recentSessions?.length || 0,
+    questionsAnswered: dashboardData.recentSessions?.reduce(
+      (sum, session) => sum + (session.total_questions || 0), 0) || 0,
+    accuracy: dashboardData.recentSessions?.length > 0 
+      ? Math.round(dashboardData.recentSessions.reduce(
+          (sum, session) => sum + ((session.correct_answers / session.total_questions) * 100), 0
+        ) / dashboardData.recentSessions.length) 
+      : 0,
+    streak: 1 // Default streak (could be enhanced with actual streak calculation)
+  };
   
   // Handle sign out
   const handleSignOut = async () => {
@@ -121,6 +118,55 @@ export default function Dashboard() {
         </div>
       </header>
       
+      {/* Database Connection Warning */}
+      {dashboardData.dataSource && dashboardData.dataSource !== 'database' && !dashboardData.loading && (
+        <div className="bg-amber-600/20 backdrop-blur-sm border-t border-b border-amber-600/30">
+          <div className="container mx-auto px-4 py-3">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 text-amber-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+              </svg>
+              <div>
+                <p className="text-sm text-amber-200 font-medium">
+                  {dashboardData.dataSource === 'cache' 
+                    ? "Using locally cached data - your activity is not being saved to your account" 
+                    : "Database connection unavailable - your actual progress is not shown"}
+                </p>
+                <p className="text-xs text-amber-200/70 mt-1">
+                  {dashboardData.dataSource === 'cache'
+                    ? "Your progress won't be saved but you can continue learning with bundled content."
+                    : "Your progress won't be saved but you can still practice with bundled content."}
+                </p>
+              </div>
+              <div className="ml-auto flex space-x-2">
+                <button 
+                  onClick={() => dashboardData.refresh()} 
+                  className="bg-amber-600/30 hover:bg-amber-600/50 text-amber-100 text-xs py-1 px-3 rounded flex items-center"
+                >
+                  <svg className={`w-3 h-3 mr-1 ${dashboardData.loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Try Again
+                </button>
+                
+                {dashboardData.fallbackContent && (
+                  <button 
+                    onClick={() => router.push(`/play?stitch=${dashboardData.fallbackContent?.suggestedNext?.id || ''}&fallback=true`)}
+                    className="bg-teal-600/50 hover:bg-teal-600/70 text-teal-100 text-xs py-1 px-3 rounded flex items-center"
+                  >
+                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Continue With Bundled Content
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main content */}
       <main className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -263,13 +309,45 @@ export default function Dashboard() {
           <div className="lg:col-span-3 space-y-6">
             {/* Content heading */}
             <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-              <motion.h1 
+              <motion.div 
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="text-2xl font-bold"
+                className="flex items-center"
               >
-                Your Learning Path
-              </motion.h1>
+                <div>
+                  <h1 className="text-2xl font-bold">Your Learning Path</h1>
+                  {!dashboardData.loading && dashboardData.dataSource && (
+                    <div className={`text-xs mt-1 ${dashboardData.dataSource !== 'database' ? 'text-amber-400' : 'text-white/40'}`}>
+                      {dashboardData.dataSource === 'cache' ? (
+                        <span className="flex items-center">
+                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                          </svg>
+                          Using locally cached data - this progress has not been saved to your account
+                        </span>
+                      ) : dashboardData.dataSource === 'emergency-fallback' ? (
+                        <span className="flex items-center">
+                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                          </svg>
+                          Database connection unavailable - your actual progress is not being shown
+                        </span>
+                      ) : (
+                        <span>Connected to database - progress is being saved to your account</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {dashboardData.loading && (
+                  <div className="ml-3 text-white/50 text-sm flex items-center">
+                    <svg className="animate-spin mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Loading...
+                  </div>
+                )}
+              </motion.div>
               
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
@@ -293,6 +371,18 @@ export default function Dashboard() {
                     </a>
                   </Link>
                 )}
+                
+                <button 
+                  onClick={() => dashboardData.refresh()} 
+                  disabled={dashboardData.loading}
+                  className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Refresh dashboard data"
+                >
+                  <svg className={`w-5 h-5 mr-2 ${dashboardData.loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Refresh
+                </button>
               </motion.div>
             </div>
             

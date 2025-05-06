@@ -22,6 +22,14 @@ interface SessionData {
   blink_speed: number | null;
 }
 
+// Interface for the fallback content structure
+interface FallbackContent {
+  stitches: any[];
+  threads: any[];
+  suggestedNext: any;
+  isFallback: boolean;
+}
+
 interface DashboardData {
   userId: string;
   totalPoints: number;
@@ -32,6 +40,9 @@ interface DashboardData {
   recentSessions: SessionData[];
   loading: boolean;
   error: string | null;
+  dataSource?: 'database' | 'cache' | 'emergency-fallback'; // Where the data came from
+  message?: string; // Optional message about data source
+  fallbackContent?: FallbackContent | null; // Bundled content for fallback learning
 }
 
 /**
@@ -56,7 +67,10 @@ export function useDashboard(): DashboardData {
     },
     recentSessions: [],
     loading: true,
-    error: null
+    error: null,
+    dataSource: undefined,
+    message: 'Loading dashboard data...',
+    fallbackContent: null
   });
 
   // Add a manual refresh function to force reload dashboard data
@@ -99,7 +113,10 @@ export function useDashboard(): DashboardData {
         globalStanding: dashboardData.globalStanding,
         recentSessions: dashboardData.recentSessions,
         loading: false,
-        error: null
+        error: null,
+        dataSource: dashboardData.dataSource,
+        message: dashboardData.message,
+        fallbackContent: dashboardData.fallbackContent || null
       });
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -116,7 +133,10 @@ export function useDashboard(): DashboardData {
           levelNumber: 1,
           progress: 0,
           nextLevel: 'Thought Weaver'
-        }
+        },
+        dataSource: 'emergency-fallback',
+        message: 'Could not connect to server - showing emergency fallback data only',
+        fallbackContent: null // This will be set by a retry
       }));
     }
   };

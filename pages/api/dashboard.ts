@@ -2,6 +2,32 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { supabase } from '../../lib/supabase';
 import { createRouteHandlerClient } from '../../lib/supabase/route';
 import { createClient } from '@supabase/supabase-js';
+import fs from 'fs';
+import path from 'path';
+import { generateRandomLearningPath, getSuggestedFallbackStitch } from '../../utils/fallbackContent';
+
+// Read from localStorage-cache directory if available
+const readFromCache = (userId: string, fileType: string) => {
+  try {
+    // Check if we have a cached version of this user's data
+    const cacheDir = path.join(process.cwd(), 'localStorage-cache');
+    if (!fs.existsSync(cacheDir)) {
+      return null;
+    }
+    
+    const filePath = path.join(cacheDir, `${fileType}_${userId}.json`);
+    if (!fs.existsSync(filePath)) {
+      return null;
+    }
+    
+    // Read the cached data
+    const cachedData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    return cachedData;
+  } catch (error) {
+    console.error(`Error reading ${fileType} from cache:`, error);
+    return null;
+  }
+};
 
 export default async function handler(
   req: NextApiRequest,
@@ -83,6 +109,7 @@ export default async function handler(
     // Try to get or create user profile
     let profile;
     let noRealData = false; // Track if we're using synthetic data
+    let useCache = false; // Track if we're using cached data
     
     try {
       console.log(`Dashboard API: Looking for profile with ID ${userId}`);
@@ -95,56 +122,79 @@ export default async function handler(
         .single();
         
       if (profileError) {
-        console.log('Dashboard API: Profile not found with admin client, checking recent sessions first');
+        console.log('Dashboard API: Profile not found with admin client, checking local cache');
         
-        // Before creating a synthetic profile, check if we have any actual session data
-        const { data: sessionData, error: sessionError } = await supabaseAdmin
-          .from('session_results')
-          .select('total_points')
-          .eq('user_id', userId)
-          .order('completed_at', { ascending: false });
+        // Check if we have cached profile data
+        const cachedProfile = readFromCache(userId, 'user_profile');
         
-        // Initialize with zeros, not fake defaults
-        let initialPoints = 0;
-        
-        // If we have session data, use the real total from sessions
-        if (!sessionError && sessionData && sessionData.length > 0) {
-          // Sum up points from all sessions
-          initialPoints = sessionData.reduce((sum, session) => sum + (session.total_points || 0), 0);
-          console.log(`Dashboard API: Found ${sessionData.length} sessions with total points: ${initialPoints}`);
-        } else {
-          console.log('Dashboard API: No sessions found for this user');
-          // Mark that we're using synthetic data
-          noRealData = true;
-        }
-        
-        // Create a profile with actual session data if available (or zeros if no sessions)
-        const { data: newProfile, error: createError } = await supabaseAdmin
-          .from('profiles')
-          .upsert({
-            id: userId,
-            total_points: initialPoints,
-            avg_blink_speed: 2.5, // Default for now
-            evolution_level: Math.max(1, Math.floor(initialPoints / 1000) + 1),
-            total_sessions: sessionData?.length || 0,
-            last_session_date: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            created_at: new Date().toISOString()
-          })
-          .select()
-          .single();
-          
-        if (createError) {
-          console.error('Dashboard API: Error creating profile with admin client:', createError);
-          
+        if (cachedProfile) {
+          console.log('Dashboard API: Found cached profile data');
           profile = {
-            total_points: initialPoints,
-            avg_blink_speed: 2.5,
-            evolution_level: Math.max(1, Math.floor(initialPoints / 1000) + 1)
+            total_points: cachedProfile.total_points || 0,
+            avg_blink_speed: cachedProfile.avg_blink_speed || 2.5,
+            evolution_level: cachedProfile.evolution_level || 1,
+            last_session_date: cachedProfile.last_session_date || new Date().toISOString()
           };
+          useCache = true;
         } else {
-          console.log('Dashboard API: Successfully created profile with admin client');
-          profile = newProfile;
+          console.log('Dashboard API: No cached profile, checking recent sessions first');
+          
+          // Check for cached sessions to generate a profile
+          const cachedSessions = readFromCache(userId, 'user_sessions');
+          let initialPoints = 0;
+          
+          if (cachedSessions && Array.isArray(cachedSessions) && cachedSessions.length > 0) {
+            console.log(`Dashboard API: Found ${cachedSessions.length} cached sessions`);
+            initialPoints = cachedSessions.reduce((sum, session) => sum + (session.total_points || 0), 0);
+            useCache = true;
+          } else {
+            // If no cache, try database sessions as a final attempt
+            const { data: sessionData, error: sessionError } = await supabaseAdmin
+              .from('session_results')
+              .select('total_points')
+              .eq('user_id', userId)
+              .order('completed_at', { ascending: false });
+            
+            // If we have session data, use the real total from sessions
+            if (!sessionError && sessionData && sessionData.length > 0) {
+              // Sum up points from all sessions
+              initialPoints = sessionData.reduce((sum, session) => sum + (session.total_points || 0), 0);
+              console.log(`Dashboard API: Found ${sessionData.length} sessions with total points: ${initialPoints}`);
+            } else {
+              console.log('Dashboard API: No sessions found for this user');
+              // Mark that we're using synthetic data
+              noRealData = true;
+            }
+          }
+          
+          // Create a profile with actual session data if available (or zeros if no sessions)
+          const { data: newProfile, error: createError } = await supabaseAdmin
+            .from('profiles')
+            .upsert({
+              id: userId,
+              total_points: initialPoints,
+              avg_blink_speed: 2.5, // Default for now
+              evolution_level: Math.max(1, Math.floor(initialPoints / 1000) + 1),
+              total_sessions: useCache ? (cachedSessions?.length || 0) : 0,
+              last_session_date: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              created_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+            
+          if (createError) {
+            console.error('Dashboard API: Error creating profile with admin client:', createError);
+            
+            profile = {
+              total_points: initialPoints,
+              avg_blink_speed: 2.5,
+              evolution_level: Math.max(1, Math.floor(initialPoints / 1000) + 1)
+            };
+          } else {
+            console.log('Dashboard API: Successfully created profile with admin client');
+            profile = newProfile;
+          }
         }
       } else {
         console.log('Dashboard API: Found existing profile');
@@ -152,12 +202,28 @@ export default async function handler(
       }
     } catch (profileError) {
       console.error('Dashboard API: Exception handling profile:', profileError);
-      profile = {
-        total_points: 0, // Default to 0, not fake points
-        avg_blink_speed: 2.5,
-        evolution_level: 1
-      };
-      noRealData = true;
+      
+      // Last resort: try to get profile from cache if database completely fails
+      const cachedProfile = readFromCache(userId, 'user_profile');
+      
+      if (cachedProfile) {
+        console.log('Dashboard API: Using cached profile as fallback after error');
+        profile = {
+          total_points: cachedProfile.total_points || 0,
+          avg_blink_speed: cachedProfile.avg_blink_speed || 2.5,
+          evolution_level: cachedProfile.evolution_level || 1,
+          last_session_date: cachedProfile.last_session_date || new Date().toISOString()
+        };
+        useCache = true;
+      } else {
+        // Absolute fallback to empty profile
+        profile = {
+          total_points: 0, // Default to 0, not fake points
+          avg_blink_speed: 2.5,
+          evolution_level: 1
+        };
+        noRealData = true;
+      }
     }
 
     // Calculate evolution information
@@ -231,31 +297,108 @@ export default async function handler(
         recentSessions.push(...validSessions.slice(0, 5));
         
         console.log(`Dashboard API: Found ${recentSessions.length} valid recent sessions`);
-      } else if (sessionError) {
-        console.log('Dashboard API: Error fetching from session_results, trying fallback table');
+      } else {
+        // If no database sessions, try to use cached sessions
+        console.log('Dashboard API: No database sessions, checking cache');
         
-        // Fallback to older table name if it exists
-        const { data: fallbackSessionData, error: fallbackError } = await supabaseAdmin
-          .from('user_sessions')
-          .select('id, timestamp, total_points, correct_answers, total_questions, blink_speed')
-          .eq('user_id', userId)
-          .order('timestamp', { ascending: false })
-          .limit(5);
+        // Read cached sessions
+        const cachedSessions = readFromCache(userId, 'user_sessions');
+        
+        if (cachedSessions && Array.isArray(cachedSessions) && cachedSessions.length > 0) {
+          console.log(`Dashboard API: Found ${cachedSessions.length} cached sessions`);
           
-        if (!fallbackError && fallbackSessionData && fallbackSessionData.length > 0) {
-          // Filter for valid sessions
-          const validSessions = fallbackSessionData.filter(session => 
+          // Transform cached sessions to match expected format
+          const transformedSessions = cachedSessions.map(session => {
+            // Calculate correct answers from results array
+            let correctAnswers = 0;
+            let totalQuestions = 0;
+            let blinkSpeedTotal = 0;
+            let blinkSpeedCount = 0;
+            
+            if (Array.isArray(session.results)) {
+              totalQuestions = session.results.length;
+              
+              session.results.forEach(result => {
+                if (result.correct) correctAnswers++;
+                
+                if (result.timeToAnswer && typeof result.timeToAnswer === 'number') {
+                  blinkSpeedTotal += result.timeToAnswer;
+                  blinkSpeedCount++;
+                }
+              });
+            }
+            
+            return {
+              id: session.id,
+              timestamp: session.completed_at || new Date().toISOString(),
+              total_points: session.total_points || 0,
+              correct_answers: correctAnswers || 0,
+              total_questions: totalQuestions || 0,
+              blink_speed: blinkSpeedCount > 0 ? (blinkSpeedTotal / blinkSpeedCount / 1000) : null
+            };
+          });
+          
+          // Only use sessions with some data
+          const validSessions = transformedSessions.filter(session => 
             session.total_questions > 0 || session.total_points > 0
           );
           
-          recentSessions.push(...validSessions);
-          console.log(`Dashboard API: Found ${recentSessions.length} valid sessions from fallback table`);
-        } else {
-          console.log('Dashboard API: No sessions found in fallback table either', fallbackError);
+          // Take the 5 most recent valid sessions
+          recentSessions.push(...validSessions.slice(0, 5));
+          
+          console.log(`Dashboard API: Using ${recentSessions.length} valid cached sessions`);
+        } else if (sessionError) {
+          console.log('Dashboard API: Error fetching from session_results, trying fallback table');
+          
+          // Fallback to older table name if it exists
+          const { data: fallbackSessionData, error: fallbackError } = await supabaseAdmin
+            .from('user_sessions')
+            .select('id, timestamp, total_points, correct_answers, total_questions, blink_speed')
+            .eq('user_id', userId)
+            .order('timestamp', { ascending: false })
+            .limit(5);
+            
+          if (!fallbackError && fallbackSessionData && fallbackSessionData.length > 0) {
+            // Filter for valid sessions
+            const validSessions = fallbackSessionData.filter(session => 
+              session.total_questions > 0 || session.total_points > 0
+            );
+            
+            recentSessions.push(...validSessions);
+            console.log(`Dashboard API: Found ${recentSessions.length} valid sessions from fallback table`);
+          } else {
+            console.log('Dashboard API: No sessions found in fallback table either', fallbackError);
+          }
         }
       }
     } catch (sessionsError) {
       console.error('Dashboard API: Error fetching recent sessions:', sessionsError);
+      
+      // Last resort: try to read from cache on exception
+      try {
+        const cachedSessions = readFromCache(userId, 'user_sessions');
+        
+        if (cachedSessions && Array.isArray(cachedSessions) && cachedSessions.length > 0) {
+          console.log(`Dashboard API: Using ${cachedSessions.length} cached sessions after error`);
+          
+          // Transform and filter cached sessions
+          const validSessions = cachedSessions
+            .map(session => ({
+              id: session.id,
+              timestamp: session.completed_at || new Date().toISOString(),
+              total_points: session.total_points || 0,
+              correct_answers: session.results?.filter(r => r.correct)?.length || 0,
+              total_questions: session.results?.length || 0,
+              blink_speed: null // Skip complex calculation in error case
+            }))
+            .filter(s => s.total_points > 0 || s.total_questions > 0)
+            .slice(0, 5);
+          
+          recentSessions.push(...validSessions);
+        }
+      } catch (cacheError) {
+        console.error('Dashboard API: Error reading from cache as last resort:', cacheError);
+      }
     }
 
     // Global standing based on actual point count
@@ -272,8 +415,28 @@ export default async function handler(
       userId,
       points: profile.total_points,
       blinkSpeed: profile.avg_blink_speed,
-      sessions: recentSessions.length
+      sessions: recentSessions.length,
+      usingCache: useCache
     });
+    
+    // Add cache information to response headers
+    res.setHeader('X-Zenjin-Data-Source', useCache ? 'cache' : 'database');
+    if (useCache) {
+      res.setHeader('X-Zenjin-Cache-Used', 'true');
+    }
+    
+    // Generate fallback content if we're using cache
+    let fallbackContentData = null;
+    if (useCache) {
+      const fallbackContent = generateRandomLearningPath();
+      const suggestedStitch = getSuggestedFallbackStitch();
+      fallbackContentData = {
+        stitches: fallbackContent.stitches,
+        threads: fallbackContent.threads,
+        suggestedNext: suggestedStitch,
+        isFallback: true
+      };
+    }
     
     // Send response with the correctly mapped data
     return res.status(200).json({
@@ -283,7 +446,13 @@ export default async function handler(
       blinkSpeedTrend,
       evolution: evolutionData,
       globalStanding,
-      recentSessions
+      recentSessions,
+      dataSource: useCache ? 'cache' : 'database',
+      message: useCache 
+        ? 'Using cached data - progress won\'t be saved until connection is restored' 
+        : 'Data retrieved from database',
+      // Include fallback content if using cache
+      fallbackContent: fallbackContentData
     });
   } catch (error) {
     console.error('Dashboard API: Fatal error:', error);
@@ -297,6 +466,13 @@ export default async function handler(
     } catch (idError) {
       console.error('Dashboard API: Could not extract user ID for fallback:', idError);
     }
+    
+    // Add emergency fallback header
+    res.setHeader('X-Zenjin-Data-Source', 'emergency-fallback');
+    
+    // Generate a random learning path from bundled content
+    const fallbackContent = generateRandomLearningPath();
+    const suggestedStitch = getSuggestedFallbackStitch();
     
     // Return fallback data instead of an error, but include actual user ID if we have it
     return res.status(200).json({
@@ -315,7 +491,15 @@ export default async function handler(
         date: new Date().toISOString().split('T')[0],
         message: "Global standing data not available"
       },
-      recentSessions: []
+      recentSessions: [],
+      dataSource: 'emergency-fallback',
+      message: 'Using bundled content - progress won\'t be saved until connection is restored',
+      fallbackContent: {
+        stitches: fallbackContent.stitches,
+        threads: fallbackContent.threads,
+        suggestedNext: suggestedStitch,
+        isFallback: true
+      }
     });
   }
 }
