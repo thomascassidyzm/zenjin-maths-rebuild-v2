@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTripleHelixPlayer } from '../lib/playerUtils';
 
 interface DevTestPaneProps {
@@ -7,13 +7,78 @@ interface DevTestPaneProps {
 }
 
 /**
- * Simple DevTest Pane for Triple-Helix Player
+ * Enhanced DevTest Pane for Triple-Helix Player
  * 
- * A minimal testing panel that provides buttons to complete
+ * A testing panel that provides buttons to complete
  * stitches with perfect scores and cycle tubes.
+ * 
+ * Now supports both anonymous and authenticated users with enhanced
+ * recovery for the underlying state machine stats functions.
  */
 const DevTestPane: React.FC<DevTestPaneProps> = ({ player, show = true }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isStatsAvailable, setIsStatsAvailable] = useState(false);
+  
+  // Check if getStats is available on this player instance
+  useEffect(() => {
+    if (player && player.tubeCycler) {
+      try {
+        // If tubeCycler exists but getStats doesn't, patch it in
+        if (typeof player.tubeCycler.getStats !== 'function') {
+          console.log('DevTestPane: Adding getStats to tubeCycler');
+          
+          // Add a simplified getStats implementation that works with all player types
+          player.tubeCycler.getStats = () => {
+            try {
+              const state = player.tubeCycler.getState();
+              return {
+                pendingChanges: 0,
+                currentTube: state.activeTubeNumber || player.currentTube,
+                userId: state.userId,
+                tubes: Object.keys(state.tubes || {}).length
+              };
+            } catch (e) {
+              console.error('Error in getStats implementation:', e);
+              return { 
+                pendingChanges: 0,
+                currentTube: player.currentTube || 1,
+                error: true 
+              };
+            }
+          };
+          setIsStatsAvailable(true);
+        } else {
+          // getStats already exists
+          setIsStatsAvailable(true);
+        }
+      } catch (e) {
+        console.error('DevTestPane: Error checking/patching getStats:', e);
+        setIsStatsAvailable(false);
+      }
+    }
+  }, [player]);
+  
+  // Get player stats safely (with recovery mechanism)
+  const getPlayerStats = () => {
+    try {
+      if (player && player.tubeCycler) {
+        if (typeof player.tubeCycler.getStats === 'function') {
+          return player.tubeCycler.getStats();
+        } else {
+          // Fallback stats that are always valid
+          return {
+            pendingChanges: 0,
+            currentTube: player.currentTube || 1,
+            userId: player.userId || 'unknown'
+          };
+        }
+      }
+      return null;
+    } catch (e) {
+      console.error('Error getting player stats:', e);
+      return null;
+    }
+  };
   
   // Complete current stitch with perfect score (20/20) without cycling tubes
   const completeCurrentStitch = () => {
@@ -35,9 +100,29 @@ const DevTestPane: React.FC<DevTestPaneProps> = ({ player, show = true }) => {
       if (player.tubeCycler) {
         // Safety check if handleStitchCompletion exists
         if (typeof player.tubeCycler.handleStitchCompletion === 'function') {
-          // Call handleStitchCompletion directly on the tubeCycler (StateMachine)
-          // This will advance the stitch within the same tube without cycling
-          player.tubeCycler.handleStitchCompletion(threadId, stitchId, 20, 20);
+          try {
+            // Call handleStitchCompletion directly on the tubeCycler (StateMachine)
+            // This will advance the stitch within the same tube without cycling
+            player.tubeCycler.handleStitchCompletion(threadId, stitchId, 20, 20);
+          } catch (err) {
+            console.error('Error in direct handleStitchCompletion call:', err);
+            
+            // Try recovery via regular session completion
+            console.log('Falling back to regular session completion after error');
+            player.handleSessionComplete({
+              sessionId: `dev-session-${Date.now()}`,
+              correctAnswers: 20,
+              firstTimeCorrect: 20,
+              totalQuestions: 20,
+              totalPoints: 60,
+              questionResults: Array(20).fill(0).map((_, i) => ({
+                questionId: `q-${i+1}`,
+                correct: true,
+                timeToAnswer: 1500,
+                firstTimeCorrect: true
+              }))
+            });
+          }
         } else {
           console.error("tubeCycler does not have handleStitchCompletion method, using fallback");
           // Fallback to regular session completion
@@ -172,11 +257,61 @@ const DevTestPane: React.FC<DevTestPaneProps> = ({ player, show = true }) => {
   // If not showing, render nothing
   if (!show) return null;
   
+  // Function to get if state has valid userId
+  const hasValidUserId = () => {
+    try {
+      if (player && player.tubeCycler && player.tubeCycler.getState) {
+        const state = player.tubeCycler.getState();
+        return !!state.userId;
+      }
+      return false;
+    } catch (e) {
+      console.error('Error checking userId:', e);
+      return false;
+    }
+  };
+  
+  // Get user info for display
+  const getUserInfo = () => {
+    try {
+      if (player && player.tubeCycler && player.tubeCycler.getState) {
+        const state = player.tubeCycler.getState();
+        return {
+          userId: state.userId || 'Not set',
+          isAuthenticated: state.userId && !state.userId.startsWith('anonymous'),
+          tubeTotals: Object.entries(state.tubes || {}).reduce((acc, [tubeNum, tube]) => {
+            // @ts-ignore
+            acc[tubeNum] = (tube?.stitches?.length || 0);
+            return acc;
+          }, {1: 0, 2: 0, 3: 0}),
+        };
+      }
+      return {
+        userId: 'Unknown',
+        isAuthenticated: false,
+        tubeTotals: {1: 0, 2: 0, 3: 0}
+      };
+    } catch (e) {
+      console.error('Error getting user info:', e);
+      return {
+        userId: 'Error',
+        isAuthenticated: false,
+        tubeTotals: {1: 0, 2: 0, 3: 0}
+      };
+    }
+  };
+  
+  // Get panel color based on authentication status
+  const getPanelColor = () => {
+    const userInfo = getUserInfo();
+    return userInfo.isAuthenticated ? 'bg-green-800' : 'bg-indigo-800';
+  };
+  
   return (
     <div className="fixed top-20 right-0 z-50 w-48 bg-gray-900/90 backdrop-blur-sm text-white font-mono text-xs rounded-l-lg overflow-hidden shadow-lg border-l border-t border-b border-gray-700">
       {/* Header bar */}
       <div 
-        className="p-2 bg-indigo-800 flex justify-between items-center cursor-pointer"
+        className={`p-2 ${getPanelColor()} flex justify-between items-center cursor-pointer`}
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <h3 className="font-bold text-xs">
@@ -188,6 +323,23 @@ const DevTestPane: React.FC<DevTestPaneProps> = ({ player, show = true }) => {
       {/* Expandable content */}
       {isExpanded && (
         <div className="p-2">
+          {/* User info */}
+          <div className="mb-2 border-b border-gray-700 pb-2 text-[9px]">
+            <div className="space-y-0.5">
+              <p className="truncate text-gray-400">
+                User: <span className={getUserInfo().isAuthenticated ? 'text-green-300' : 'text-yellow-300'}>
+                  {getUserInfo().userId.substring(0, 12)}
+                  {getUserInfo().userId.length > 12 ? '...' : ''}
+                </span>
+              </p>
+              <div className="flex justify-between text-gray-400">
+                <span>T1: {getUserInfo().tubeTotals[1]}</span>
+                <span>T2: {getUserInfo().tubeTotals[2]}</span>
+                <span>T3: {getUserInfo().tubeTotals[3]}</span>
+              </div>
+            </div>
+          </div>
+          
           {/* Current stitch info */}
           <div className="mb-2 border-b border-gray-700 pb-2 text-[10px]">
             {player?.currentStitch ? (

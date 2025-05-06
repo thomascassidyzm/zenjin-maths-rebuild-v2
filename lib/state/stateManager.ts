@@ -665,15 +665,16 @@ export class StateManager {
         activeTube: state.activeTube
       }));
       
-      // Make sure we have a valid userId - this is critical for persistence
-      if (!state.userId) {
-        console.error('STATE MANAGER: No userId found in state - attempting to recover from localStorage');
+      // ENHANCED RECOVERY: Make sure we have a valid userId - critical for persistence
+      if (!state.userId || state.userId === '') {
+        console.error('STATE MANAGER: No userId found in state - attempting multi-stage recovery');
         
-        // Try to recover userId from localStorage
+        // Recovery mechanism 1: Try to recover userId from localStorage for authenticated users
         if (typeof window !== 'undefined') {
+          // Try our specific user ID key first
           const storedUserId = localStorage.getItem('zenjin_user_id');
-          if (storedUserId) {
-            console.log(`STATE MANAGER: Recovered userId ${storedUserId} from localStorage`);
+          if (storedUserId && storedUserId !== '') {
+            console.log(`STATE MANAGER: Recovered userId ${storedUserId} from localStorage zenjin_user_id`);
             state.userId = storedUserId;
             
             // Update the internal state with the recovered userId
@@ -681,12 +682,64 @@ export class StateManager {
               type: 'INITIALIZE_STATE', 
               payload: { ...state, userId: storedUserId }
             });
-          } else {
-            console.error('STATE MANAGER: Could not recover userId from localStorage - cannot persist');
-            return false;
+          } 
+          // Recovery mechanism 2: Check for Supabase authentication token
+          else {
+            try {
+              const supabaseToken = localStorage.getItem('sb-ggwoupzaruiaaliylxga-auth-token');
+              if (supabaseToken) {
+                const parsedToken = JSON.parse(supabaseToken);
+                if (parsedToken?.user?.id) {
+                  console.log(`STATE MANAGER: Recovered userId ${parsedToken.user.id} from Supabase token`);
+                  state.userId = parsedToken.user.id;
+                  
+                  // Save to localStorage for future recovery and update internal state
+                  try {
+                    localStorage.setItem('zenjin_user_id', parsedToken.user.id);
+                    console.log(`STATE MANAGER: Saved recovered userId to localStorage for future use`);
+                  } catch (storageErr) {
+                    console.warn('STATE MANAGER: Could not save userId to localStorage', storageErr);
+                  }
+                  
+                  // Update internal state
+                  this.dispatch({
+                    type: 'INITIALIZE_STATE',
+                    payload: { ...state, userId: parsedToken.user.id }
+                  });
+                }
+              }
+            } catch (tokenErr) {
+              console.warn('STATE MANAGER: Could not recover from Supabase token', tokenErr);
+            }
+          }
+          
+          // Recovery mechanism 3: Check window.__CURRENT_USER_ID__ as last resort
+          if ((!state.userId || state.userId === '') && (window as any).__CURRENT_USER_ID__) {
+            const globalUserId = (window as any).__CURRENT_USER_ID__;
+            console.log(`STATE MANAGER: Recovered userId ${globalUserId} from window.__CURRENT_USER_ID__`);
+            state.userId = globalUserId;
+            
+            // Update internal state
+            this.dispatch({
+              type: 'INITIALIZE_STATE',
+              payload: { ...state, userId: globalUserId }
+            });
+          }
+          
+          // Recovery mechanism 4: Generate anonymous ID as final fallback
+          if (!state.userId || state.userId === '') {
+            const anonymousId = `anonymous-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+            console.log(`STATE MANAGER: Generated fallback anonymous ID: ${anonymousId}`);
+            state.userId = anonymousId;
+            
+            // Update internal state
+            this.dispatch({
+              type: 'INITIALIZE_STATE',
+              payload: { ...state, userId: anonymousId }
+            });
           }
         } else {
-          console.error('STATE MANAGER: No userId found in state - cannot persist');
+          console.error('STATE MANAGER: Not in browser environment, cannot recover userId');
           return false;
         }
       }
