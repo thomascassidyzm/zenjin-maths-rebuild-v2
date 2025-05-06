@@ -8,6 +8,55 @@
 
 export async function loadUserData(userId: string) {
   try {
+    // CRITICAL FIX: Safety check and recovery for empty userId
+    if (!userId || userId === '') {
+      console.error('CRITICAL ERROR: Empty userId provided to loadUserData');
+      
+      // Try to recover from localStorage
+      if (typeof window !== 'undefined') {
+        const storedUserId = localStorage.getItem('zenjin_user_id');
+        if (storedUserId && storedUserId !== '') {
+          console.log(`CRITICAL RECOVERY: Using userId ${storedUserId} from localStorage instead of empty value`);
+          userId = storedUserId;
+          
+          // Save to window.__CURRENT_USER_ID__
+          (window as any).__CURRENT_USER_ID__ = userId;
+        } else {
+          // Check Supabase token as a fallback
+          try {
+            const supabaseToken = localStorage.getItem('sb-ggwoupzaruiaaliylxga-auth-token');
+            if (supabaseToken) {
+              const parsedToken = JSON.parse(supabaseToken);
+              if (parsedToken?.user?.id) {
+                userId = parsedToken.user.id;
+                console.log(`CRITICAL RECOVERY: Using userId ${userId} from Supabase token`);
+                
+                // Save to localStorage
+                localStorage.setItem('zenjin_user_id', userId);
+                
+                // Save to window.__CURRENT_USER_ID__
+                (window as any).__CURRENT_USER_ID__ = userId;
+              }
+            }
+          } catch (e) {
+            console.error('Error parsing Supabase token:', e);
+          }
+        }
+        
+        // If still no userId, generate an anonymous one as last resort
+        if (!userId || userId === '') {
+          userId = `anonymous-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+          console.log(`CRITICAL RECOVERY: Generated new anonymous ID ${userId} as last resort`);
+          
+          // Save to localStorage
+          localStorage.setItem('zenjin_user_id', userId);
+          
+          // Save to window.__CURRENT_USER_ID__
+          (window as any).__CURRENT_USER_ID__ = userId;
+        }
+      }
+    }
+    
     console.log(`Loading essential data for user ${userId}`);
     
     // Import our authUtils helper functions

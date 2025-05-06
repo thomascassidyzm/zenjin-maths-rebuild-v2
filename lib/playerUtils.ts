@@ -16,22 +16,74 @@ export function useTripleHelixPlayer({
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
   
-  // State for tubes and user
+  // Enhanced state for tubes and user with stronger initialization
   const [userId, setUserId] = useState(() => {
+    // CRITICAL FIX: First check if we have a stored user ID in localStorage
+    // This ensures we always have a valid ID even during initial load
+    if (typeof window !== 'undefined') {
+      try {
+        const storedUserId = localStorage.getItem('zenjin_user_id');
+        if (storedUserId && storedUserId !== '') {
+          console.log(`Using stored user ID from localStorage: ${storedUserId}`);
+          // Store this explicitly in window object for other components to find
+          if (window) {
+            (window as any).__CURRENT_USER_ID__ = storedUserId;
+          }
+          return storedUserId;
+        }
+      } catch (e) {
+        console.error('Error accessing localStorage for userId:', e);
+      }
+    }
+
+    // If no stored ID, follow the normal priority chain
+    
     // Always prioritize authenticated user if available
     if (user?.id && isAuthenticated) {
       console.log(`Using authenticated user ID: ${user.id}`);
+      
+      // Store this in localStorage and window for resilience
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('zenjin_user_id', user.id);
+          (window as any).__CURRENT_USER_ID__ = user.id;
+          console.log(`Saved authenticated user ID to localStorage: ${user.id}`);
+        } catch (e) {
+          console.error('Error saving userId to localStorage:', e);
+        }
+      }
       return user.id;
     }
     // Use authenticated user ID if available and not in forced anonymous mode
     else if (user?.id && mode !== 'anonymous') {
       console.log(`Using user ID (not yet authenticated): ${user.id}`);
+      
+      // Store this in localStorage and window for resilience
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('zenjin_user_id', user.id);
+          (window as any).__CURRENT_USER_ID__ = user.id;
+          console.log(`Saved user ID to localStorage: ${user.id}`);
+        } catch (e) {
+          console.error('Error saving userId to localStorage:', e);
+        }
+      }
       return user.id;
     }
     // Generate anonymous ID if in anonymous mode
     else if (mode === 'anonymous' || !isAuthenticated) {
       const anonId = `anonymous-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
       console.log(`Using generated anonymous ID: ${anonId}`);
+      
+      // Store in localStorage for continuity
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('zenjin_user_id', anonId);
+          (window as any).__CURRENT_USER_ID__ = anonId;
+        } catch (e) {
+          console.error('Error saving anonymous ID to localStorage:', e);
+        }
+      }
       return anonId;
     }
     // If user object exists but ID isn't available yet, use fallback
@@ -39,6 +91,7 @@ export function useTripleHelixPlayer({
       console.log(`User object exists but ID not available yet - using fallback`);
       return 'anonymous-pending';
     }
+    
     console.log(`No user ID available - using anonymous placeholder`);
     return 'anonymous'; // Default placeholder until we get real user ID
   });

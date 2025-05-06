@@ -377,6 +377,12 @@ export class StateManager {
     try {
       console.log(`Attempting to load state from server for user: ${userId}`);
       
+      // CRITICAL FIX: Safety check for empty userId to prevent invalid server requests
+      if (!userId || userId === '') {
+        console.error('CRITICAL ERROR: Empty userId provided to loadFromServer method');
+        return null;
+      }
+      
       // Check if this is an anonymous user
       const isAnonymousUser = userId.startsWith('anonymous-');
       
@@ -385,12 +391,37 @@ export class StateManager {
         ? `/api/anonymous-state?id=${encodeURIComponent(userId)}`
         : `/api/user-state?userId=${encodeURIComponent(userId)}`;
       
-      // Fetch state from API
+      // Enhanced fetch with authentication token if available
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate'
+      };
+      
+      // Try to get auth token from localStorage
+      if (typeof window !== 'undefined' && !isAnonymousUser) {
+        try {
+          // Check for Supabase token
+          const supabaseToken = localStorage.getItem('sb-ggwoupzaruiaaliylxga-auth-token');
+          if (supabaseToken) {
+            try {
+              const parsedToken = JSON.parse(supabaseToken);
+              if (parsedToken.access_token) {
+                headers['Authorization'] = `Bearer ${parsedToken.access_token}`;
+                console.log('Added authentication token to server state request');
+              }
+            } catch (e) {
+              console.warn('Could not parse supabase token:', e);
+            }
+          }
+        } catch (e) {
+          console.warn('Error getting auth token from localStorage:', e);
+        }
+      }
+      
+      // Fetch state from API with enhanced headers
       const response = await fetch(endpoint, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         credentials: 'include'
       });
       
@@ -404,7 +435,29 @@ export class StateManager {
       
       if (data.success && data.state) {
         console.log(`Successfully loaded state from server for user: ${userId}`);
-        return data.state as UserState;
+        
+        // CRITICAL FIX: Ensure server state always has correct userId
+        // This fixes cases where server might return state with empty userId
+        const state = data.state as UserState;
+        if (!state.userId || state.userId === '') {
+          console.log('CRITICAL FIX: Server returned state with empty userId, fixing it');
+          state.userId = userId;
+        }
+        
+        // Also store in localStorage as backup
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('zenjin_user_id', userId);
+            console.log(`Saved userId to localStorage during state load: ${userId}`);
+            
+            // Also save to window.__CURRENT_USER_ID__ for cross-component access
+            (window as any).__CURRENT_USER_ID__ = userId;
+          } catch (e) {
+            console.warn('Could not save userId to localStorage:', e);
+          }
+        }
+        
+        return state;
       }
       
       console.log(`No state found on server for user: ${userId}`);
