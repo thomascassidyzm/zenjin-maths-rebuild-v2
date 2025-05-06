@@ -96,6 +96,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         state.lastUpdated = new Date().toISOString();
       }
       
+      // CRITICAL FIX: Check for and fix naming inconsistencies in activeTube/activeTubeNumber
+      if (state.activeTube !== undefined && state.activeTubeNumber === undefined) {
+        console.log(`API update-state: CRITICAL FIX - Adding missing activeTubeNumber (copied from activeTube: ${state.activeTube})`);
+        state.activeTubeNumber = state.activeTube;
+      } else if (state.activeTubeNumber !== undefined && state.activeTube === undefined) {
+        console.log(`API update-state: CRITICAL FIX - Adding missing activeTube (copied from activeTubeNumber: ${state.activeTubeNumber})`);
+        state.activeTube = state.activeTubeNumber;
+      }
+      
+      console.log(`API update-state: Saving state with activeTube=${state.activeTube}, activeTubeNumber=${state.activeTubeNumber}`);
+      console.log(`API update-state: State contains tubes: ${Object.keys(state.tubes || {}).join(', ')}`);
+      console.log(`API update-state: State userId: ${state.userId}`);
+      console.log(`API update-state: State lastUpdated: ${state.lastUpdated}`);
+      
       try {
         // Try to update or insert the state
         const { data, error } = await supabaseAdmin
@@ -266,6 +280,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               lastActive: new Date().toISOString()
             }
           };
+          
+          // CRITICAL FIX: Check for and fix naming inconsistencies in activeTube/activeTubeNumber
+          if (updatedState.activeTube !== undefined && updatedState.activeTubeNumber === undefined) {
+            console.log(`API batch update: CRITICAL FIX - Adding missing activeTubeNumber (copied from activeTube: ${updatedState.activeTube})`);
+            updatedState.activeTubeNumber = updatedState.activeTube;
+          } else if (updatedState.activeTubeNumber !== undefined && updatedState.activeTube === undefined) {
+            console.log(`API batch update: CRITICAL FIX - Adding missing activeTube (copied from activeTubeNumber: ${updatedState.activeTubeNumber})`);
+            updatedState.activeTube = updatedState.activeTubeNumber;
+          }
         } else {
           // Create new state
           updatedState = {

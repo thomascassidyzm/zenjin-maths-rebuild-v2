@@ -362,6 +362,12 @@ export function useTripleHelixPlayer({
       debug(`Using authenticated user ID (top priority): ${user.id}`);
       setUserId(user.id);
       setIsAnonymous(false);
+      
+      // Save auth status in localStorage to help persistence
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('zenjin_auth_state', 'authenticated');
+        localStorage.setItem('zenjin_user_id', user.id);
+      }
       return;
     }
     
@@ -375,18 +381,36 @@ export function useTripleHelixPlayer({
       
       debug(`Setting user ID from URL parameter: ${queryUserId}`);
       setUserId(queryUserId);
+      
+      // Store in localStorage for persistence
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('zenjin_user_id', queryUserId);
+      }
     } 
     // Next check auth context if not forced into anonymous mode
     else if (user?.id && mode !== 'anonymous') {
       debug(`Setting user ID from auth context: ${user.id}`);
       setUserId(user.id);
       setIsAnonymous(false);
+      
+      // Save auth status in localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('zenjin_auth_state', 'authenticated');
+        localStorage.setItem('zenjin_user_id', user.id);
+      }
     }
     // If user auth state changed to unauthenticated, update accordingly
     else if (!user && !isAnonymous && mode !== 'anonymous') {
       debug('User is no longer authenticated - switching to anonymous mode');
       setIsAnonymous(true);
-      setUserId('anonymous-' + Date.now());
+      const anonId = 'anonymous-' + Date.now();
+      setUserId(anonId);
+      
+      // Store in localStorage for persistence
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('zenjin_auth_state', 'anonymous');
+        localStorage.setItem('zenjin_user_id', anonId);
+      }
     }
   }, [router.query, user, isAuthenticated, isAnonymous, mode]);
   
@@ -1712,18 +1736,33 @@ export function useTripleHelixPlayer({
   
   // Persist state to server with retry logic and better error handling
   const persistStateToServer = async (score: number = 0, totalQuestions: number = 0) => {
+    console.log(`PLAYER UTILS: persistStateToServer called with score=${score}, questions=${totalQuestions}`);
+    
     if (!tubeCycler) {
-      debug("No tubeCycler available for persistStateToServer");
+      console.error("PLAYER UTILS: No tubeCycler available for persistStateToServer");
       return;
     }
     
     // Check if we're in a browser environment
     if (typeof window === 'undefined') {
-      debug("Not in browser environment, skipping state persistence");
+      console.error("PLAYER UTILS: Not in browser environment, skipping state persistence");
       return;
     }
     
-    debug(`Persisting state to server with score=${score}, questions=${totalQuestions}`);
+    console.log(`PLAYER UTILS: Persisting state to server with score=${score}, questions=${totalQuestions}`);
+    
+    // Always save to localStorage as a backup, regardless of authentication status
+    try {
+      if (tubeCycler) {
+        const state = tubeCycler.getState();
+        if (state && state.userId) {
+          localStorage.setItem(`zenjin_state_${state.userId}`, JSON.stringify(state));
+          console.log(`PLAYER UTILS: State saved to localStorage for user ${state.userId}`);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to save state to localStorage:', e);
+    }
     
     // Get auth token for debugging purposes
     const authToken = getAuthHeader();
@@ -1789,11 +1828,13 @@ export function useTripleHelixPlayer({
     try {
       // CRITICAL FIRST: Save the complete state to the user_state table
       // This ensures the state is available for restoration on new browsers
-      debug(`Saving complete state to user_state table (HIGHEST PRIORITY)`);
+      console.log(`PLAYER UTILS: Saving complete state to user_state table (HIGHEST PRIORITY)`);
+      console.log(`PLAYER UTILS: State contains activeTube=${stateData.activeTubeNumber || 'undefined'}`);
+      console.log(`PLAYER UTILS: State contains tubes:`, Object.keys(stateData.tubes || {}));
       
       // Ensure timestamp is updated before persisting to server
       stateData.last_updated = Date.now();
-      debug(`State timestamp updated to ${stateData.last_updated}`);
+      console.log(`PLAYER UTILS: State timestamp updated to ${stateData.last_updated}`);
       
       // Make a direct axios call which has better error handling than fetch
       let completeStateResponse;
@@ -1801,18 +1842,33 @@ export function useTripleHelixPlayer({
         // Using import should work in next.js
         const axios = (await import('axios')).default;
         
-        debug(`Saving state via axios (more reliable than fetch)`);
+        // Enhanced logging for authentication headers
+        const authHeader = getAuthHeader();
+        debug(`Saving state via axios with auth header: ${authHeader ? authHeader.substring(0, 20) + '...' : 'NONE'}`);
+        
+        // Create request configuration with enhanced logging
+        const requestConfig = {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authHeader,
+            'Cache-Control': 'no-cache, no-store, must-revalidate'
+          },
+          // Add timeout for safety
+          timeout: 5000
+        };
+        
+        // Log the API request details
+        debug(`API Request to /api/user-state:
+          Method: POST
+          Headers: ${JSON.stringify(requestConfig.headers)}
+          Payload Size: ${JSON.stringify(stateData).length} bytes
+          Timeout: ${requestConfig.timeout}ms
+        `);
+        
+        // Execute the request
         const axiosResponse = await axios.post('/api/user-state', 
           { state: stateData },
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': getAuthHeader(),
-              'Cache-Control': 'no-cache, no-store, must-revalidate'
-            },
-            // Add timeout for safety
-            timeout: 5000
-          }
+          requestConfig
         );
         
         // Create a fetch-like response object
@@ -1822,7 +1878,12 @@ export function useTripleHelixPlayer({
           statusText: axiosResponse.statusText
         };
         
-        debug(`Axios response: ${axiosResponse.status} ${axiosResponse.statusText}`);
+        // Enhanced response logging
+        debug(`Axios response: 
+          Status: ${axiosResponse.status} ${axiosResponse.statusText}
+          Response time: ${Date.now() - stateData.last_updated}ms
+          Response size: ${JSON.stringify(axiosResponse.data || {}).length} bytes
+        `);
       } catch (axiosError) {
         // Fall back to fetch if axios fails
         debug(`Axios error, falling back to fetch: ${axiosError}`);
@@ -2168,11 +2229,19 @@ export function useTripleHelixPlayer({
     return '';
   };
   
-  // Use this instead of API calls when in anonymous mode
+  // Set up periodic state persistence for all users (anonymous and authenticated)
   useEffect(() => {
-    if (isAnonymous && tubeCycler) {
-      // Save state periodically for anonymous users
-      const intervalId = setInterval(persistAnonymousState, 30000);
+    if (tubeCycler) {
+      // Save state periodically every 30 seconds
+      const intervalId = setInterval(() => {
+        if (isAnonymous) {
+          // For anonymous users, persist to localStorage
+          persistAnonymousState();
+        } else {
+          // For authenticated users, persist to server
+          persistStateToServer(0, 0);
+        }
+      }, 30000);
       
       // Expose accumulated session data via window.__PLAYER_STATE__ for MinimalDistinctionPlayer
       if (typeof window !== 'undefined') {

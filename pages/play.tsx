@@ -7,6 +7,7 @@ import MinimalDistinctionPlayerWithUpgrade from '../components/MinimalDistinctio
 import BackgroundBubbles from '../components/BackgroundBubbles';
 import StitchCelebration from '../components/StitchCelebration';
 import SubscriptionStatusIndicator from '../components/subscription/SubscriptionStatusIndicator';
+import DevTestPane from '../components/DevTestPane';
 
 /**
  * Play Page
@@ -20,6 +21,9 @@ export default function Play() {
 
   // Check if we should continue from previous state
   const continuePreviousState = router.query.continue === 'true';
+  
+  // Check if dev mode is enabled
+  const showDevTools = router.query.dev === 'true';
 
   // Use the shared player hook
   const player = useTripleHelixPlayer({ 
@@ -191,6 +195,9 @@ export default function Play() {
           </div>
         )}
       </div>
+      
+      {/* DevTest Pane - only shown when dev=true query param is provided */}
+      {showDevTools && <DevTestPane player={player} />}
     </div>
   );
 }

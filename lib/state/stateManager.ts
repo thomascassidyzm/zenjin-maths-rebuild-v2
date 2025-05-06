@@ -14,6 +14,7 @@ const initialState: UserState = {
     3: { threadId: '', currentStitchId: '', position: 0 }
   },
   activeTube: 1,
+  activeTubeNumber: 1, // Add this for compatibility with both naming schemes
   cycleCount: 0,
   points: {
     session: 0,
@@ -84,7 +85,8 @@ export class StateManager {
       case 'SET_ACTIVE_TUBE':
         return {
           ...state,
-          activeTube: action.payload
+          activeTube: action.payload,
+          activeTubeNumber: action.payload // Add this for compatibility with both naming schemes
         };
       
       case 'COMPLETE_STITCH': {
@@ -189,6 +191,7 @@ export class StateManager {
         return {
           ...state,
           activeTube: toTube,
+          activeTubeNumber: toTube, // Add this for compatibility with both naming schemes
           cycleCount: newCycleCount
         };
       }
@@ -486,7 +489,7 @@ export class StateManager {
       // Use the right endpoint based on user type
       const endpoint = isAnonymousUser 
         ? '/api/anonymous-state'
-        : '/api/update-state';
+        : '/api/user-state'; // Always use the user-state endpoint for authenticated users
       
       // Use the Beacon API if available and page is about to unload
       if (navigator.sendBeacon && document.visibilityState === 'hidden') {
@@ -641,7 +644,20 @@ export class StateManager {
    */
   async forceSyncToServer(): Promise<boolean> {
     try {
+      // Get a fresh copy of the state to ensure we have the latest
       const state = this.getState();
+      
+      console.log('STATE MANAGER: forceSyncToServer called with state', JSON.stringify({
+        userId: state.userId,
+        tubes: Object.keys(state.tubes || {}),
+        activeTube: state.activeTube
+      }));
+      
+      // Make sure we have a valid userId - this is critical for persistence
+      if (!state.userId) {
+        console.error('STATE MANAGER: No userId found in state - cannot persist');
+        return false;
+      }
       
       // Check if this is an anonymous user
       const isAnonymousUser = state.userId.startsWith('anonymous-');
@@ -649,19 +665,28 @@ export class StateManager {
       // Use the right endpoint based on user type
       const endpoint = isAnonymousUser 
         ? '/api/anonymous-state'
-        : '/api/update-state';
+        : '/api/user-state'; // Always use user-state endpoint for authenticated users
+      
+      console.log(`STATE MANAGER: Using endpoint ${endpoint} for user ${state.userId}`);
       
       // Save to local storage first to ensure we have a backup
       this.saveToLocalStorage(state);
+      console.log('STATE MANAGER: State saved to localStorage');
       
       // If available, also save to IndexedDB
       if (typeof window !== 'undefined' && window.indexedDB) {
         try {
           await this.saveToIndexedDB(state);
+          console.log('STATE MANAGER: State saved to IndexedDB');
         } catch (idbError) {
           console.warn('Could not save to IndexedDB:', idbError);
         }
       }
+      
+      // Add debug logging
+      console.log(`STATE MANAGER: Sending state to server at ${endpoint}`);
+      console.log('STATE MANAGER: State contains tubes:', Object.keys(state.tubes));
+      console.log('STATE MANAGER: State contains activeTube:', state.activeTube);
       
       // Use fetch for immediate sync
       const response = await fetch(endpoint, {
@@ -678,27 +703,39 @@ export class StateManager {
       
       // Handle auth errors by considering local storage a success
       if (!response.ok) {
+        console.error(`STATE MANAGER: Server returned error ${response.status} when syncing state`);
+        
+        try {
+          // Try to get the response text to see what's happening
+          const responseText = await response.text();
+          console.error(`STATE MANAGER: Server response: ${responseText}`);
+        } catch (textError) {
+          console.error('STATE MANAGER: Could not read response text', textError);
+        }
+        
         if (response.status === 401 || response.status === 403) {
-          console.warn(`Authentication issue (${response.status}) forcing state sync. State saved locally.`);
+          console.warn(`STATE MANAGER: Authentication issue (${response.status}) forcing state sync. State saved locally.`);
           return true; // Consider it a success since we saved locally
         }
         throw new Error(`Error syncing state: ${response.status} ${response.statusText}`);
       }
       
       const data = await response.json();
+      console.log('STATE MANAGER: Server sync response:', data);
       
       return data.success === true;
     } catch (err) {
-      console.error('Error force syncing state to server:', err);
+      console.error('STATE MANAGER: Error force syncing state to server:', err);
+      console.error('STATE MANAGER: Error details:', err.stack || 'No stack trace');
       
       // Verify the state was at least saved locally
       try {
         const state = this.getState();
         this.saveToLocalStorage(state);
-        console.log('State was saved locally despite server sync failure');
+        console.log('STATE MANAGER: State was saved locally despite server sync failure');
         return true; // Consider it a partial success
       } catch (localError) {
-        console.error('Failed to save state even locally:', localError);
+        console.error('STATE MANAGER: Failed to save state even locally:', localError);
         return false;
       }
     }
