@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Thread, Question } from '../lib/types/distinction-learning';
 import { calculateBonuses, calculateTotalPoints, calculateBasePoints } from '../lib/bonusCalculator';
 import { BUNDLED_FULL_CONTENT } from '../lib/expanded-bundled-content';
+import { useSession } from '../lib/context/SessionContext';
 
 interface MinimalDistinctionPlayerProps {
   thread: Thread;
@@ -30,6 +31,16 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
   sessionTotalPoints = 0,
   userId,
 }) => {
+  // Get session manager from context
+  const { 
+    sessionState,
+    startSession,
+    recordQuestionResult,
+    addPoints,
+    endSession: contextEndSession,
+    completeSession
+  } = useSession();
+  
   // State for tracking questions and session
   const [sessionQuestions, setSessionQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -115,6 +126,18 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       initializedStitchRef.current[threadStitchKey] = true;
       
       console.log(`Initializing with thread ${threadId}, stitch ${stitch.id}${isNewThread ? ' (NEW THREAD)' : ' (SAME THREAD)'}`);
+      
+      // Initialize session in context if this is a new thread/stitch
+      if (isNewThread || !alreadyInitialized) {
+        startSession({
+          threadId: threadId,
+          stitchId: stitch.id,
+          userId: userId,
+          isActive: true,
+          points: sessionTotalPoints, // Pass in accumulated points
+          startTime: Date.now()
+        });
+      }
       
       // Reset state for the new thread/stitch - but keep points and session results accumulated from previous stitches
       setCurrentQuestionIndex(0);
@@ -203,7 +226,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
         console.error("No questions available for this session!");
       }
     }
-  }, [thread, questionsPerSession]);
+  }, [thread, questionsPerSession, startSession, userId, sessionTotalPoints]);
 
   // Track if timer initialization has been done for the current question
   const timerInitializedRef = useRef(false);
@@ -413,9 +436,12 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     if (correct) {
       const pointsToAdd = !isReplayQuestion ? 3 : 1;
       setPoints(prev => prev + pointsToAdd);
+      
+      // Also update points in context
+      addPoints(pointsToAdd);
     }
     
-    // Update session results
+    // Create result object
     const result = {
       id: currentQuestion.id,
       correct,
@@ -423,7 +449,16 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       firstTimeCorrect: !isReplayQuestion && correct,
     };
     
+    // Update session results locally
     setSessionResults(prev => [...prev, result]);
+    
+    // Also record in session context
+    recordQuestionResult({
+      id: currentQuestion.id,
+      correct,
+      timeToAnswer: answerTime,
+      firstTimeCorrect: !isReplayQuestion && correct,
+    });
     
     // Keep the selection state visible, but not too long
     // After a delay, either move to next question or replay current
@@ -446,7 +481,9 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     isReplayQuestion, 
     loadQuestion, 
     timerAnimation, 
-    isTimingOut
+    isTimingOut,
+    recordQuestionResult,
+    addPoints
   ]);
 
   // Move to next question or complete session
@@ -636,7 +673,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
   } | null>(null);
 
   // Handle ending session early
-  const handleEndSession = () => {
+  const handleEndSession = async () => {
     console.log('📱 User clicked Finish button in MinimalDistinctionPlayer');
     
     // Clean up any outstanding timers or animations
@@ -647,63 +684,15 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       clearTimeout(timerTimeoutRef.current);
       timerTimeoutRef.current = null;
     }
-    
-    // CRITICAL FIX: Use the actual question count rather than inferring from results
-    // This ensures we always report 20 questions when there are 20 questions
-    
+
     // Check if this is an anonymous user
     const isAnonymous = !userId || userId.startsWith('anon-');
     
-    // Get current session stats
+    // Get current session stats before making async calls
     const correctResults = sessionResults.filter(r => r.correct);
     const currentSessionCorrectAnswers = correctResults.length;
     const currentSessionFirstTimeCorrect = sessionResults.filter(r => r.firstTimeCorrect).length;
-    
-    // Calculate the number of questions actually answered in the current session
-    // This will count the number of unique question IDs in the sessionResults
-    // A session can end mid-stitch, so we can't assume all questions in a stitch were answered
     const currentSessionQuestions = new Set(sessionResults.map(r => r.id)).size;
-    
-    // Initialize with current session values
-    let totalQuestions = currentSessionQuestions;
-    let correctAnswers = currentSessionCorrectAnswers;
-    let firstTimeCorrect = currentSessionFirstTimeCorrect;
-    
-    // For the session summary, we only need the current session's stats
-    // We don't add accumulated stats from previous sessions here
-    // This is because the session summary shows only the current session,
-    // while accumulated stats are used for overall progress tracking
-    
-    // Log for debugging
-    console.log(`Using current session stats for summary:
-      Questions answered: ${currentSessionQuestions}
-      Correct answers: ${currentSessionCorrectAnswers}
-      First-time correct: ${currentSessionFirstTimeCorrect}
-    `);
-    
-    // Use current session values only - don't add accumulated data
-    totalQuestions = currentSessionQuestions;
-    correctAnswers = currentSessionCorrectAnswers;
-    firstTimeCorrect = currentSessionFirstTimeCorrect;
-    
-    const eventuallyCorrect = correctAnswers - firstTimeCorrect;
-    
-    console.log(`FINAL STATS FOR SESSION SUMMARY:
-      Current session questions answered: ${currentSessionQuestions}
-      Current session correct answers: ${currentSessionCorrectAnswers}
-      Current session first time correct: ${currentSessionFirstTimeCorrect}
-      
-      ACCUMULATED TOTALS:
-      Total questions answered: ${totalQuestions}
-      Total correct answers: ${correctAnswers}
-      Total first time correct: ${firstTimeCorrect}
-      Total eventually correct: ${eventuallyCorrect}
-      
-      Base points calculation: (${firstTimeCorrect} × 3) + (${eventuallyCorrect} × 1) = ${firstTimeCorrect * 3 + eventuallyCorrect}
-    `);
-    
-    // We no longer force total questions to match the stitch length
-    // A session can end mid-stitch, so we count the actual number of questions answered
     
     // Calculate blink speed (average time for correct answers in milliseconds)
     const correctTimes = correctResults.map(r => r.timeToAnswer);
@@ -716,85 +705,141 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       sessionResults.reduce((sum, r) => sum + r.timeToAnswer, 0) / 1000
     );
     
-    // Save anonymous user data - THIS IS THE ONLY PLACE WHERE POINTS ARE SAVED
-    // All other places should skip saving points to avoid double-counting
-    if (isAnonymous) {
-      // Use calculated basePoints instead of accumulated points for consistency
-      const calculatedBasePoints = calculateBasePoints(firstTimeCorrect, correctAnswers - firstTimeCorrect);
-      console.log(`HandleEndSession: Saving ${calculatedBasePoints} points (SINGLE SOURCE OF TRUTH)`);
-      saveAnonymousSessionData(calculatedBasePoints, avgTime / 1000, sessionResults);
-    }
+    // Log debug info
+    console.log(`FINAL STATS FOR SESSION SUMMARY:
+      Current session questions answered: ${currentSessionQuestions}
+      Current session correct answers: ${currentSessionCorrectAnswers}
+      Current session first time correct: ${currentSessionFirstTimeCorrect}
+      Blink speed: ${avgTime / 1000}s
+      Session duration: ${sessionDuration}s
+    `);
+    
+    const eventuallyCorrect = currentSessionCorrectAnswers - currentSessionFirstTimeCorrect;
+    
+    // Calculate base points for this session only
+    const basePoints = calculateBasePoints(currentSessionFirstTimeCorrect, eventuallyCorrect);
+    
+    // Prepare stitchPositions data for context API
+    const stitchPositions = [{
+      threadId: thread.id,
+      stitchId: thread.stitches[0].id,
+      orderNumber: 0, // Default order number
+      skipNumber: 1,  // Default skip number
+      distractorLevel: 'L1' // Default distractor level
+    }];
     
     // Prepare session data for bonus calculation
     const sessionData = {
-      totalQuestions,
+      totalQuestions: currentSessionQuestions,
       totalAttempts: sessionResults.length,
-      correctAnswers,
-      firstTimeCorrect,
+      correctAnswers: currentSessionCorrectAnswers,
+      firstTimeCorrect: currentSessionFirstTimeCorrect,
       averageTimeToAnswer: avgTime,
       sessionDuration,
       threadId: thread.id,
       stitchId: thread.stitches[0].id
     };
     
-    // Calculate base points using our formula with the accumulated values
-    // This will include all points earned since the user started playing
-    const basePoints = calculateBasePoints(firstTimeCorrect, eventuallyCorrect);
-    
-    // Calculate bonuses
+    // Calculate bonuses using the original logic for UI consistency
     const bonuses = calculateBonuses(sessionData, sessionResults, isAnonymous);
-    
-    // Calculate final points with multiplier
     const { totalPoints, multiplier } = calculateTotalPoints(basePoints, bonuses);
     
-    // For evolution level calculation
-    const evolutionLevel = Math.floor(totalPoints / 1000) + 1;
-    const evolutionProgress = (totalPoints % 1000) / 10; // 0-100
+    // For anonymous users, also use the original saveAnonymousSessionData for backwards compatibility
+    if (isAnonymous) {
+      console.log(`HandleEndSession: Saving ${basePoints} points (SINGLE SOURCE OF TRUTH)`);
+      saveAnonymousSessionData(basePoints, avgTime / 1000, sessionResults);
+    }
     
-    // Set session summary data to show in the UI
-    setSessionSummary({
-      totalQuestions,
-      correctAnswers,
-      firstTimeCorrect,
-      basePoints,
-      blinkSpeed: avgTime / 1000,
+    // Update the context with the session complete signal
+    // This is where the actual persistence happens using our new API endpoint
+    try {
+      console.log('Using SessionContext to end session...');
+      const result = await contextEndSession({
+        threadId: thread.id,
+        stitchId: thread.stitches[0].id,
+        points: totalPoints, // Pass the total points with bonuses applied
+        blinkSpeed: avgTime / 1000,
+        stitchPositions: stitchPositions,
+        isActive: false
+      });
       
-      bonuses,
-      multiplier,
-      totalPoints,
+      console.log('SessionContext.endSession result:', result);
       
-      evolutionLevel,
-      evolutionProgress
-    });
+      // If we have a context summary, prefer it for evolution level information
+      // Otherwise fall back to our calculations
+      let evolutionLevel = Math.floor(totalPoints / 1000) + 1;
+      let evolutionProgress = (totalPoints % 1000) / 10; // 0-100
+      
+      if (result.success && result.summary) {
+        evolutionLevel = result.summary.evolutionLevel || evolutionLevel;
+        evolutionProgress = result.summary.evolutionProgress || evolutionProgress;
+      }
+      
+      // Set session summary data to show in the UI
+      setSessionSummary({
+        totalQuestions: currentSessionQuestions,
+        correctAnswers: currentSessionCorrectAnswers,
+        firstTimeCorrect: currentSessionFirstTimeCorrect,
+        basePoints,
+        blinkSpeed: avgTime / 1000,
+        bonuses,
+        multiplier,
+        totalPoints,
+        evolutionLevel,
+        evolutionProgress
+      });
+      
+      // Show the session summary UI
+      setShowSessionSummary(true);
+      setSessionSummaryStep('base');
+      
+    } catch (error) {
+      console.error('Error ending session via context:', error);
+      
+      // Create fallback summary
+      const evolutionLevel = Math.floor(totalPoints / 1000) + 1;
+      const evolutionProgress = (totalPoints % 1000) / 10; // 0-100
+      
+      // Set session summary data to show in the UI even if there was an error
+      setSessionSummary({
+        totalQuestions: currentSessionQuestions,
+        correctAnswers: currentSessionCorrectAnswers,
+        firstTimeCorrect: currentSessionFirstTimeCorrect,
+        basePoints,
+        blinkSpeed: avgTime / 1000,
+        bonuses,
+        multiplier,
+        totalPoints,
+        evolutionLevel,
+        evolutionProgress
+      });
+      
+      // Show the session summary UI anyway
+      setShowSessionSummary(true);
+      setSessionSummaryStep('base');
+    }
     
-    // Show the session summary UI
-    setShowSessionSummary(true);
-    setSessionSummaryStep('base');
-    
-    // Format question results exactly as expected by the server
-    const formattedQuestionResults = sessionResults.map(r => ({
-      questionId: r.id || `question-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-      correct: typeof r.correct === 'boolean' ? r.correct : false,
-      timeToAnswer: typeof r.timeToAnswer === 'number' ? r.timeToAnswer : 1000,
-      firstTimeCorrect: typeof r.firstTimeCorrect === 'boolean' ? r.firstTimeCorrect : false
-    }));
-    
-    // Save this data for when the user clicks "Continue to Dashboard"
-    // We'll use it for the API calls and navigation
+    // For backward compatibility, we still prepare the session stats object
+    // But no longer store it in the window object - will use context instead
     const stats = {
       sessionId: `session-${Date.now()}`,
       threadId: thread.id,
       stitchId: thread.stitches[0].id,
-      totalQuestions,
+      totalQuestions: currentSessionQuestions,
       totalAttempts: sessionResults.length,
-      correctAnswers,
-      firstTimeCorrect,
-      totalPoints, // Use the new calculated total points with bonus
-      blinkSpeed: avgTime / 1000, // Convert to seconds
+      correctAnswers: currentSessionCorrectAnswers,
+      firstTimeCorrect: currentSessionFirstTimeCorrect,
+      totalPoints,
+      blinkSpeed: avgTime / 1000,
       sessionDuration,
-      multiplier, // Include the multiplier for analytics
-      goDashboard: true, // This will be used when navigating after the summary
-      questionResults: formattedQuestionResults,
+      multiplier,
+      goDashboard: true,
+      questionResults: sessionResults.map(r => ({
+        questionId: r.id,
+        correct: r.correct,
+        timeToAnswer: r.timeToAnswer,
+        firstTimeCorrect: r.firstTimeCorrect
+      })),
       results: sessionResults,
       completedAt: new Date().toISOString()
     };
@@ -804,9 +849,13 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       window.__SESSION_STATS__ = stats;
     }
     
-    // Start API calls for authenticated users only
+    // Legacy API calls - gradually phasing these out as we move to the context
+    // Keep them for backward compatibility during transition
     if (!isAnonymous) {
-      // 1. First record-session API - only call for authenticated users
+      console.log('Making legacy API calls for backward compatibility...');
+      // Making these calls in the background but not waiting for them
+      // They're for backward compatibility only
+      
       fetch('/api/record-session', {
         method: 'POST',
         headers: {
@@ -816,62 +865,19 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
         body: JSON.stringify({
           threadId: thread.id,
           stitchId: thread.stitches[0].id,
-          questionResults: formattedQuestionResults,
+          questionResults: stats.questionResults,
           sessionDuration,
           userId: userId
         }),
         credentials: 'include'
       }).catch(error => {
-        console.error('Error in record-session API call:', error);
+        console.error('Error in legacy record-session API call:', error);
       });
-    } else {
-      console.log('Skipping record-session API call for anonymous user');
-    }
-    
-    // 2. End-session API - only call for authenticated users to avoid unnecessary network errors
-    if (userId && !userId.startsWith('anon-')) {
-      fetch('/api/end-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          userId: userId || 'session-user',
-          threadId: thread.id,
-          stitchId: thread.stitches[0].id,
-          points: stats.totalPoints || 0,
-          questionResults: formattedQuestionResults,
-          sessionDuration,
-          correctAnswers: stats.correctAnswers || 0,
-          totalQuestions: stats.totalQuestions || 0,
-          tubeUpdates: [
-            {
-              tubeNumber: 1,
-              threadId: thread.id
-            }
-          ],
-          stitchUpdates: [
-            {
-              threadId: thread.id,
-              stitchId: thread.stitches[0].id,
-              orderNumber: 0,
-              skipNumber: 1,
-              distractorLevel: 'L1'
-            }
-          ]
-        }),
-        credentials: 'include'
-      }).catch(error => {
-        console.error('Error in end-session API call:', error);
-      });
-    } else {
-      console.log('Skipping end-session API call for anonymous user');
     }
   };
   
   // Called after showing summary or if there's an error
-  const finishSession = (stats: any) => {
+  const finishSession = async (stats: any) => {
     // If onEndSession is provided, call it instead of regular completion
     if (onEndSession) {
       console.log('Using onEndSession callback for manual session ending');
@@ -879,7 +885,23 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       // Add navigation flag to ensure dashboard redirect
       stats.goDashboard = true;
       
-      // First store the session data in localStorage for anonymous users
+      // First ensure session is fully completed in context
+      try {
+        // Make sure the session is marked as completed in our context
+        // This is a safety check in case handleEndSession didn't complete successfully
+        const result = await completeSession({
+          isActive: false,
+          threadId: thread.id,
+          stitchId: thread.stitches[0].id
+        });
+        
+        console.log('Final session completion check via context:', result.success ? 'Success' : 'Failed');
+      } catch (error) {
+        console.error('Error in final session completion check:', error);
+        // Continue even if this fails - we'll still try to navigate
+      }
+      
+      // Handle anonymous users
       if (typeof window !== 'undefined') {
         try {
           // Check if user is anonymous
@@ -927,8 +949,29 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       // Also call the onEndSession callback to maintain compatibility
       onEndSession(stats);
     } else {
-      // Fallback to regular completion if onEndSession not provided
-      completeSession();
+      // For automatic completion via context
+      try {
+        // Use context's completeSession for automatic completion
+        const result = await completeSession({
+          isActive: false,
+          threadId: thread.id,
+          stitchId: thread.stitches[0].id
+        });
+        
+        console.log('Auto completion via context:', result.success ? 'Success' : 'Failed');
+        
+        // Pass result to onComplete for backward compatibility
+        onComplete({
+          ...stats,
+          sessionId: result.success && result.summary ? `session-${Date.now()}` : `session-${Date.now()}`,
+          success: result.success,
+          goDashboard: true
+        });
+      } catch (error) {
+        console.error('Error in automatic session completion:', error);
+        // Fallback to old completeSession for backward compatibility
+        completeSession();
+      }
     }
   };
   
