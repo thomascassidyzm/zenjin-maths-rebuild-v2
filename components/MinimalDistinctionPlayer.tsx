@@ -30,10 +30,13 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
   sessionTotalPoints = 0,
   userId,
 }) => {
-  // Create fallbacks for session context functionality since we're not using the context
+  // Create explicit fallbacks for all session context functions we might need
   const dummySessionState = { questionResults: [], points: 0 };
-  const noopFunction = () => console.log('Session context not available');
-  const noopAsync = async () => ({ success: false, error: 'Session context not available' });
+  const startSession = (params: any) => console.log('Session context not available - startSession', params);
+  const recordQuestionResult = (result: any) => console.log('Session context not available - recordQuestionResult', result);
+  const addPoints = (points: number) => console.log('Session context not available - addPoints', points);
+  const contextEndSession = async () => ({ success: false, error: 'Session context not available' });
+  const contextCompleteSession = async () => ({ success: false, error: 'Session context not available' });
   
   // State for tracking questions and session
   const [sessionQuestions, setSessionQuestions] = useState<Question[]>([]);
@@ -210,7 +213,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
         console.error("No questions available for this session!");
       }
     }
-  }, [thread, questionsPerSession, startSession, userId, sessionTotalPoints]);
+  }, [thread, questionsPerSession, userId, sessionTotalPoints]);
 
   // Track if timer initialization has been done for the current question
   const timerInitializedRef = useRef(false);
@@ -459,8 +462,6 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     loadQuestion, 
     timerAnimation, 
     isTimingOut,
-    recordQuestionResult,
-    addPoints
   ]);
 
   // Move to next question or complete session
