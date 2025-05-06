@@ -38,7 +38,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     recordQuestionResult,
     addPoints,
     endSession: contextEndSession,
-    completeSession
+    completeSession: contextCompleteSession
   } = useSession();
   
   // State for tracking questions and session
