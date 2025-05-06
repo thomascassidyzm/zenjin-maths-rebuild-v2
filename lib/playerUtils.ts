@@ -422,8 +422,15 @@ export function useTripleHelixPlayer({
     // First, always update internal state reference
     setState(newState);
     
-    // Track pending changes
-    const pendingCount = tubeCycler?.getStats()?.pendingChanges || 0;
+    // Track pending changes - with safety check for getStats method
+    let pendingCount = 0;
+    try {
+      if (tubeCycler && typeof tubeCycler.getStats === 'function') {
+        pendingCount = tubeCycler.getStats()?.pendingChanges || 0;
+      }
+    } catch (err) {
+      console.warn('Error getting stats:', err);
+    }
     setPendingChanges(pendingCount);
     
     // CRITICAL: If we're in a transition, block UI updates

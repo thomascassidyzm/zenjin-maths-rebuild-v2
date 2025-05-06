@@ -33,15 +33,42 @@ const DevTestPane: React.FC<DevTestPaneProps> = ({ player, show = true }) => {
       // For stitch advancement without tube cycling, we need to call StateMachine directly
       // This bypasses the normal handleSessionComplete flow that would cycle tubes
       if (player.tubeCycler) {
-        // Call handleStitchCompletion directly on the tubeCycler (StateMachine)
-        // This will advance the stitch within the same tube without cycling
-        player.tubeCycler.handleStitchCompletion(threadId, stitchId, 20, 20);
+        // Safety check if handleStitchCompletion exists
+        if (typeof player.tubeCycler.handleStitchCompletion === 'function') {
+          // Call handleStitchCompletion directly on the tubeCycler (StateMachine)
+          // This will advance the stitch within the same tube without cycling
+          player.tubeCycler.handleStitchCompletion(threadId, stitchId, 20, 20);
+        } else {
+          console.error("tubeCycler does not have handleStitchCompletion method, using fallback");
+          // Fallback to regular session completion
+          player.handleSessionComplete({
+            sessionId: `dev-session-${Date.now()}`,
+            correctAnswers: 20,
+            firstTimeCorrect: 20,
+            totalQuestions: 20,
+            totalPoints: 60,
+            questionResults: Array(20).fill(0).map((_, i) => ({
+              questionId: `q-${i+1}`,
+              correct: true,
+              timeToAnswer: 1500,
+              firstTimeCorrect: true
+            }))
+          });
+          return;
+        }
         
         // Force a UI refresh after stitch advancement
         setTimeout(() => {
           try {
-            // Get the updated stitch and state
-            const updatedStitch = player.tubeCycler.getCurrentStitch();
+            // Get the updated stitch and state with safety checks
+            let updatedStitch;
+            if (player.tubeCycler && typeof player.tubeCycler.getCurrentStitch === 'function') {
+              updatedStitch = player.tubeCycler.getCurrentStitch();
+            } else if (player.currentStitch) {
+              // Fallback - just use the current stitch as we can't get an updated one
+              console.log("No getCurrentStitch method available, using current stitch");
+              updatedStitch = player.currentStitch;
+            }
             
             // Update the player's UI with the new stitch
             if (updatedStitch) {
@@ -106,20 +133,40 @@ const DevTestPane: React.FC<DevTestPaneProps> = ({ player, show = true }) => {
   
   // Cycle to next tube
   const cycleTubes = () => {
-    if (!player || !player.cycleTubes) {
-      console.error("Player object doesn't support cycleTubes");
+    if (!player) {
+      console.error("Player object is not available");
       return;
     }
-    player.cycleTubes();
+    
+    // Try multiple methods to cycle tubes
+    if (typeof player.cycleTubes === 'function') {
+      player.cycleTubes();
+    } else if (player.tubeCycler && typeof player.tubeCycler.cycleTubes === 'function') {
+      player.tubeCycler.cycleTubes();
+    } else if (player.handlePerfectScore) {
+      // Last resort: just simulate a perfect score which should cycle tubes
+      console.log("Using handlePerfectScore as fallback for tube cycling");
+      player.handlePerfectScore();
+    } else {
+      console.error("No method available to cycle tubes");
+    }
   };
   
   // Let user select a specific tube
   const selectTube = (tubeNum: number) => {
-    if (!player || !player.handleManualTubeSelect) {
-      console.error("Player object doesn't support handleManualTubeSelect");
+    if (!player) {
+      console.error("Player object is not available");
       return;
     }
-    player.handleManualTubeSelect(tubeNum);
+    
+    // Try multiple methods to select a tube
+    if (typeof player.handleManualTubeSelect === 'function') {
+      player.handleManualTubeSelect(tubeNum);
+    } else if (player.tubeCycler && typeof player.tubeCycler.selectTube === 'function') {
+      player.tubeCycler.selectTube(tubeNum);
+    } else {
+      console.error("No method available to manually select tube");
+    }
   };
   
   // If not showing, render nothing
