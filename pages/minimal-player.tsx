@@ -90,7 +90,17 @@ export default function MinimalPlayer() {
     mode: playerMode,
     resetPoints: shouldResetPoints, // Reset points but maintain stitch progress
     continuePreviousState: continuePreviousState, // Continue from previous state (for Continue Playing button)
-    debug: console.log 
+    // Enhanced debug for better visibility of player continuation issues
+    debug: (message) => {
+      console.log(`🔄 PLAYER[${playerMode}]: ${message}`);
+      
+      // Add extra debugging for tube state issues
+      if (message.includes('tube') || message.includes('Tube') || 
+          message.includes('state') || message.includes('State') ||
+          message.includes('continue') || message.includes('Continue')) {
+        console.log(`🔍 TUBE-DEBUG: ${message}`);
+      }
+    }
   });
 
   return (

@@ -41,11 +41,12 @@ export default function AnonDashboard() {
     // if they want to, which shows data from localStorage
     
     // Check for anonymous ID - if doesn't exist, create one
-    const anonymousId = localStorage.getItem('anonymousId');
+    let anonymousId = localStorage.getItem('anonymousId');
     if (!anonymousId) {
       // Generate new anonymous ID
       const newAnonymousId = `anon-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
       localStorage.setItem('anonymousId', newAnonymousId);
+      anonymousId = newAnonymousId;
       
       // Initialize progress data for anonymous user
       const progressData = {
@@ -63,6 +64,32 @@ export default function AnonDashboard() {
       
       // Save initial progress data
       localStorage.setItem(`progressData_${newAnonymousId}`, JSON.stringify(progressData));
+    }
+    
+    // CRITICAL FIX: Before the Continue Playing button click, ensure we copy any existing state
+    // to the 'triple_helix_state_${anonymousId}' format that StateMachine will look for
+    const zenjinAnonymousState = localStorage.getItem('zenjin_anonymous_state');
+    if (zenjinAnonymousState && anonymousId) {
+      try {
+        // Parse the state and check if it contains a valid tube state
+        const parsedState = JSON.parse(zenjinAnonymousState);
+        if (parsedState.state && parsedState.state.tubes) {
+          // CRITICAL FIX: Explicitly preserve the actual activeTubeNumber from the saved state
+          const activeTube = parsedState.state.activeTubeNumber || 1;
+          console.log(`Found zenjin_anonymous_state with valid tube data (activeTube=${activeTube}) - copying to triple_helix_state key`);
+          
+          // Make sure the activeTubeNumber is correctly set in the state
+          const modifiedState = {
+            ...parsedState.state,
+            activeTubeNumber: activeTube,
+            activeTube: activeTube  // Set both for backward compatibility
+          };
+          
+          localStorage.setItem(`triple_helix_state_${anonymousId}`, JSON.stringify(modifiedState));
+        }
+      } catch (e) {
+        console.error('Error copying anonymous state:', e);
+      }
     }
     
     // Load data from localStorage for anonymous users
@@ -270,6 +297,46 @@ export default function AnonDashboard() {
               <Link 
                 href="/minimal-player?mode=anonymous&continue=true" 
                 className="block bg-gradient-to-r from-teal-600 to-emerald-500 hover:from-teal-500 hover:to-emerald-400 text-white font-bold py-4 px-6 rounded-xl transition-colors text-lg text-center shadow-lg"
+                onClick={() => {
+                  // CRITICAL FIX: Before navigation, ensure the state is properly synchronized
+                  try {
+                    // Get the anonymousId that's stored in localStorage
+                    const anonymousId = localStorage.getItem('anonymousId');
+                    if (anonymousId) {
+                      console.log(`Preparing continue playing with anonymousId: ${anonymousId}`);
+                      
+                      // Find any existing state saved under zenjin_anonymous_state
+                      const zenjinState = localStorage.getItem('zenjin_anonymous_state');
+                      if (zenjinState) {
+                        try {
+                          // Parse and check if it has valid state structure
+                          const parsedState = JSON.parse(zenjinState);
+                          if (parsedState && parsedState.state && parsedState.state.tubes) {
+                            // CRITICAL FIX: Preserve the actual activeTubeNumber from the saved state
+                            // instead of using the default activeTube: 1 from the dashboard
+                            const activeTube = parsedState.state.activeTubeNumber || 1;
+                            console.log(`Preserving actual active tube (${activeTube}) from saved state`);
+                            
+                            // Make sure the activeTubeNumber is correctly set in the state
+                            const modifiedState = {
+                              ...parsedState.state,
+                              activeTubeNumber: activeTube,
+                              activeTube: activeTube  // Set both for backward compatibility
+                            };
+                            
+                            // Save to the expected triple_helix_state_X key with preserved tube number
+                            console.log(`Found valid state in zenjin_anonymous_state, copying to triple_helix_state_${anonymousId} with activeTube=${activeTube}`);
+                            localStorage.setItem(`triple_helix_state_${anonymousId}`, JSON.stringify(modifiedState));
+                          }
+                        } catch (e) {
+                          console.error('Error synchronizing state:', e);
+                        }
+                      }
+                    }
+                  } catch (e) {
+                    console.error('Error in Continue Playing preparation:', e);
+                  }
+                }}
               >
                 Continue Playing
               </Link>

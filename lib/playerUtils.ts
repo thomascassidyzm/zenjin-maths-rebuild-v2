@@ -139,7 +139,20 @@ export function useTripleHelixPlayer({
           // If continuePreviousState is true, we MUST use the saved data to ensure
           // the Continue Playing button works correctly
           if (continuePreviousState) {
-            debug('Using saved state for accumulatedSessionData because continuePreviousState=true');
+            debug('CRITICAL DIAGNOSTIC: Continue=true set - Using saved state for continuation');
+            
+            // Add explicit diagnostic about tube state
+            if (parsedState.state) {
+              const activeTube = parsedState.state.activeTubeNumber || parsedState.state.activeTube;
+              debug(`CRITICAL DIAGNOSTIC: Continuing with activeTube=${activeTube} from stored state`);
+              
+              if (parsedState.state.tubes) {
+                // Check each tube's current stitch
+                Object.entries(parsedState.state.tubes).forEach(([tubeNum, tube]) => {
+                  debug(`TUBE STATE: Tube ${tubeNum} has currentStitchId=${(tube as any).currentStitchId}`);
+                });
+              }
+            }
             
             // Check for accumulatedSessionData in the stored state
             if (parsedState.state && parsedState.state.accumulatedSessionData) {
@@ -1322,31 +1335,84 @@ export function useTripleHelixPlayer({
         
         // CRITICAL FIX: Additional checks for continuePreviousState to ensure correct position loading
         if (continuePreviousState && isAnonymous && typeof window !== 'undefined') {
+          debug(`🔍 CONTINUE PLAYING: Anonymous user with continuePreviousState=true`);
+          
           try {
+            // Check for triple_helix_state first (which should have been prepared by anon-dashboard)
+            const tripleHelixStateKey = `triple_helix_state_${userId}`;
+            const tripleHelixState = localStorage.getItem(tripleHelixStateKey);
+            
+            if (tripleHelixState) {
+              debug(`🔍 CONTINUE PLAYING: Found triple_helix_state_${userId} - checking tube state`);
+              
+              try {
+                const parsedTripleHelixState = JSON.parse(tripleHelixState);
+                if (parsedTripleHelixState && parsedTripleHelixState.activeTubeNumber) {
+                  const tripleHelixActiveTube = parsedTripleHelixState.activeTubeNumber;
+                  debug(`🔍 CONTINUE PLAYING: triple_helix_state has activeTubeNumber=${tripleHelixActiveTube}`);
+                  
+                  // If different from initialState, log the discrepancy
+                  if (initialState.activeTubeNumber !== tripleHelixActiveTube) {
+                    debug(`❗ TUBE MISMATCH: initialState has activeTubeNumber=${initialState.activeTubeNumber}, but triple_helix_state has ${tripleHelixActiveTube}`);
+                    debug(`❗ CRITICAL: Will prioritize triple_helix_state tube number`);
+                    
+                    // Set both activeTube and activeTubeNumber to ensure consistency
+                    initialState.activeTubeNumber = tripleHelixActiveTube;
+                    initialState.activeTube = tripleHelixActiveTube;
+                  }
+                }
+              } catch (tripleHelixErr) {
+                debug(`Error parsing triple_helix_state: ${tripleHelixErr}`);
+              }
+            }
+            
+            // Now check the regular zenjin_anonymous_state as fallback
             const savedStateJson = localStorage.getItem('zenjin_anonymous_state');
             if (savedStateJson) {
               const savedState = JSON.parse(savedStateJson);
               if (savedState && savedState.state) {
+                // Log the current activeTube for debugging
+                const currentActiveTube = initialState.activeTubeNumber || initialState.activeTube;
+                debug(`🔍 CONTINUE PLAYING: Before update - initialState has activeTube=${currentActiveTube}`);
+                debug(`🔍 CONTINUE PLAYING: savedState has activeTube=${savedState.state.activeTubeNumber || savedState.state.activeTube}`);
+                
                 // Ensure the active tube number is correctly set
                 if (savedState.state.activeTubeNumber) {
                   initialState.activeTubeNumber = savedState.state.activeTubeNumber;
                   initialState.activeTube = savedState.state.activeTubeNumber;
-                  debug(`Using active tube ${initialState.activeTubeNumber} from saved state for continuation`);
+                  debug(`🔍 CONTINUE PLAYING: Using active tube ${initialState.activeTubeNumber} from saved state for continuation`);
+                } else if (savedState.state.activeTube) {
+                  initialState.activeTubeNumber = savedState.state.activeTube;
+                  initialState.activeTube = savedState.state.activeTube;
+                  debug(`🔍 CONTINUE PLAYING: Using activeTube=${savedState.state.activeTube} from saved state (activeTubeNumber was missing)`);
                 }
                 
                 // Ensure we restore the correct tube current stitch IDs
                 if (savedState.state.tubes) {
+                  debug(`🔍 CONTINUE PLAYING: Saved state has tubes: ${Object.keys(savedState.state.tubes).join(', ')}`);
+                  debug(`🔍 CONTINUE PLAYING: Current initialState has tubes: ${Object.keys(initialState.tubes).join(', ')}`);
+                  
                   Object.entries(savedState.state.tubes).forEach(([tubeNum, tube]: [string, any]) => {
                     const tubeNumber = parseInt(tubeNum);
                     if (initialState.tubes[tubeNumber] && tube.currentStitchId) {
+                      // Log if there's a mismatch
+                      if (initialState.tubes[tubeNumber].currentStitchId !== tube.currentStitchId) {
+                        debug(`❗ STITCH MISMATCH: Tube ${tubeNumber} - initialState has ${initialState.tubes[tubeNumber].currentStitchId}, but saved state has ${tube.currentStitchId}`);
+                      }
+                      
                       initialState.tubes[tubeNumber].currentStitchId = tube.currentStitchId;
-                      debug(`Set current stitch for tube ${tubeNumber} to ${tube.currentStitchId}`);
+                      debug(`🔍 CONTINUE PLAYING: Set current stitch for tube ${tubeNumber} to ${tube.currentStitchId}`);
                     }
                   });
                 }
                 
-                debug('Successfully updated initialState with saved position information for continuation');
+                debug('🔍 CONTINUE PLAYING: Successfully updated initialState with saved position information for continuation');
+                
+                // Final state should now be correct - log it for verification
+                debug(`🔍 CONTINUE PLAYING: Final initialState activeTube=${initialState.activeTubeNumber} (or ${initialState.activeTube})`);
               }
+            } else {
+              debug('❗ WARNING: No zenjin_anonymous_state found in localStorage - continuation may not work correctly');
             }
           } catch (e) {
             console.error('Error updating initialState from saved state:', e);
@@ -2237,8 +2303,20 @@ export function useTripleHelixPlayer({
       
       // CRITICAL FIX: Save the state directly to the key that StateMachine loads from
       // This is the key where the StateMachine looks for state upon initialization
-      const anonymousId = localStorage.getItem('anonymousId') || userId;
-      localStorage.setItem(`triple_helix_state_${anonymousId}`, JSON.stringify(stateData));
+      const anonymousId = localStorage.getItem('anonymousId');
+      
+      // Log the anonymousId for debugging
+      debug(`Using anonymousId from localStorage: ${anonymousId || 'NOT FOUND'}`);
+      
+      // Save to both possible locations to ensure state is found
+      if (anonymousId) {
+        localStorage.setItem(`triple_helix_state_${anonymousId}`, JSON.stringify(stateData));
+        debug(`Saved state to triple_helix_state_${anonymousId}`);
+      }
+      
+      // Also save to userId-based key as a fallback
+      localStorage.setItem(`triple_helix_state_${userId}`, JSON.stringify(stateData));
+      debug(`Saved state to triple_helix_state_${userId}`);
       
       // For backward compatibility and reference, we also save in the app-level key
       // with additional metadata like totalPoints that might be useful for the dashboard

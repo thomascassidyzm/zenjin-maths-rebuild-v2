@@ -76,7 +76,40 @@ export class StateManager {
   private reducer(state: UserState, action: StateAction): UserState {
     switch (action.type) {
       case 'INITIALIZE_STATE':
-        // Replace the entire state
+        // CRITICAL FIX: Preserve active tube information if available
+        // This prevents dashboard from resetting tube state
+        
+        // Check if we're initializing from saved state with tube info
+        const savedActiveTube = action.payload?.activeTubeNumber || action.payload?.activeTube;
+        const hasSavedTubeInfo = typeof savedActiveTube !== 'undefined';
+        
+        // Log what we're doing for debugging purposes
+        if (typeof window !== 'undefined' && window.location.pathname.includes('dashboard')) {
+          console.log(`STATE MANAGER: INITIALIZE_STATE called from dashboard page`);
+          console.log(`STATE MANAGER: Saved state has activeTube=${action.payload?.activeTube}, activeTubeNumber=${action.payload?.activeTubeNumber}`);
+          
+          // If we have anonymous state saved, check if it has a different tube number
+          try {
+            const anonymousState = localStorage.getItem('zenjin_anonymous_state');
+            if (anonymousState) {
+              const parsedState = JSON.parse(anonymousState);
+              if (parsedState && parsedState.state) {
+                const anonTube = parsedState.state.activeTubeNumber || parsedState.state.activeTube;
+                if (typeof anonTube !== 'undefined' && anonTube !== savedActiveTube) {
+                  console.log(`STATE MANAGER: WARNING - Anonymous state has different tube: ${anonTube} vs initializing with: ${savedActiveTube}`);
+                  console.log(`STATE MANAGER: Will prioritize anonymous state tube number: ${anonTube}`);
+                  // Override with the anonymous state tube number
+                  action.payload.activeTube = anonTube;
+                  action.payload.activeTubeNumber = anonTube;
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Error checking anonymous state for active tube:', e);
+          }
+        }
+        
+        // Perform initialization with preserved tube info
         return {
           ...action.payload,
           lastUpdated: new Date().toISOString()
@@ -712,11 +745,44 @@ export class StateManager {
       // Get a fresh copy of the state to ensure we have the latest
       let state = this.getState();
       
+      // CRITICAL FIX: Add detailed logging for active tube issue
+      // This helps debug when the activeTube is incorrectly reset to 1
+      const activeTubeNumber = state.activeTubeNumber || state.activeTube || 1;
       console.log('STATE MANAGER: forceSyncToServer called with state', JSON.stringify({
         userId: state.userId,
         tubes: Object.keys(state.tubes || {}),
         activeTube: state.activeTube
       }));
+      
+      // CRITICAL FIX: Check for a mismatch between activeTube and activeTubeNumber
+      if (state.activeTube !== state.activeTubeNumber && state.activeTubeNumber) {
+        console.log(`STATE MANAGER: CRITICAL - Detected mismatch between activeTube (${state.activeTube}) and activeTubeNumber (${state.activeTubeNumber})`);
+        console.log(`STATE MANAGER: Fixing by setting both to activeTubeNumber (${state.activeTubeNumber})`);
+        state.activeTube = state.activeTubeNumber;
+      }
+      
+      // CRITICAL FIX: Check if we're in the anonymous dashboard and need to load the actual tube number
+      // This helps when the dashboard is trying to force activeTube to 1 incorrectly
+      if (typeof window !== 'undefined' && window.location.pathname.includes('anon-dashboard')) {
+        // Check if we have a saved state with a different tube number
+        try {
+          const savedState = localStorage.getItem('zenjin_anonymous_state');
+          if (savedState) {
+            const parsedState = JSON.parse(savedState);
+            if (parsedState && parsedState.state && parsedState.state.activeTubeNumber) {
+              const savedTubeNumber = parsedState.state.activeTubeNumber;
+              if (savedTubeNumber !== state.activeTube) {
+                console.log(`STATE MANAGER: In anon-dashboard with incorrect tube number. Dashboard has tube=${state.activeTube}, but saved state has tube=${savedTubeNumber}`);
+                console.log(`STATE MANAGER: Correcting tube number to match saved state: ${savedTubeNumber}`);
+                state.activeTube = savedTubeNumber;
+                state.activeTubeNumber = savedTubeNumber;
+              }
+            }
+          }
+        } catch (e) {
+          console.error('STATE MANAGER: Error checking saved state in anon-dashboard:', e);
+        }
+      }
       
       // ENHANCED RECOVERY: Make sure we have a valid userId - critical for persistence
       if (!state.userId || state.userId === '') {
