@@ -100,43 +100,73 @@ export default async function handler(
     // Set response headers for debugging
     res.setHeader('X-Zenjin-Emergency-Mode', 'true');
     
-    // Create a Supabase client with proper auth context
-    let supabaseClient, supabaseAdmin, session;
+    // Create only the admin client for maximum reliability - ALWAYS USE ADMIN CLIENT
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ggwoupzaruiaaliylxga.supabase.co',
+      process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdnd291cHphcnVpYWFsaXlseGdhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MTkxNzM0MCwiZXhwIjoyMDU3NDkzMzQwfQ.3bvfZGkTc9nVtf1I7A0TwYy9pMFudJTrp974RZIwrq0'
+    );
     
-    try {
-      supabaseClient = createRouteHandlerClient(req, res);
+    // Extract user ID from multiple sources for maximum reliability
+    let effectiveUserId;
+    
+    // Try extracting from body first (most common for this endpoint)
+    if (req.body.userId) {
+      effectiveUserId = req.body.userId;
+      console.log('record-session: Using userId from request body:', effectiveUserId);
+    }
+    // Check for anonymousId in the body
+    else if (req.body.anonymousId) {
+      effectiveUserId = req.body.anonymousId;
+      console.log('record-session: Using anonymousId from request body:', effectiveUserId);
+    }
+    // Try query params
+    else if (req.query.userId) {
+      effectiveUserId = req.query.userId as string;
+      console.log('record-session: Using userId from query param:', effectiveUserId);
+    } 
+    // Try headers
+    else if (req.headers['x-user-id']) {
+      effectiveUserId = req.headers['x-user-id'] as string;
+      console.log('record-session: Using userId from x-user-id header:', effectiveUserId);
+    }
+    // Last check auth header
+    else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      // Extract token
+      const token = req.headers.authorization.substring(7);
       
-      // Create a direct admin client for cases where RLS is too restrictive
-      supabaseAdmin = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ggwoupzaruiaaliylxga.supabase.co',
-        process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdnd291cHphcnVpYWFsaXlseGdhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MTkxNzM0MCwiZXhwIjoyMDU3NDkzMzQwfQ.3bvfZGkTc9nVtf1I7A0TwYy9pMFudJTrp974RZIwrq0'
-      );
-      
-      session = await supabaseClient.auth.getSession();
-      
-      // Log authentication check
-      console.log('record-session: Authentication check');
-      console.log('record-session: Session present:', !!session?.data?.session);
-    } catch (authError) {
-      console.error('Error creating auth clients:', authError);
-      // Continue without auth clients - emergency mode will still work
+      try {
+        // Verify the token with admin client
+        const { data: userData, error } = await supabaseAdmin.auth.getUser(token);
+        
+        if (!error && userData?.user) {
+          effectiveUserId = userData.user.id;
+          console.log('record-session: Extracted userId from valid JWT:', effectiveUserId);
+        } else {
+          console.log('record-session: Invalid JWT in authorization header:', error?.message);
+        }
+      } catch (e) {
+        console.error('record-session: Error verifying JWT:', e);
+      }
     }
     
-    // For this endpoint, we'll allow both authenticated and anonymous sessions
-    // so we don't break existing functionality
-    const userId = session?.data?.session?.user?.id;
-    
-    // Try to extract known user ID from headers or query params
-    const headerUserId = req.headers['x-user-id'] as string || 
-                         req.query.userId as string || null;
-                         
-    let { threadId, stitchId, questionResults, sessionDuration, anonymousId } = req.body as SessionRequest & { anonymousId?: string };
-
-    // Use authenticated user ID if available, otherwise use other sources
-    let effectiveUserId = userId || 
-                         headerUserId || 
-                         req.body.userId || 
-                         anonymousId;
+    // Last resort - try cookies
+    if (!effectiveUserId) {
+      try {
+        const supabaseClient = createRouteHandlerClient(req, res);
+        const { data: sessionData, error } = await supabaseClient.auth.getSession();
+        
+        if (!error && sessionData?.session?.user) {
+          effectiveUserId = sessionData.session.user.id;
+          console.log('record-session: Extracted userId from cookie session:', effectiveUserId);
+        } else {
+          console.log('record-session: No valid session in cookies');
+        }
+      } catch (e) {
+        console.error('record-session: Error getting session from cookies:', e);
+      }
+    }
+                       
+    let { threadId, stitchId, questionResults, sessionDuration } = req.body as SessionRequest & { anonymousId?: string };
     
     if (!effectiveUserId) {
       console.warn('No user ID found in record-session - generating random anonymous ID');
@@ -233,10 +263,9 @@ export default async function handler(
     
     // First try database insert if available
     let dbSuccess = false;
-    if (supabaseAdmin) {
-      try {
-        console.log('Attempting database insert first (with minimal data)');
-        const { data, error } = await supabaseAdmin
+    try {
+      console.log('Attempting database insert first (with minimal data)');
+      const { data, error } = await supabaseAdmin
           .from('session_results')
           .insert({
             id: sessionId,
@@ -289,7 +318,7 @@ export default async function handler(
     saveToCache(effectiveUserId, 'user_profile', userProfile);
     
     // If there was a database success, try to update the profile there too
-    if (dbSuccess && supabaseAdmin) {
+    if (dbSuccess) {
       try {
         await supabaseAdmin
           .from('profiles')

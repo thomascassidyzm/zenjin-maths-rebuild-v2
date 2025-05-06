@@ -81,12 +81,55 @@ export function useDashboard(): DashboardData {
     try {
       // Add a timestamp to prevent caching
       const timestamp = Date.now();
+      // Get various potential auth tokens/IDs from localStorage - crucial for auth
+      let authHeaders = {};
+      
+      // Only access localStorage on the client
+      if (typeof window !== 'undefined') {
+        // Try to get auth token from multiple possible localStorage keys
+        const accessToken = 
+          localStorage.getItem('sb-ggwoupzaruiaaliylxga-auth-token') || // New Supabase format
+          localStorage.getItem('supabase.auth.token') ||                // Older format
+          localStorage.getItem('authToken');                            // Custom format
+        
+        if (accessToken) {
+          try {
+            // Parse the JWT if it's in JSON format
+            const tokenData = JSON.parse(accessToken);
+            if (tokenData?.access_token) {
+              authHeaders['Authorization'] = `Bearer ${tokenData.access_token}`;
+            }
+          } catch (e) {
+            // If parsing fails, it might be a direct token string
+            authHeaders['Authorization'] = `Bearer ${accessToken}`;
+          }
+        }
+        
+        // Add various user IDs as fallbacks
+        const userId = localStorage.getItem('zenjin_user_id') || 
+                       localStorage.getItem('userId') || 
+                       localStorage.getItem('user_id');
+        
+        if (userId) {
+          authHeaders['x-user-id'] = userId;
+        }
+        
+        // Add anonymous ID as final fallback
+        const anonymousId = localStorage.getItem('anonymousId') || 
+                            localStorage.getItem('zenjin_anonymous_id');
+        
+        if (anonymousId) {
+          authHeaders['x-anonymous-id'] = anonymousId;
+        }
+      }
+      
       const response = await fetch(`/api/dashboard?t=${timestamp}`, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
           'Cache-Control': 'no-cache, no-store, must-revalidate', // Ensure fresh data
-          'Pragma': 'no-cache'
+          'Pragma': 'no-cache',
+          ...authHeaders
         },
         credentials: 'include' // Important: include cookies for auth
       });

@@ -41,69 +41,105 @@ export default async function handler(
     console.log('Dashboard API: Starting request');
     console.log('Dashboard API: Cookies:', req.cookies);
     
-    // Create a Supabase client with proper auth context
-    const supabaseClient = createRouteHandlerClient(req, res);
-    let sessionResult = await supabaseClient.auth.getSession();
-    
-    // Also create an admin client for bypassing RLS if needed
+    // Create only the admin client for maximum reliability - ALWAYS USE ADMIN CLIENT
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ggwoupzaruiaaliylxga.supabase.co',
       process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdnd291cHphcnVpYWFsaXlseGdhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MTkxNzM0MCwiZXhwIjoyMDU3NDkzMzQwfQ.3bvfZGkTc9nVtf1I7A0TwYy9pMFudJTrp974RZIwrq0'
     );
+
+    // Extract user ID from multiple sources for maximum reliability
+    let userId;
     
-    console.log('Dashboard API: Session present:', !!sessionResult?.data?.session);
-    
-    // If no authenticated session, check for JWT in authorization header
-    if (!sessionResult?.data?.session) {
-      console.log('No session from cookies in dashboard API, checking authorization header');
+    // Try extracting from query params first
+    if (req.query.userId) {
+      userId = req.query.userId as string;
+      console.log('Dashboard API: Using userId from query param:', userId);
+    } 
+    // Next try auth header
+    else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      // Extract token
+      const token = req.headers.authorization.substring(7);
       
-      // Check for Authorization header
-      const authHeader = req.headers.authorization;
-      
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.substring(7);
+      try {
+        // Verify the token with admin client
+        const { data: userData, error } = await supabaseAdmin.auth.getUser(token);
         
-        try {
-          // Verify the JWT token
-          const { data: jwtData, error: jwtError } = await supabase.auth.getUser(token);
-          
-          if (!jwtError && jwtData?.user) {
-            // Valid JWT token, use this user ID
-            console.log('Dashboard API: Using JWT from Authorization header for user:', jwtData.user.email);
-            
-            // Create a session object similar to what we'd get from cookie auth
-            sessionResult = {
-              data: {
-                session: {
-                  user: jwtData.user,
-                  access_token: token
-                }
-              }
-            };
-            
-            // Continue with valid session
-          } else {
-            console.error('Invalid JWT token in Authorization header:', jwtError);
-          }
-        } catch (jwtVerifyError) {
-          console.error('Error verifying JWT in Authorization header:', jwtVerifyError);
+        if (!error && userData?.user) {
+          userId = userData.user.id;
+          console.log('Dashboard API: Extracted userId from valid JWT:', userId);
+        } else {
+          console.log('Dashboard API: Invalid JWT in authorization header:', error?.message);
         }
-      }
-      
-      // If we still don't have a valid session, return auth error
-      if (!sessionResult?.data?.session) {
-        console.error('No valid authentication found in dashboard API');
-        
-        // Return authentication error - don't silently provide fake data anymore
-        return res.status(401).json({
-          success: false,
-          error: 'Authentication required',
-          message: 'You must be logged in to view dashboard data'
-        });
+      } catch (e) {
+        console.error('Dashboard API: Error verifying JWT:', e);
       }
     }
-
-    const userId = sessionResult.data.session.user.id;
+    // Try x-user-id header
+    else if (req.headers['x-user-id']) {
+      userId = req.headers['x-user-id'] as string;
+      console.log('Dashboard API: Using userId from x-user-id header:', userId);
+    }
+    
+    // If still no user ID, try to get from cookies with createRouteHandlerClient
+    if (!userId) {
+      try {
+        const supabaseClient = createRouteHandlerClient(req, res);
+        const { data: sessionData, error } = await supabaseClient.auth.getSession();
+        
+        if (!error && sessionData?.session?.user) {
+          userId = sessionData.session.user.id;
+          console.log('Dashboard API: Extracted userId from cookie session:', userId);
+        } else {
+          console.log('Dashboard API: No valid session in cookies');
+        }
+      } catch (e) {
+        console.error('Dashboard API: Error getting session from cookies:', e);
+      }
+    }
+    
+    // Last resort - check if anonymous ID is provided
+    if (!userId && req.headers['x-anonymous-id']) {
+      userId = req.headers['x-anonymous-id'] as string;
+      console.log('Dashboard API: Using anonymous ID as fallback:', userId);
+    }
+    
+    // If still no user ID, we can't proceed - but rather than 401, provide bundled content
+    if (!userId) {
+      console.log('Dashboard API: No user ID found, generating fallback content');
+      
+      // Generate a random bundled content path
+      const fallbackContent = generateRandomLearningPath();
+      const suggestedStitch = getSuggestedFallbackStitch();
+      
+      return res.status(200).json({
+        userId: 'anonymous',
+        totalPoints: 0,
+        blinkSpeed: 0,
+        blinkSpeedTrend: 'steady',
+        evolution: {
+          currentLevel: 'Mind Spark',
+          levelNumber: 1,
+          progress: 0,
+          nextLevel: 'Thought Weaver'
+        },
+        globalStanding: {
+          percentile: null,
+          date: null,
+          message: "Start learning to see your ranking"
+        },
+        recentSessions: [],
+        dataSource: 'emergency-fallback',
+        message: 'Using bundled content - please log in to save your progress',
+        fallbackContent: {
+          stitches: fallbackContent.stitches,
+          threads: fallbackContent.threads,
+          suggestedNext: suggestedStitch,
+          isFallback: true
+        }
+      });
+    }
+    
+    console.log(`Dashboard API: Proceeding with userId: ${userId}`);
     console.log(`Dashboard API: Fetching data for user ${userId}`);
 
     // Try to get or create user profile
@@ -457,15 +493,8 @@ export default async function handler(
   } catch (error) {
     console.error('Dashboard API: Fatal error:', error);
     
-    // Try to extract user ID even in error case
-    let fallbackUserId = 'user';
-    try {
-      if (sessionResult?.data?.session?.user?.id) {
-        fallbackUserId = sessionResult.data.session.user.id;
-      }
-    } catch (idError) {
-      console.error('Dashboard API: Could not extract user ID for fallback:', idError);
-    }
+    // Use the user ID we already found if available
+    let fallbackUserId = userId || 'anonymous';
     
     // Add emergency fallback header
     res.setHeader('X-Zenjin-Data-Source', 'emergency-fallback');
