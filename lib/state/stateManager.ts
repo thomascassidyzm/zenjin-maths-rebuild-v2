@@ -304,6 +304,12 @@ export class StateManager {
         // Make sure the userId is set
         finalState.userId = userId;
         
+        // Always store userId in localStorage for resilience
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('zenjin_user_id', userId);
+          console.log(`STATE MANAGER: Saved userId ${userId} to localStorage during initialization`);
+        }
+        
         // Initialize state
         this.dispatch({ type: 'INITIALIZE_STATE', payload: finalState });
       } else {
@@ -313,6 +319,12 @@ export class StateManager {
           userId,
           lastUpdated: new Date().toISOString()
         };
+        
+        // Always store userId in localStorage for resilience
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('zenjin_user_id', userId);
+          console.log(`STATE MANAGER: Saved userId ${userId} to localStorage during initialization`);
+        }
         
         this.dispatch({ type: 'INITIALIZE_STATE', payload: defaultState });
       }
@@ -645,7 +657,7 @@ export class StateManager {
   async forceSyncToServer(): Promise<boolean> {
     try {
       // Get a fresh copy of the state to ensure we have the latest
-      const state = this.getState();
+      let state = this.getState();
       
       console.log('STATE MANAGER: forceSyncToServer called with state', JSON.stringify({
         userId: state.userId,
@@ -655,8 +667,28 @@ export class StateManager {
       
       // Make sure we have a valid userId - this is critical for persistence
       if (!state.userId) {
-        console.error('STATE MANAGER: No userId found in state - cannot persist');
-        return false;
+        console.error('STATE MANAGER: No userId found in state - attempting to recover from localStorage');
+        
+        // Try to recover userId from localStorage
+        if (typeof window !== 'undefined') {
+          const storedUserId = localStorage.getItem('zenjin_user_id');
+          if (storedUserId) {
+            console.log(`STATE MANAGER: Recovered userId ${storedUserId} from localStorage`);
+            state.userId = storedUserId;
+            
+            // Update the internal state with the recovered userId
+            this.dispatch({ 
+              type: 'INITIALIZE_STATE', 
+              payload: { ...state, userId: storedUserId }
+            });
+          } else {
+            console.error('STATE MANAGER: Could not recover userId from localStorage - cannot persist');
+            return false;
+          }
+        } else {
+          console.error('STATE MANAGER: No userId found in state - cannot persist');
+          return false;
+        }
       }
       
       // Check if this is an anonymous user

@@ -924,11 +924,13 @@ export function useTripleHelixPlayer({
         // Extract tube position
         const tubePosition = data.tubePosition;
         
-        // Initialize StateMachine adapter
+        // Initialize StateMachine adapter with userId clearly set
         const initialState = {
-          userId,
+          userId: userId, // Explicit userId setting for clarity
           activeTubeNumber: tubePosition?.tubeNumber || 1,
-          tubes: {}
+          activeTube: tubePosition?.tubeNumber || 1, // Set both for compatibility
+          tubes: {},
+          lastUpdated: new Date().toISOString()
         };
         
         // Group stitches by tube
@@ -1242,6 +1244,9 @@ export function useTripleHelixPlayer({
           
           debug('Added emergency content for Tube 3');
         }
+        
+        // CRITICAL FIX: Ensure userId is properly set in the initialState
+        initialState.userId = userId;
         
         // Create adapter
         const adapter = new StateMachineTubeCyclerAdapter({
@@ -1761,10 +1766,28 @@ export function useTripleHelixPlayer({
     // Always save to localStorage as a backup, regardless of authentication status
     try {
       if (tubeCycler) {
-        const state = tubeCycler.getState();
+        // Get state and ensure userId is present
+        let state = tubeCycler.getState();
+        
+        // CRITICAL FIX: Ensure userId is properly set in the state
+        if (!state.userId && userId) {
+          console.log(`PLAYER UTILS: Adding missing userId ${userId} to state`);
+          state.userId = userId;
+          
+          // Force update the state with userId
+          if (typeof tubeCycler.updateState === 'function') {
+            tubeCycler.updateState(state);
+          }
+        }
+        
         if (state && state.userId) {
           localStorage.setItem(`zenjin_state_${state.userId}`, JSON.stringify(state));
           console.log(`PLAYER UTILS: State saved to localStorage for user ${state.userId}`);
+        } else {
+          console.error("PLAYER UTILS: State missing userId, cannot save properly");
+          // Save as fallback using current userId
+          localStorage.setItem(`zenjin_state_${userId}`, JSON.stringify({...state, userId}));
+          console.log(`PLAYER UTILS: Fallback state saved to localStorage for user ${userId}`);
         }
       }
     } catch (e) {

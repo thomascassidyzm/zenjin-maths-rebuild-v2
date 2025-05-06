@@ -18,6 +18,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   console.log(`API: user-state called - method: ${req.method}, debug: ${isDebug}`);
   console.log(`API: user-state request URL: ${req.url}`);
   
+  // Set up more comprehensive error handling for 500 errors
+  try {
+  
   try {
     // Create supabase clients
     const supabase = createRouteHandlerClient(req, res);
@@ -121,12 +124,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       details: isDebug ? (error instanceof Error ? error.message : String(error)) : undefined
     });
   }
+  } catch (outerError) {
+    // Extra safety catch for any errors that might have been missed
+    console.error('CRITICAL API ERROR: Uncaught error in user-state API handler:', outerError);
+    console.error('CRITICAL API ERROR: Stack trace:', outerError.stack || 'No stack available');
+    
+    try {
+      // Try to send a simplified response with minimal processing
+      return res.status(500).json({
+        success: false,
+        error: 'Critical server error occurred',
+        errorType: outerError.name || 'UnknownError',
+        // Only include minimal details to prevent circular references
+        message: outerError.message || 'Unknown error'
+      });
+    } catch (finalError) {
+      // Last resort error handling
+      console.error('FATAL API ERROR: Could not send error response:', finalError);
+      // Send the simplest possible response
+      res.status(500).end('Server error');
+    }
+  }
 }
 
 /**
  * Retrieves user state from the database
  */
 async function getUserState(userId: string, supabase: any, res: NextApiResponse, isDebug: boolean) {
+  // Safety check: Make sure userId is valid
+  if (!userId || userId === 'undefined' || userId === 'null' || userId === '') {
+    console.error('API: Invalid or empty userId provided to getUserState');
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid or empty userId provided'
+    });
+  }
   try {
     // Ensure user_state table exists first
     try {
@@ -280,6 +312,38 @@ async function updateUserState(state: any, supabase: any, res: NextApiResponse, 
     };
     
     try {
+      console.log(`API: About to save state with userId ${formattedState.user_id}, lastUpdated ${formattedState.last_updated}`);
+      
+      // DEBUG: Add detailed diagnostic info for troubleshooting
+      if (isDebug) {
+        console.log(`DEBUG state content:`, JSON.stringify({
+          user_id: formattedState.user_id,
+          tubes: formattedState.state.tubes ? Object.keys(formattedState.state.tubes) : [],
+          activeTube: formattedState.state.activeTube || formattedState.state.activeTubeNumber,
+          lastUpdated: formattedState.last_updated
+        }));
+      }
+      
+      // Make sure the userId is valid - critical for preventing database errors
+      if (!formattedState.user_id || formattedState.user_id === '') {
+        console.error(`API: Invalid/empty user_id in state - cannot save`);
+        
+        // Try using the userId from the query parameter or auth session
+        const fallbackUserId = state.userId || 
+                              (authenticatedUserId ? authenticatedUserId : id);
+        
+        if (fallbackUserId) {
+          console.log(`API: Using fallback userId ${fallbackUserId} for state persistence`);
+          formattedState.user_id = fallbackUserId;
+          formattedState.state.userId = fallbackUserId;
+        } else {
+          return res.status(400).json({
+            success: false,
+            error: 'No valid user ID found in state or request'
+          });
+        }
+      }
+      
       // Use admin client which has RLS bypass for most reliable save
       const { error } = await supabaseAdmin
         .from('user_state')
@@ -287,6 +351,7 @@ async function updateUserState(state: any, supabase: any, res: NextApiResponse, 
         
       if (error) {
         console.error(`Error updating state:`, error);
+        console.error(`Error details:`, error.details || error.message);
         
         // Try again with normal client if admin fails
         try {
@@ -297,6 +362,16 @@ async function updateUserState(state: any, supabase: any, res: NextApiResponse, 
             
           if (fallbackError) {
             console.error(`Fallback state update also failed:`, fallbackError);
+            console.error(`Fallback error details:`, fallbackError.details || fallbackError.message);
+            
+            // Save key state values to debug log for diagnostics
+            console.log(`API ERROR: State values that failed to save:`, JSON.stringify({
+              user_id: formattedState.user_id,
+              state_size: JSON.stringify(formattedState.state).length,
+              last_updated: formattedState.last_updated,
+              auth_user: authenticatedUserId
+            }));
+            
             return res.status(500).json({
               success: false,
               error: 'Error updating state',
