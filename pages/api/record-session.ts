@@ -165,7 +165,7 @@ export default async function handler(
         console.error('record-session: Error getting session from cookies:', e);
       }
     }
-                       
+                   
     let { threadId, stitchId, questionResults, sessionDuration } = req.body as SessionRequest & { anonymousId?: string };
     
     if (!effectiveUserId) {
@@ -266,29 +266,28 @@ export default async function handler(
     try {
       console.log('Attempting database insert first (with minimal data)');
       const { data, error } = await supabaseAdmin
-          .from('session_results')
-          .insert({
-            id: sessionId,
-            user_id: effectiveUserId,
-            thread_id: threadId,
-            stitch_id: stitchId,
-            total_points: totalPoints,
-            accuracy: totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0,
-            results: [],  // Minimal empty array to avoid JSON parsing issues
-            completed_at: new Date().toISOString()
-          })
-          .select()
-          .single();
-          
-        if (error) {
-          console.log('Database insert failed, using cache only:', error.message);
-        } else {
-          console.log('Database insert succeeded');
-          dbSuccess = true;
-        }
-      } catch (dbError) {
-        console.error('Database insert exception:', dbError);
+        .from('session_results')
+        .insert({
+          id: sessionId,
+          user_id: effectiveUserId,
+          thread_id: threadId,
+          stitch_id: stitchId,
+          total_points: totalPoints,
+          accuracy: totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0,
+          results: [],  // Minimal empty array to avoid JSON parsing issues
+          completed_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+        
+      if (error) {
+        console.log('Database insert failed, using cache only:', error.message);
+      } else {
+        console.log('Database insert succeeded');
+        dbSuccess = true;
       }
+    } catch (dbError) {
+      console.error('Database insert exception:', dbError);
     }
     
     // Always update local cache regardless of database success
