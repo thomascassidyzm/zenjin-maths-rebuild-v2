@@ -157,31 +157,29 @@ export default function Home() {
             </Link>
             
             <button
-              onClick={async () => {
-                try {
-                  // Use localStorage flag to indicate state should be created now
-                  if (typeof window !== 'undefined') {
-                    localStorage.setItem('zenjin_create_anonymous_state', 'true');
-                    console.log('Setting flag to create anonymous state on player load');
-                  }
-
-                  // Create server-side TTL account by calling the signInAnonymously function
-                  const result = await signInAnonymously();
-                  
-                  if (result.success) {
-                    console.log('Created anonymous account on server with TTL');
-                    // Now redirect to minimal-player
-                    router.push('/minimal-player');
-                  } else {
-                    console.error('Failed to create anonymous account:', result.error);
-                    // Still allow play even if server account creation failed
-                    router.push('/minimal-player');
-                  }
-                } catch (error) {
-                  console.error('Error creating anonymous account:', error);
-                  // Fallback - still allow play even if there's an error
-                  router.push('/minimal-player');
+              onClick={() => {
+                // Set the flag for anonymous state creation
+                if (typeof window !== 'undefined') {
+                  localStorage.setItem('zenjin_create_anonymous_state', 'true');
+                  console.log('Setting flag to create anonymous state on player load');
                 }
+                
+                // Create anonymous account using the context method
+                signInAnonymously()
+                  .then(result => {
+                    if (result.success) {
+                      console.log('Created anonymous account on server with TTL');
+                    } else {
+                      console.error('Failed to create anonymous account:', result.error);
+                    }
+                  })
+                  .catch(error => {
+                    console.error('Error creating anonymous account:', error);
+                  })
+                  .finally(() => {
+                    // Always redirect to the player, even if account creation fails
+                    router.push('/minimal-player');
+                  });
               }}
               className="w-full py-4 bg-white/20 hover:bg-white/30 text-white font-medium rounded-xl shadow-lg transition-all"
             >

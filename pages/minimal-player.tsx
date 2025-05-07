@@ -75,9 +75,12 @@ export default function MinimalPlayer() {
   console.log(`Using unified mode with user ID: ${user?.id || 'anonymous'}`);
   
   // If the user is anonymous and we have the create flag, ensure we create a proper account
-  if (!isAuthenticated && localStorage.getItem('zenjin_create_anonymous_state') === 'true') {
-    console.log('Anonymous account creation flag detected in minimal-player');
-    // Flag will be handled by _app.tsx and createAnonymousUser in anonymousData.ts
+  if (typeof window !== 'undefined' && !isAuthenticated) {
+    const createAnonymousState = localStorage.getItem('zenjin_create_anonymous_state') === 'true';
+    if (createAnonymousState) {
+      console.log('Anonymous account creation flag detected in minimal-player');
+      // Flag will be handled by _app.tsx and createAnonymousUser in anonymousData.ts
+    }
   }
   
   // Use the shared player hook with the appropriate mode
