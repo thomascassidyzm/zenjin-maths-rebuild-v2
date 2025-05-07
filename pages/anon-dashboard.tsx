@@ -295,38 +295,99 @@ export default function AnonDashboard() {
                 onClick={() => {
                   // CRITICAL FIX: Before navigation, ensure the state is properly synchronized
                   try {
-                    // Get the anonymousId that's stored in localStorage
-                    const anonymousId = localStorage.getItem('anonymousId');
-                    if (anonymousId) {
-                      console.log(`Preparing continue playing with anonymousId: ${anonymousId}`);
-                      
-                      // Find any existing state saved under zenjin_anonymous_state
-                      const zenjinState = localStorage.getItem('zenjin_anonymous_state');
-                      if (zenjinState) {
-                        try {
-                          // Parse and check if it has valid state structure
-                          const parsedState = JSON.parse(zenjinState);
+                    // Get the anonymous/user ID from any valid location
+                    const userId = localStorage.getItem('zenjin_user_id') ||
+                                   localStorage.getItem('zenjin_anonymous_id') || 
+                                   localStorage.getItem('anonymousId');
+                                   
+                    if (!userId) {
+                      console.error('No user ID found in localStorage - cannot prepare state');
+                      return;
+                    }
+                    
+                    console.log(`UNIFIED APPROACH: Preparing continue playing with userId: ${userId}`);
+                    
+                    // Check all possible state storage locations and find the most recent one
+                    const stateOptions = [
+                      { key: `zenjin_state_${userId}`, label: 'main state' },
+                      { key: 'zenjin_anonymous_state', label: 'anonymous state' },
+                      { key: `triple_helix_state_${userId}`, label: 'triple helix state' }
+                    ];
+                    
+                    let mostRecentState = null;
+                    let mostRecentTimestamp = 0;
+                    let stateSource = '';
+                    
+                    // Find the most recent valid state with tube information
+                    stateOptions.forEach(option => {
+                      try {
+                        const stateJson = localStorage.getItem(option.key);
+                        if (stateJson) {
+                          const parsedState = JSON.parse(stateJson);
+                          
+                          // Check if it's a valid state with tube information
+                          // Different states have different structures
+                          let stateObj = null;
+                          let lastUpdated = null;
+                          let activeTube = null;
+                          
+                          // Check for state in zenjin_anonymous_state format
                           if (parsedState && parsedState.state && parsedState.state.tubes) {
-                            // CRITICAL FIX: Preserve the actual activeTubeNumber from the saved state
-                            // instead of using the default activeTube: 1 from the dashboard
-                            const activeTube = parsedState.state.activeTubeNumber || 1;
-                            console.log(`Preserving actual active tube (${activeTube}) from saved state`);
-                            
-                            // Make sure the activeTubeNumber is correctly set in the state
-                            const modifiedState = {
-                              ...parsedState.state,
-                              activeTubeNumber: activeTube,
-                              activeTube: activeTube  // Set both for backward compatibility
-                            };
-                            
-                            // Save to the expected triple_helix_state_X key with preserved tube number
-                            console.log(`Found valid state in zenjin_anonymous_state, copying to triple_helix_state_${anonymousId} with activeTube=${activeTube}`);
-                            localStorage.setItem(`triple_helix_state_${anonymousId}`, JSON.stringify(modifiedState));
+                            stateObj = parsedState.state;
+                            lastUpdated = parsedState.state.lastUpdated;
+                            activeTube = parsedState.state.activeTubeNumber || parsedState.state.activeTube;
+                          } 
+                          // Check for state in direct UserState format
+                          else if (parsedState && parsedState.tubes && (parsedState.activeTube || parsedState.activeTubeNumber)) {
+                            stateObj = parsedState;
+                            lastUpdated = parsedState.lastUpdated;
+                            activeTube = parsedState.activeTubeNumber || parsedState.activeTube;
                           }
-                        } catch (e) {
-                          console.error('Error synchronizing state:', e);
+                          
+                          if (stateObj && activeTube) {
+                            // Parse the timestamp and compare with the most recent
+                            const timestamp = lastUpdated ? new Date(lastUpdated).getTime() : 0;
+                            
+                            if (timestamp > mostRecentTimestamp) {
+                              mostRecentState = stateObj;
+                              mostRecentTimestamp = timestamp;
+                              stateSource = option.label;
+                            }
+                          }
                         }
+                      } catch (e) {
+                        console.error(`Error checking ${option.label}:`, e);
                       }
+                    });
+                    
+                    // If we found a valid state, ensure it's in all required formats
+                    if (mostRecentState) {
+                      const activeTube = mostRecentState.activeTubeNumber || mostRecentState.activeTube || 1;
+                      console.log(`UNIFIED APPROACH: Found most recent state from ${stateSource} with activeTube=${activeTube}`);
+                      
+                      // Make sure activeTube and activeTubeNumber are both set correctly
+                      const normalizedState = {
+                        ...mostRecentState,
+                        activeTube: activeTube,
+                        activeTubeNumber: activeTube,
+                        userId: userId // Ensure userId is set correctly
+                      };
+                      
+                      // Important: Save this normalized state to ALL storage locations
+                      // This ensures consistent state no matter which path the code takes
+                      console.log(`UNIFIED APPROACH: Saving normalized state with activeTube=${activeTube} to all storage locations`);
+                      
+                      // Store in all formats for maximum compatibility
+                      localStorage.setItem(`zenjin_state_${userId}`, JSON.stringify(normalizedState));
+                      localStorage.setItem(`triple_helix_state_${userId}`, JSON.stringify(normalizedState));
+                      localStorage.setItem('zenjin_anonymous_state', JSON.stringify({ state: normalizedState }));
+                      
+                      // Also ensure the zenjin_user_id is set
+                      localStorage.setItem('zenjin_user_id', userId);
+                      
+                      console.log(`UNIFIED APPROACH: Successfully prepared state for continue playing`);
+                    } else {
+                      console.warn(`No valid state found - continuing with default state`);
                     }
                   } catch (e) {
                     console.error('Error in Continue Playing preparation:', e);

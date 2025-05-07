@@ -294,24 +294,53 @@ export class StateManager {
     try {
       console.log('Initializing state manager for user:', userId);
       
-      // CRITICAL FIX: Don't proceed with empty userId unless explicitly creating anonymous user
+      // CRITICAL FIX: Don't proceed with empty userId - attempt to recover from localStorage
       if (!userId || userId === '') {
-        // Check if we should create anonymous userId automatically
+        // In our unified approach, we should try to get the user ID from localStorage
         if (typeof window !== 'undefined') {
-          const shouldCreateAnonymous = 
-            localStorage.getItem('zenjin_create_anonymous_state') === 'true' || 
-            window.location.pathname.includes('player');
+          // First check if we already have a user ID stored somewhere
+          const storedUserId = localStorage.getItem('zenjin_user_id') || 
+                               localStorage.getItem('zenjin_anonymous_id') || 
+                               localStorage.getItem('anonymousId');
+          
+          if (storedUserId) {
+            console.log(`UNIFIED APPROACH: Recovered userId ${storedUserId} from localStorage`);
+            userId = storedUserId;
             
-          if (!shouldCreateAnonymous) {
-            console.log('CRITICAL: Skipping state initialization - no userId and not creating anonymous user');
-            // Just initialize with a temporary state but don't persist it
-            this.state = {
-              ...initialState,
-              userId: '', // Keep it empty to prevent persistence
-              lastUpdated: new Date().toISOString()
-            };
-            return;
+            // Ensure it's stored in all standard locations for consistency
+            localStorage.setItem('zenjin_user_id', storedUserId);
+          } else {
+            // Check if we should create anonymous userId automatically
+            const shouldCreateAnonymous = 
+              localStorage.getItem('zenjin_create_anonymous_state') === 'true' || 
+              window.location.pathname.includes('player');
+              
+            if (shouldCreateAnonymous) {
+              // Generate a consistent anonymous ID format
+              const anonymousId = `anon-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+              console.log(`UNIFIED APPROACH: Creating new anonymous ID: ${anonymousId}`);
+              
+              // Store in all standard locations
+              localStorage.setItem('zenjin_user_id', anonymousId);
+              localStorage.setItem('zenjin_anonymous_id', anonymousId);
+              localStorage.setItem('anonymousId', anonymousId);
+              localStorage.setItem('zenjin_auth_state', 'anonymous');
+              
+              userId = anonymousId;
+            } else {
+              console.log('UNIFIED APPROACH: No userId and not creating anonymous user - this is expected on non-player pages');
+              // Just initialize with a temporary state but don't persist it
+              this.state = {
+                ...initialState,
+                userId: '', // Keep it empty to prevent persistence
+                lastUpdated: new Date().toISOString()
+              };
+              return;
+            }
           }
+        } else {
+          console.log('UNIFIED APPROACH: Not in browser environment - skipping initialization');
+          return;
         }
       }
       
