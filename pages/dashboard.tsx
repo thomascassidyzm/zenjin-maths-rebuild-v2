@@ -14,6 +14,8 @@ import { useSubscription } from '../hooks/useSubscription';
 import useDashboard from '../hooks/useDashboard';
 import SubscriptionBadge from '../components/subscription/SubscriptionBadge';
 import SubscriptionStatus from '../components/subscription/SubscriptionStatus';
+import BlinkSpeedDisplay from '../components/BlinkSpeedDisplay';
+import EvolutionBadge from '../components/EvolutionBadge';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -195,51 +197,85 @@ export default function Dashboard() {
               <SubscriptionStatus />
             </motion.div>
             
-            {/* Quick stats */}
+            {/* Enhanced Progress Section with Evolution Badge */}
+            {dashboardData.evolution && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <EvolutionBadge 
+                  evolution={dashboardData.evolution || {
+                    currentLevel: 'Mind Spark',
+                    levelNumber: 1,
+                    progress: 0,
+                    nextLevel: 'Thought Weaver'
+                  }} 
+                />
+              </motion.div>
+            )}
+            
+            {/* Enhanced Stats Display */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10"
+              transition={{ delay: 0.3 }}
+              className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4"
             >
-              <h2 className="font-bold text-lg mb-3">Your Progress</h2>
-              <div className="space-y-3">
-                <div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-white/70">Total Points</span>
-                    <span className="font-medium">{userStats.totalPoints}</span>
-                  </div>
-                  <div className="mt-1 h-2 bg-white/10 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-gradient-to-r from-teal-500 to-emerald-500" 
-                      style={{ width: `${Math.min((userStats.totalPoints / 5000) * 100, 100)}%` }}
-                    ></div>
-                  </div>
+              {/* Blink Speed */}
+              <BlinkSpeedDisplay 
+                blinkSpeed={dashboardData?.blinkSpeed || 2.5} 
+                trend={dashboardData?.blinkSpeedTrend || 'steady'} 
+              />
+              
+              {/* Total Points */}
+              <div className="rounded-xl border border-white/20 bg-white/10 p-4">
+                <h3 className="text-lg font-semibold text-white mb-2">Total Points</h3>
+                <div className="text-3xl font-bold text-white">
+                  {userStats.totalPoints.toLocaleString()}
+                </div>
+                <div className="text-xs text-white/70 mt-1">Lifetime Points</div>
+                <div className="mt-2 h-2 bg-white/10 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-teal-500 to-emerald-500" 
+                    style={{ width: `${Math.min((userStats.totalPoints / 5000) * 100, 100)}%` }}
+                  ></div>
+                </div>
+              </div>
+            </motion.div>
+            
+            {/* Detailed Stats */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10 mt-4"
+            >
+              <h2 className="font-bold text-lg mb-3">Learning Stats</h2>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white/10 rounded-lg p-3">
+                  <div className="text-white/70 text-sm mb-1">Sessions</div>
+                  <div className="text-xl font-bold">{userStats.sessionsCompleted}</div>
                 </div>
                 
-                <div className="flex justify-between text-sm">
-                  <span className="text-white/70">Sessions</span>
-                  <span>{userStats.sessionsCompleted}</span>
+                <div className="bg-white/10 rounded-lg p-3">
+                  <div className="text-white/70 text-sm mb-1">Questions</div>
+                  <div className="text-xl font-bold">{userStats.questionsAnswered}</div>
                 </div>
                 
-                <div className="flex justify-between text-sm">
-                  <span className="text-white/70">Questions</span>
-                  <span>{userStats.questionsAnswered}</span>
+                <div className="bg-white/10 rounded-lg p-3">
+                  <div className="text-white/70 text-sm mb-1">Accuracy</div>
+                  <div className="text-xl font-bold">{userStats.accuracy}%</div>
                 </div>
                 
-                <div className="flex justify-between text-sm">
-                  <span className="text-white/70">Accuracy</span>
-                  <span>{userStats.accuracy}%</span>
-                </div>
-                
-                <div className="flex justify-between text-sm">
-                  <span className="text-white/70">Streak</span>
-                  <span className="flex items-center">
+                <div className="bg-white/10 rounded-lg p-3">
+                  <div className="text-white/70 text-sm mb-1">Streak</div>
+                  <div className="text-xl font-bold flex items-center">
                     {userStats.streak}
-                    <svg className="w-4 h-4 text-amber-400 ml-1" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-5 h-5 text-amber-400 ml-1" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
                     </svg>
-                  </span>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -264,7 +300,7 @@ export default function Dashboard() {
                   </a>
                 </Link>
                 
-                <Link href="/play" passHref legacyBehavior>
+                <Link href="/minimal-player" passHref legacyBehavior>
                   <a className="flex items-center px-4 py-3 text-white hover:bg-white/5 transition-colors">
                     <svg className="w-5 h-5 mr-3 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
@@ -354,8 +390,110 @@ export default function Dashboard() {
                 animate={{ opacity: 1, x: 0 }}
                 className="flex space-x-3"
               >
-                <Link href="/play?continue=true" passHref legacyBehavior>
-                  <a className="px-4 py-2 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 rounded-lg transition-colors flex items-center">
+                <Link href="/minimal-player" passHref legacyBehavior>
+                  <a className="px-6 py-3 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 rounded-lg transition-colors flex items-center font-medium text-base shadow-lg"
+                     onClick={() => {
+                       // UNIFIED APPROACH: Before navigation, ensure the state is properly synchronized
+                       try {
+                         // Get the anonymous/user ID from any valid location
+                         const userId = localStorage.getItem('zenjin_user_id') ||
+                                      localStorage.getItem('zenjin_anonymous_id') || 
+                                      localStorage.getItem('anonymousId');
+                                      
+                         if (!userId) {
+                           console.error('No user ID found in localStorage - cannot prepare state');
+                           return;
+                         }
+                         
+                         console.log(`UNIFIED APPROACH: Preparing continue playing with userId: ${userId}`);
+                         
+                         // Check all possible state storage locations and find the most recent one
+                         const stateOptions = [
+                           { key: `zenjin_state_${userId}`, label: 'main state' },
+                           { key: 'zenjin_anonymous_state', label: 'anonymous state' },
+                           { key: `triple_helix_state_${userId}`, label: 'triple helix state' }
+                         ];
+                         
+                         let mostRecentState = null;
+                         let mostRecentTimestamp = 0;
+                         let stateSource = '';
+                         
+                         // Find the most recent valid state with tube information
+                         stateOptions.forEach(option => {
+                           try {
+                             const stateJson = localStorage.getItem(option.key);
+                             if (stateJson) {
+                               const parsedState = JSON.parse(stateJson);
+                               
+                               // Check if it's a valid state with tube information
+                               // Different states have different structures
+                               let stateObj = null;
+                               let lastUpdated = null;
+                               let activeTube = null;
+                               
+                               // Check for state in zenjin_anonymous_state format
+                               if (parsedState && parsedState.state && parsedState.state.tubes) {
+                                 stateObj = parsedState.state;
+                                 lastUpdated = parsedState.state.lastUpdated;
+                                 activeTube = parsedState.state.activeTubeNumber || parsedState.state.activeTube;
+                               } 
+                               // Check for state in direct UserState format
+                               else if (parsedState && parsedState.tubes && (parsedState.activeTube || parsedState.activeTubeNumber)) {
+                                 stateObj = parsedState;
+                                 lastUpdated = parsedState.lastUpdated;
+                                 activeTube = parsedState.activeTubeNumber || parsedState.activeTube;
+                               }
+                               
+                               if (stateObj && activeTube) {
+                                 // Parse the timestamp and compare with the most recent
+                                 const timestamp = lastUpdated ? new Date(lastUpdated).getTime() : 0;
+                                 
+                                 if (timestamp > mostRecentTimestamp) {
+                                   mostRecentState = stateObj;
+                                   mostRecentTimestamp = timestamp;
+                                   stateSource = option.label;
+                                 }
+                               }
+                             }
+                           } catch (e) {
+                             console.error(`Error checking ${option.label}:`, e);
+                           }
+                         });
+                         
+                         // If we found a valid state, ensure it's in all required formats
+                         if (mostRecentState) {
+                           const activeTube = mostRecentState.activeTubeNumber || mostRecentState.activeTube || 1;
+                           console.log(`UNIFIED APPROACH: Found most recent state from ${stateSource} with activeTube=${activeTube}`);
+                           
+                           // Make sure activeTube and activeTubeNumber are both set correctly
+                           const normalizedState = {
+                             ...mostRecentState,
+                             activeTube: activeTube,
+                             activeTubeNumber: activeTube,
+                             userId: userId // Ensure userId is set correctly
+                           };
+                           
+                           // Important: Save this normalized state to ALL storage locations
+                           // This ensures consistent state no matter which path the code takes
+                           console.log(`UNIFIED APPROACH: Saving normalized state with activeTube=${activeTube} to all storage locations`);
+                           
+                           // Store in all formats for maximum compatibility
+                           localStorage.setItem(`zenjin_state_${userId}`, JSON.stringify(normalizedState));
+                           localStorage.setItem(`triple_helix_state_${userId}`, JSON.stringify(normalizedState));
+                           localStorage.setItem('zenjin_anonymous_state', JSON.stringify({ state: normalizedState }));
+                           
+                           // Also ensure the zenjin_user_id is set
+                           localStorage.setItem('zenjin_user_id', userId);
+                           
+                           console.log(`UNIFIED APPROACH: Successfully prepared state for continue playing`);
+                         } else {
+                           console.warn(`No valid state found - continuing with default state`);
+                         }
+                       } catch (e) {
+                         console.error('Error in Continue Playing preparation:', e);
+                       }
+                     }}
+                  >
                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
