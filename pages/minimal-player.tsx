@@ -78,8 +78,13 @@ export default function MinimalPlayer() {
   if (typeof window !== 'undefined' && !isAuthenticated) {
     const createAnonymousState = localStorage.getItem('zenjin_create_anonymous_state') === 'true';
     if (createAnonymousState) {
-      console.log('Anonymous account creation flag detected in minimal-player');
+      console.log('DEBUGGING: Anonymous account creation flag detected in minimal-player');
+      // Clear the flag after detecting it to prevent repeated creation
+      localStorage.removeItem('zenjin_create_anonymous_state');
+      console.log('DEBUGGING: Cleared anonymous creation flag after handling');
       // Flag will be handled by _app.tsx and createAnonymousUser in anonymousData.ts
+    } else {
+      console.log('DEBUGGING: No anonymous creation flag found in minimal-player');
     }
   }
   

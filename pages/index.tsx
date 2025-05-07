@@ -166,12 +166,14 @@ export default function Home() {
                 }
                 
                 // Create anonymous account using the context method
+                // Add extra debugging info
+                console.log('DEBUGGING: About to call signInAnonymously()');
                 signInAnonymously()
                   .then(result => {
                     if (result.success) {
-                      console.log('Created anonymous account on server with TTL');
+                      console.log('DEBUGGING: Created anonymous account on server with TTL:', result);
                     } else {
-                      console.error('Failed to create anonymous account:', result.error);
+                      console.error('DEBUGGING: Failed to create anonymous account:', result.error);
                     }
                   })
                   .catch(error => {

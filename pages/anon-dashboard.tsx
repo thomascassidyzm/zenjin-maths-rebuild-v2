@@ -40,30 +40,25 @@ export default function AnonDashboard() {
     // No redirects for authenticated users - let them see the anonymous dashboard
     // if they want to, which shows data from localStorage
     
-    // Check for anonymous ID - if doesn't exist, create one
-    let anonymousId = localStorage.getItem('anonymousId');
+    // Check for anonymous ID in any possible location - if doesn't exist, use startFreshAnonymousSession
+    // which follows our unified approach for anonymous users
+    let anonymousId = localStorage.getItem('anonymousId') || 
+                      localStorage.getItem('zenjin_anonymous_id') ||
+                      localStorage.getItem('zenjin_user_id');
+    
     if (!anonymousId) {
-      // Generate new anonymous ID
-      const newAnonymousId = `anon-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
-      localStorage.setItem('anonymousId', newAnonymousId);
-      anonymousId = newAnonymousId;
-      
-      // Initialize progress data for anonymous user
-      const progressData = {
-        totalPoints: 0,
-        blinkSpeed: 2.5,
-        blinkSpeedTrend: 'steady',
-        evolution: {
-          currentLevel: 'Mind Spark',
-          levelNumber: 1,
-          progress: 0,
-          nextLevel: 'Thought Weaver'
-        },
-        lastSessionDate: new Date().toISOString()
-      };
-      
-      // Save initial progress data
-      localStorage.setItem(`progressData_${newAnonymousId}`, JSON.stringify(progressData));
+      console.log('No existing anonymous ID found - creating new anonymous session with unified approach');
+      // Use our updated startFreshAnonymousSession that stores IDs consistently
+      // across multiple locations and sets up proper tube state
+      anonymousId = startFreshAnonymousSession();
+      console.log(`Created new anonymous session with ID: ${anonymousId}`);
+    } else {
+      console.log(`Using existing anonymous ID: ${anonymousId}`);
+      // Make sure ID is stored in all standard locations for consistency
+      localStorage.setItem('anonymousId', anonymousId);
+      localStorage.setItem('zenjin_anonymous_id', anonymousId);
+      localStorage.setItem('zenjin_user_id', anonymousId);
+      localStorage.setItem('zenjin_auth_state', 'anonymous');
     }
     
     // CRITICAL FIX: Before the Continue Playing button click, ensure we copy any existing state

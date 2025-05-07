@@ -8,14 +8,27 @@
 
 /**
  * Creates a new anonymous user ID and initializes empty progress data
+ * In the unified approach, this sets up storage in all relevant locations
  * @returns The newly created anonymous ID
  */
 export const createAnonymousUser = (): string => {
   // Generate new anonymous ID with timestamp and random number for uniqueness
   const newAnonymousId = `anon-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
   
-  // Store the ID in localStorage
-  localStorage.setItem('anonymousId', newAnonymousId);
+  // Store the ID in ALL possible locations for maximum compatibility
+  if (typeof window !== 'undefined') {
+    // Legacy ID storage
+    localStorage.setItem('anonymousId', newAnonymousId);
+    
+    // Current app standard
+    localStorage.setItem('zenjin_anonymous_id', newAnonymousId);
+    
+    // For API access and unified approach
+    localStorage.setItem('zenjin_user_id', newAnonymousId);
+    localStorage.setItem('zenjin_auth_state', 'anonymous');
+    
+    console.log(`Created new anonymous ID: ${newAnonymousId} and stored in multiple locations`);
+  }
   
   // Initialize progress data structure with default values
   const progressData = {
@@ -31,8 +44,27 @@ export const createAnonymousUser = (): string => {
     lastSessionDate: new Date().toISOString()
   };
   
-  // Save initial progress data
-  localStorage.setItem(`progressData_${newAnonymousId}`, JSON.stringify(progressData));
+  // Save initial progress data in multiple locations for redundancy
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(`progressData_${newAnonymousId}`, JSON.stringify(progressData));
+    localStorage.setItem('zenjin_anonymous_progress', JSON.stringify(progressData));
+    
+    // Initialize empty state for tube tracking in unified format
+    localStorage.setItem(`zenjin_state_${newAnonymousId}`, JSON.stringify({
+      userId: newAnonymousId,
+      activeTube: 1,
+      tubes: {
+        '1': { currentStitchId: '', stitchPositions: [] },
+        '2': { currentStitchId: '', stitchPositions: [] },
+        '3': { currentStitchId: '', stitchPositions: [] }
+      },
+      points: {
+        session: 0,
+        lifetime: 0
+      },
+      lastUpdated: new Date().toISOString()
+    }));
+  }
   
   return newAnonymousId;
 };
@@ -105,8 +137,23 @@ export const clearAnonymousData = (): boolean => {
 export const startFreshAnonymousSession = (): string => {
   if (typeof window === 'undefined') return '';
   
-  // Clear existing anonymous data
-  clearAnonymousData();
+  // In our unified approach, we want to preserve data between anonymous and authenticated users
+  // Instead of clearing all existing data, we'll just create a new anonymous user if needed
+  // This allows for a seamless transition between anonymous and authenticated states
+  
+  // Check if we already have an anonymous ID
+  const existingId = localStorage.getItem('anonymousId') || localStorage.getItem('zenjin_anonymous_id');
+  
+  // If we have an existing ID, use it instead of creating a new one
+  if (existingId) {
+    console.log(`Using existing anonymous ID: ${existingId}`);
+    // Store in standard format for consistency
+    localStorage.setItem('anonymousId', existingId);
+    localStorage.setItem('zenjin_anonymous_id', existingId);
+    localStorage.setItem('zenjin_user_id', existingId);
+    localStorage.setItem('zenjin_auth_state', 'anonymous');
+    return existingId;
+  }
   
   // Create a new anonymous user
   return createAnonymousUser();
@@ -171,11 +218,24 @@ export const getAnonymousProgressData = (anonymousId?: string): any => {
 
 /**
  * Checks if any anonymous session data exists in localStorage
+ * In our unified approach, we check multiple storage locations
  * @returns boolean indicating if anonymous data exists
  */
 export const hasAnonymousData = (): boolean => {
   if (typeof window === 'undefined') return false;
   
-  // Check if anonymousId exists
-  return localStorage.getItem('anonymousId') !== null;
+  // Check all possible ID locations
+  const anonymousId = 
+    localStorage.getItem('anonymousId') || 
+    localStorage.getItem('zenjin_anonymous_id');
+  
+  if (!anonymousId) return false;
+  
+  // Check for either type of state data
+  const hasStateData = 
+    localStorage.getItem(`progressData_${anonymousId}`) !== null ||
+    localStorage.getItem(`zenjin_state_${anonymousId}`) !== null ||
+    localStorage.getItem('zenjin_anonymous_progress') !== null;
+  
+  return hasStateData;
 };

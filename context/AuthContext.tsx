@@ -126,11 +126,11 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         userDataLoading: true
       }));
       
-      // Make sure we have a clean authentication state before proceeding
-      // This is critical for ensuring API calls work correctly
+      // In our unified approach, we no longer need to clean up anonymous data
+      // as anonymous accounts are real server-side accounts (just with TTL)
+      // and use the same data structures as authenticated accounts
       
-      // First clean up any remaining anonymous data to prevent conflicts
-      cleanupAnonymousData();
+      // cleanupAnonymousData(); // Removed - no longer needed in unified approach
       
       // Ensure that zenjin_auth_state is 'authenticated' and user ID is set in localStorage
       if (typeof window !== 'undefined') {
@@ -357,8 +357,11 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       
       if (transferred) {
         console.log('AuthContext: Anonymous data transferred successfully');
-        // Clean up anonymous data after successful transfer
-        cleanupAnonymousData();
+        // In our unified approach, we no longer need to clean up anonymous data
+        // as anonymous accounts are real server-side accounts (just with TTL)
+        // and use the same data structures as authenticated accounts
+        
+        // cleanupAnonymousData(); // Removed - no longer needed in unified approach
       } else {
         console.log('AuthContext: Anonymous data transfer was not completed');
       }
@@ -410,8 +413,11 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         localStorage.setItem('zenjin_user_email', email);
         localStorage.setItem('zenjin_user_id', data.user.id);
         
-        // Clean up any remaining anonymous data
-        cleanupAnonymousData();
+        // In our unified approach, we no longer need to clean up anonymous data
+        // as anonymous accounts are real server-side accounts (just with TTL)
+        // and use the same data structures as authenticated accounts
+        
+        // cleanupAnonymousData(); // Removed - no longer needed in unified approach
       }
       
       // Auth state will be updated by onAuthStateChange listener
@@ -821,8 +827,11 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
           }
         }
         
-        // Clean up any remaining anonymous data
-        cleanupAnonymousData();
+        // In our unified approach, we no longer need to clean up anonymous data
+        // as anonymous accounts are real server-side accounts (just with TTL)
+        // and use the same data structures as authenticated accounts
+        
+        // cleanupAnonymousData(); // Removed - no longer needed in unified approach
       }
       
       // Auth state will be updated by onAuthStateChange listener
