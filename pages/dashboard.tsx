@@ -22,29 +22,7 @@ export default function Dashboard() {
   const { user, signOut } = useAuth();
   const { isSubscribed, isPremiumReady, isFreeTier } = useSubscription();
   
-  // Example content items with premium flag
-  const contentItems = [
-    { id: 1, title: 'Number Basics', description: 'Learn the fundamentals of numbers', isPremium: false },
-    { id: 2, title: 'Addition & Subtraction', description: 'Master basic operations', isPremium: false },
-    { id: 3, title: 'Multiplication', description: 'Multiply with confidence', isPremium: false },
-    { id: 4, title: 'Division Essentials', description: 'Conquer division problems', isPremium: false },
-    { id: 5, title: 'Fractions Introduction', description: 'Understand parts of a whole', isPremium: false },
-    { id: 6, title: 'Decimals Basics', description: 'Work with decimal numbers', isPremium: false },
-    { id: 7, title: 'Percentages', description: 'Calculate percentages easily', isPremium: false },
-    { id: 8, title: 'Negative Numbers', description: 'Navigate numbers below zero', isPremium: false },
-    { id: 9, title: 'Multiples & Factors', description: 'Find relationships between numbers', isPremium: false },
-    { id: 10, title: 'Prime Numbers', description: 'Discover special numbers', isPremium: false },
-    { id: 11, title: 'Advanced Fractions', description: 'Operations with fractions', isPremium: true },
-    { id: 12, title: 'Complex Decimals', description: 'Advanced decimal operations', isPremium: true },
-    { id: 13, title: 'Ratio & Proportion', description: 'Compare quantities', isPremium: true },
-    { id: 14, title: 'Algebra Foundations', description: 'Intro to algebraic thinking', isPremium: true },
-    { id: 15, title: 'Equations', description: 'Solve for unknown values', isPremium: true },
-    { id: 16, title: 'Geometry Basics', description: 'Explore shapes and space', isPremium: true },
-    { id: 17, title: 'Area & Volume', description: 'Calculate space and capacity', isPremium: true },
-    { id: 18, title: 'Data & Statistics', description: 'Analyze information', isPremium: true },
-    { id: 19, title: 'Probability', description: 'Predict outcomes', isPremium: true },
-    { id: 20, title: 'Problem Solving', description: 'Apply math to real situations', isPremium: true },
-  ];
+  // No fictional content items - removed as they're not needed
   
   // Fetch actual dashboard data using our dashboard hook
   const dashboardData = useDashboard();
@@ -69,14 +47,7 @@ export default function Dashboard() {
     router.push('/login');
   };
   
-  // Handle content click
-  const handleContentClick = (item) => {
-    if (item.isPremium && isFreeTier) {
-      router.push('/subscribe');
-    } else {
-      router.push(`/play?content=${item.id}`);
-    }
-  };
+  // No content click handler needed - removed fictional content items
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0f172a] to-[#1e293b] text-white">
@@ -390,7 +361,7 @@ export default function Dashboard() {
                 animate={{ opacity: 1, x: 0 }}
                 className="flex space-x-3"
               >
-                <Link href="/minimal-player" passHref legacyBehavior>
+                <Link href="/minimal-player?continue=true" passHref legacyBehavior>
                   <a className="px-6 py-3 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 rounded-lg transition-colors flex items-center font-medium text-base shadow-lg"
                      onClick={() => {
                        // UNIFIED APPROACH: Before navigation, ensure the state is properly synchronized
@@ -465,9 +436,12 @@ export default function Dashboard() {
                            const activeTube = mostRecentState.activeTubeNumber || mostRecentState.activeTube || 1;
                            console.log(`UNIFIED APPROACH: Found most recent state from ${stateSource} with activeTube=${activeTube}`);
                            
+                           // CRITICAL FIX: Deep copy the state to avoid reference issues
+                           const deepCopy = JSON.parse(JSON.stringify(mostRecentState));
+                           
                            // Make sure activeTube and activeTubeNumber are both set correctly
                            const normalizedState = {
-                             ...mostRecentState,
+                             ...deepCopy,
                              activeTube: activeTube,
                              activeTubeNumber: activeTube,
                              userId: userId // Ensure userId is set correctly
@@ -481,6 +455,9 @@ export default function Dashboard() {
                            localStorage.setItem(`zenjin_state_${userId}`, JSON.stringify(normalizedState));
                            localStorage.setItem(`triple_helix_state_${userId}`, JSON.stringify(normalizedState));
                            localStorage.setItem('zenjin_anonymous_state', JSON.stringify({ state: normalizedState }));
+                           
+                           // Also flag that we should continue from previous state
+                           localStorage.setItem('zenjin_continue_previous_state', 'true');
                            
                            // Also ensure the zenjin_user_id is set
                            localStorage.setItem('zenjin_user_id', userId);
@@ -524,77 +501,98 @@ export default function Dashboard() {
               </motion.div>
             </div>
             
-            {/* Content grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {contentItems.map((item, index) => (
+            {/* Enhanced learning stats display */}
+            <div className="bg-gradient-to-br from-teal-600/20 to-emerald-600/20 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-teal-500/30">
+              <h2 className="text-xl font-bold mb-4 text-white">Your Learning Progress</h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                {/* Enhanced stats card 1: Points and accuracy */}
                 <motion.div
-                  key={item.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 + (index * 0.05) }}
-                  className={`relative rounded-xl overflow-hidden ${
-                    item.isPremium && isFreeTier
-                      ? 'bg-gradient-to-br from-purple-900/30 to-purple-600/30 border border-purple-500/30'
-                      : 'bg-white/10 hover:bg-white/15 border border-white/10'
-                  } backdrop-blur-sm transition-colors cursor-pointer group`}
-                  onClick={() => handleContentClick(item)}
+                  transition={{ delay: 0.1 }}
+                  className="bg-white/10 backdrop-blur-sm rounded-xl p-5 border border-white/10"
                 >
-                  <div className="p-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-semibold">{item.title}</h3>
-                      
-                      {item.isPremium && (
-                        <div className="bg-purple-600/40 text-purple-200 text-xs px-2 py-0.5 rounded-full flex items-center">
-                          {isFreeTier ? (
-                            <>
-                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                              </svg>
-                              Premium
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                              </svg>
-                              Unlocked
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    
-                    <p className="text-sm text-white/70 mt-1 mb-6">{item.description}</p>
-                    
-                    <div className="absolute bottom-3 right-4">
-                      <div className={`rounded-full w-8 h-8 flex items-center justify-center group-hover:bg-opacity-80 ${
-                        item.isPremium && isFreeTier
-                          ? 'bg-purple-600/40 text-purple-200 group-hover:bg-purple-500/50'
-                          : 'bg-teal-600/40 text-teal-200 group-hover:bg-teal-500/50'
-                      } transition-colors`}>
-                        {item.isPremium && isFreeTier ? (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                          </svg>
-                        ) : (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                          </svg>
-                        )}
+                  <h3 className="text-lg font-semibold text-white mb-4">Points & Accuracy</h3>
+                  
+                  <div className="space-y-4">
+                    {/* Total Points with larger display */}
+                    <div>
+                      <div className="flex justify-between items-end mb-1">
+                        <span className="text-white/70">Total Points</span>
+                        <span className="text-2xl font-bold text-white">{userStats.totalPoints.toLocaleString()}</span>
+                      </div>
+                      <div className="mt-1 h-3 bg-white/10 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-gradient-to-r from-teal-500 to-emerald-500" 
+                          style={{ width: `${Math.min((userStats.totalPoints / 5000) * 100, 100)}%` }}
+                        ></div>
                       </div>
                     </div>
                     
-                    {/* Lock overlay for premium content in free tier */}
-                    {item.isPremium && isFreeTier && (
-                      <div className="absolute inset-0 bg-gradient-to-b from-transparent to-purple-950/80 flex items-end justify-center p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button className="px-4 py-1.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 rounded-lg text-sm font-medium transition-colors">
-                          Upgrade to Unlock
-                        </button>
+                    {/* Accuracy with fixed NaN */}
+                    <div>
+                      <div className="flex justify-between items-end mb-1">
+                        <span className="text-white/70">Accuracy</span>
+                        <span className="text-2xl font-bold text-white">
+                          {isNaN(userStats.accuracy) ? '0' : userStats.accuracy}%
+                        </span>
                       </div>
-                    )}
+                      <div className="mt-1 h-3 bg-white/10 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-gradient-to-r from-blue-500 to-indigo-500" 
+                          style={{ width: `${isNaN(userStats.accuracy) ? 0 : userStats.accuracy}%` }}
+                        ></div>
+                      </div>
+                    </div>
                   </div>
                 </motion.div>
-              ))}
+                
+                {/* Enhanced stats card 2: Streaks and sessions */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="bg-white/10 backdrop-blur-sm rounded-xl p-5 border border-white/10"
+                >
+                  <h3 className="text-lg font-semibold text-white mb-4">Sessions & Streaks</h3>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Sessions completed */}
+                    <div className="bg-white/10 rounded-lg p-3">
+                      <div className="text-white/70 text-sm mb-1">Sessions</div>
+                      <div className="text-xl font-bold">{userStats.sessionsCompleted}</div>
+                    </div>
+                    
+                    {/* Questions answered */}
+                    <div className="bg-white/10 rounded-lg p-3">
+                      <div className="text-white/70 text-sm mb-1">Questions</div>
+                      <div className="text-xl font-bold">{userStats.questionsAnswered}</div>
+                    </div>
+                    
+                    {/* Streak with star icon */}
+                    <div className="bg-white/10 rounded-lg p-3">
+                      <div className="text-white/70 text-sm mb-1">Streak</div>
+                      <div className="text-xl font-bold flex items-center">
+                        {userStats.streak}
+                        <svg className="w-5 h-5 text-amber-400 ml-1" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
+                        </svg>
+                      </div>
+                    </div>
+                    
+                    {/* Last session */}
+                    <div className="bg-white/10 rounded-lg p-3">
+                      <div className="text-white/70 text-sm mb-1">Last Session</div>
+                      <div className="text-sm font-medium">
+                        {dashboardData.lastSessionDate ? 
+                          new Date(dashboardData.lastSessionDate).toLocaleDateString() : 
+                          'Today'}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
             </div>
           </div>
         </div>

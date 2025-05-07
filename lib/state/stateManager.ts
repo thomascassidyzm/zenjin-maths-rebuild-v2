@@ -787,22 +787,17 @@ export class StateManager {
   }
   
   /**
-   * Force a sync to the server
-   * Called when saving important state or when page is about to unload
+   * Save state to server and local storage
+   * Called at the end of a session to ensure state persistence
    */
-  async forceSyncToServer(): Promise<boolean> {
+  async saveState(): Promise<boolean> {
     try {
       // Get a fresh copy of the state to ensure we have the latest
       let state = this.getState();
       
-      // CRITICAL FIX: Add detailed logging for active tube issue
-      // This helps debug when the activeTube is incorrectly reset to 1
+      // Simple logging of what's being saved
       const activeTubeNumber = state.activeTubeNumber || state.activeTube || 1;
-      console.log('STATE MANAGER: forceSyncToServer called with state', JSON.stringify({
-        userId: state.userId,
-        tubes: Object.keys(state.tubes || {}),
-        activeTube: state.activeTube
-      }));
+      console.log('STATE MANAGER: Saving state with activeTube =', activeTubeNumber, 'and tubes =', Object.keys(state.tubes || {}));
       
       // CRITICAL FIX: Check for a mismatch between activeTube and activeTubeNumber
       if (state.activeTube !== state.activeTubeNumber && state.activeTubeNumber) {
@@ -1014,19 +1009,19 @@ export class StateManager {
       // Handle page visibility changes
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') {
-          // Page is hidden, try to sync
-          this.forceSyncToServer();
+          // Page is hidden, save state
+          this.saveState();
         }
       });
       
       // Handle page unload
       window.addEventListener('beforeunload', () => {
-        this.forceSyncToServer();
+        this.saveState();
       });
       
       // Handle page close
       window.addEventListener('pagehide', () => {
-        this.forceSyncToServer();
+        this.saveState();
       });
     }
   }

@@ -64,7 +64,17 @@ export default function MinimalPlayer() {
   const shouldResetPoints = resetPoints === 'true';
   
   // Check if we should continue from previous state (important for "Continue Playing" button)
-  const continuePreviousState = shouldContinue === 'true';
+  // Get continue flag from both the query parameter and localStorage
+  // This ensures we continue from the previous state even if the URL parameter isn't present
+  const continuePreviousState = 
+    shouldContinue === 'true' || 
+    (typeof window !== 'undefined' && localStorage.getItem('zenjin_continue_previous_state') === 'true');
+    
+  // Clear the flag after reading it to prevent persisting the state indefinitely
+  if (typeof window !== 'undefined' && localStorage.getItem('zenjin_continue_previous_state') === 'true') {
+    console.log('CRITICAL: Clearing zenjin_continue_previous_state flag after reading');
+    localStorage.removeItem('zenjin_continue_previous_state');
+  }
   
   // Check if dev mode is enabled
   const showDevTools = dev === 'true';

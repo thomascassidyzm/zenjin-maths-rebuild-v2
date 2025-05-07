@@ -41,8 +41,8 @@ export function useUserState() {
   const updateUserState = useCallback(async (newState: UserState) => {
     stateManager.dispatch({ type: 'INITIALIZE_STATE', payload: newState });
     
-    // Force a sync to the server for important state changes
-    await stateManager.forceSyncToServer();
+    // Save state changes
+    await stateManager.saveState();
     
     return true;
   }, []);
@@ -51,7 +51,7 @@ export function useUserState() {
    * Force a sync of the current state to the server
    */
   const syncState = useCallback(async () => {
-    return stateManager.forceSyncToServer();
+    return stateManager.saveState();
   }, []);
   
   return {

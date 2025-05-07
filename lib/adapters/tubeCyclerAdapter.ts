@@ -1022,8 +1022,8 @@ export class TubeCyclerAdapter {
    * Save the current state to ensure persistence
    */
   public persistCurrentState = async (): Promise<boolean> => {
-    console.log('Adapter forcing state persistence');
-    return await stateManager.forceSyncToServer();
+    console.log('Adapter saving state');
+    return await stateManager.saveState();
   };
   
   /**
@@ -1033,8 +1033,8 @@ export class TubeCyclerAdapter {
     // Unsubscribe from state manager
     stateManager.unsubscribe(this.handleStateChange);
     
-    // Force final sync to ensure state is saved
-    stateManager.forceSyncToServer();
+    // Save state before cleanup
+    stateManager.saveState();
   }
 }
 
