@@ -294,6 +294,27 @@ export class StateManager {
     try {
       console.log('Initializing state manager for user:', userId);
       
+      // CRITICAL FIX: Don't proceed with empty userId unless explicitly creating anonymous user
+      if (!userId || userId === '') {
+        // Check if we should create anonymous userId automatically
+        if (typeof window !== 'undefined') {
+          const shouldCreateAnonymous = 
+            localStorage.getItem('zenjin_create_anonymous_state') === 'true' || 
+            window.location.pathname.includes('player');
+            
+          if (!shouldCreateAnonymous) {
+            console.log('CRITICAL: Skipping state initialization - no userId and not creating anonymous user');
+            // Just initialize with a temporary state but don't persist it
+            this.state = {
+              ...initialState,
+              userId: '', // Keep it empty to prevent persistence
+              lastUpdated: new Date().toISOString()
+            };
+            return;
+          }
+        }
+      }
+      
       // First attempt to load from browser storage
       const localState = this.loadFromLocalStorage(userId);
       let finalState: UserState | null = null;
@@ -845,17 +866,27 @@ export class StateManager {
             });
           }
           
-          // Recovery mechanism 4: Generate anonymous ID as final fallback
+          // Recovery mechanism 4: Check if we're allowed to create anonymous IDs
           if (!state.userId || state.userId === '') {
-            const anonymousId = `anonymous-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-            console.log(`STATE MANAGER: Generated fallback anonymous ID: ${anonymousId}`);
-            state.userId = anonymousId;
-            
-            // Update internal state
-            this.dispatch({
-              type: 'INITIALIZE_STATE',
-              payload: { ...state, userId: anonymousId }
-            });
+            // Only create anonymous ID if flag is set or if we're in the player
+            const shouldCreateAnonymous = 
+              localStorage.getItem('zenjin_create_anonymous_state') === 'true' || 
+              window.location.pathname.includes('player');
+              
+            if (shouldCreateAnonymous) {
+              const anonymousId = `anonymous-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+              console.log(`STATE MANAGER: Generated fallback anonymous ID based on explicit request: ${anonymousId}`);
+              state.userId = anonymousId;
+              
+              // Update internal state
+              this.dispatch({
+                type: 'INITIALIZE_STATE',
+                payload: { ...state, userId: anonymousId }
+              });
+            } else {
+              console.log(`STATE MANAGER: No userId and not creating anonymous ID - this is expected on initial load`);
+              // Don't show an error for expected behavior on landing page
+            }
           }
         } else {
           console.error('STATE MANAGER: Not in browser environment, cannot recover userId');
