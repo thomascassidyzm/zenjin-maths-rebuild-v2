@@ -18,7 +18,8 @@ export default function Home() {
     isAuthenticated, 
     loading, 
     userData, 
-    userDataLoading 
+    userDataLoading,
+    signInAnonymously // Add this to extract the signInAnonymously function
   } = useAuth();
   
   // Show loading state while auth is being determined
