@@ -60,8 +60,9 @@ interface ZenjinStore {
   // Complete state operations
   initializeState: (partialState: Partial<ZenjinStore>) => void;
   syncToServer: () => Promise<boolean>;
+  loadFromServer: (userId: string) => Promise<boolean>;
   resetStore: () => void;
-  
+
   // Direct persistence helpers
   saveToLocalStorage: () => boolean;
   loadFromLocalStorage: () => boolean;
@@ -422,47 +423,138 @@ export const useZenjinStore = create<ZenjinStore>()(
       
       syncToServer: async () => {
         const state = get();
-        
+
         // Ensure state is saved to localStorage first
         get().saveToLocalStorage();
-        
+
         if (!state.userInformation?.userId) {
           console.error('Cannot sync to server: No user ID available');
           return false;
         }
-        
+
         try {
-          // Prepare data for server
+          // Prepare the data for server sync - Use legacy format for compatibility
+          // with the existing API endpoint
           const syncData = {
             state: {
               userId: state.userInformation.userId,
-              userInformation: state.userInformation,
-              tubeState: state.tubeState,
-              learningProgress: state.learningProgress,
-              subscriptionDetails: state.subscriptionDetails,
+              tubes: state.tubeState?.tubes || {},
+              activeTube: state.tubeState?.activeTube || 1,
+              activeTubeNumber: state.tubeState?.activeTubeNumber || 1,
+              points: {
+                session: state.learningProgress?.evoPoints || 0,
+                lifetime: state.learningProgress?.evoPoints || 0
+              },
+              cycleCount: state.tubeState?.cycleCount || 0,
               lastUpdated: state.lastUpdated
             }
           };
-          
-          // Send to server
-          const response = await fetch('/api/state/sync', {
+
+          console.log('Syncing state to server:', syncData);
+
+          // Send to server - using existing user-state API endpoint
+          const response = await fetch('/api/user-state', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
             },
             body: JSON.stringify(syncData)
           });
-          
+
           if (!response.ok) {
             console.error(`Server returned error ${response.status} during sync`);
             console.error('Response text:', await response.text());
             throw new Error(`Server returned ${response.status}`);
           }
-          
+
           const data = await response.json();
+          console.log('Server sync response:', data);
           return data.success === true;
         } catch (error) {
           console.error('Error syncing state to server:', error);
+          return false;
+        }
+      },
+
+      // Load state from server using the user-state endpoint
+      loadFromServer: async (userId) => {
+        if (!userId) {
+          console.error('Cannot load from server: No user ID provided');
+          return false;
+        }
+
+        try {
+          console.log(`Loading state from server for user ${userId}`);
+
+          // Fetch state from server
+          const response = await fetch(`/api/user-state?userId=${encodeURIComponent(userId)}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (!response.ok) {
+            console.error(`Server returned error ${response.status} while loading state`);
+            console.error('Response text:', await response.text());
+            throw new Error(`Server returned ${response.status}`);
+          }
+
+          const data = await response.json();
+          console.log('Server load response:', data);
+
+          if (!data.success || !data.state) {
+            console.error('Failed to load state from server:', data);
+            return false;
+          }
+
+          const loadedState = data.state;
+
+          // Convert from legacy format to Zustand format
+          // Basic user information
+          const userInformation = {
+            userId: loadedState.userId,
+            isAnonymous: loadedState.userId?.startsWith('anonymous') || false,
+            createdAt: loadedState.createdAt || new Date().toISOString(),
+            lastActive: new Date().toISOString()
+          };
+
+          // Extract tube state
+          const tubeState = {
+            activeTube: loadedState.activeTube || loadedState.activeTubeNumber || 1,
+            activeTubeNumber: loadedState.activeTubeNumber || loadedState.activeTube || 1,
+            tubes: loadedState.tubes || {},
+            cycleCount: loadedState.cycleCount || 0
+          };
+
+          // Extract learning progress
+          let evoPoints = 0;
+          if (loadedState.points) {
+            // Extract from legacy format
+            evoPoints = loadedState.points.lifetime || 0;
+          }
+
+          const learningProgress = {
+            evoPoints,
+            evolutionLevel: Math.floor(evoPoints / 1), // Simple calculation
+            blinkSpeed: 1,
+            totalStitchesCompleted: 0,
+            perfectScores: 0
+          };
+
+          // Update the store with the loaded state
+          set({
+            userInformation,
+            tubeState,
+            learningProgress,
+            lastUpdated: loadedState.lastUpdated || new Date().toISOString(),
+            isInitialized: true
+          });
+
+          console.log('Successfully loaded state from server');
+          return true;
+        } catch (error) {
+          console.error('Error loading state from server:', error);
           return false;
         }
       },

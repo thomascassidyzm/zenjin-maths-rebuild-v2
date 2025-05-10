@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/router';
 import { Thread, Question } from '../lib/types/distinction-learning';
 import { calculateBonuses, calculateTotalPoints, calculateBasePoints } from '../lib/bonusCalculator';
 import { BUNDLED_FULL_CONTENT } from '../lib/expanded-bundled-content';
@@ -30,6 +31,9 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
   sessionTotalPoints = 0,
   userId,
 }) => {
+  // Initialize Next.js router for client-side navigation
+  const router = useRouter();
+
   // Create explicit fallbacks for all session context functions we might need
   const dummySessionState = { questionResults: [], points: 0 };
   const startSession = (params: any) => console.log('Session context not available - startSession', params);
@@ -847,13 +851,13 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
               
               // Redirect anonymous users to anon-dashboard
               setTimeout(() => {
-                window.location.href = '/anon-dashboard';
+                router.push('/anon-dashboard');
               }, 100);
             }
           } else {
             // For authenticated users, redirect to regular dashboard
             setTimeout(() => {
-              window.location.href = '/dashboard';
+              router.push('/dashboard');
             }, 100);
           }
         } catch (error) {
@@ -862,7 +866,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
           const isAnonymous = !userId || userId.startsWith('anon-');
           // Redirect to the appropriate dashboard based on user type
           setTimeout(() => {
-            window.location.href = isAnonymous ? '/anon-dashboard' : '/dashboard';
+            router.push(isAnonymous ? '/anon-dashboard' : '/dashboard');
           }, 100);
         }
       }
@@ -1304,26 +1308,26 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
                     Continue Playing
                   </button>
                   
-                  <button 
+                  <button
                     onClick={() => {
                       // Go to dashboard with saved stats
                       console.log('User clicked Go to Dashboard');
-                      
+
                       // Get the saved stats from earlier
                       const stats = (typeof window !== 'undefined' && window.__SESSION_STATS__) ? window.__SESSION_STATS__ : {
                         goDashboard: true,
                         totalPoints: totalPoints
                       };
-                      
+
                       // Force direct navigation based on user type
                       const isAnonymous = !userId || userId.startsWith('anon-');
-                      
+
                       if (isAnonymous) {
                         console.log('DIRECT NAVIGATION: Anonymous user detected - going to /anon-dashboard');
                         // No need to save points here - already saved in handleEndSession
-                        
-                        // Direct navigation to anonymous dashboard using full URL to avoid any rewrites
-                        window.location.href = 'https://zenjin-maths-v1-zenjin.vercel.app/anon-dashboard';
+
+                        // Navigation to anonymous dashboard using Next.js router
+                        router.push('/anon-dashboard');
                       } else {
                         console.log('DIRECT NAVIGATION: Authenticated user - using finishSession');
                         // Use standard finishSession flow for authenticated users

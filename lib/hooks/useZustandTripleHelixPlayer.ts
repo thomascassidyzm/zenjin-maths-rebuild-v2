@@ -427,6 +427,26 @@ export function useZustandTripleHelixPlayer({
   };
 
 
+  // First, try to load state from server if user is authenticated
+  useEffect(() => {
+    if (userId && userId !== 'anonymous-pending' && !isAnonymous) {
+      debug(`Attempting to load state from server for authenticated user ${userId}`);
+
+      // Try to load state from server
+      useZenjinStore.getState().loadFromServer(userId)
+        .then(success => {
+          if (success) {
+            debug(`Successfully loaded state from server for user ${userId}`);
+          } else {
+            debug(`Failed to load state from server for user ${userId}, will use localStorage`);
+          }
+        })
+        .catch(err => {
+          debug(`Error loading state from server: ${err}`);
+        });
+    }
+  }, [userId, isAnonymous]);
+
   // Initialize TubeCycler when userId is available
   useEffect(() => {
     if (isLoading && userId && userId !== 'anonymous-pending') {
@@ -660,7 +680,11 @@ export function useZustandTripleHelixPlayer({
             
             // Update points in Zustand store
             incrementPoints(Math.ceil(score * 1.1) || 0);
-            
+
+            // We don't sync to server after each stitch completion
+            // Only sync at the end of the session when the user clicks "Finish"
+            debug('Stitch completed - state will be synced at the end of the session');
+
             // Release rotation lock
             rotationInProgressRef.current = false;
           } catch (err) {
@@ -690,44 +714,45 @@ export function useZustandTripleHelixPlayer({
   ) => {
     try {
       debug('Handling session completion');
-      
+
       if (!tubeCycler) {
         debug('No TubeCycler available for session completion');
         return false;
       }
-      
+
       // For authenticated users, save to database
       if (!isAnonymous && userId && userId.indexOf('anonymous') !== 0) {
         debug(`Saving session data for authenticated user ${userId}`);
-        
+
         // Import the session completion module
         const tubeCyclerModule = require('../tube-config-integration');
-        
+
         // End the session
         await tubeCyclerModule.endSession(
           { id: userId },
           tubeCycler
         );
-        
+
         // Make sure Zustand store is up to date with the latest state
         const finalState = tubeCycler.getState();
         updateZustandFromLegacyState(finalState);
-        
-        // Sync to server via Zustand store
+
+        // THIS IS THE ONE PLACE WE SYNC TO SERVER - at the end of a session
+        debug('Syncing final state to server at end of session');
         await syncToServer();
-        
+
         debug('Session data saved to server');
-      } 
+      }
       // For anonymous users, save to localStorage only
       else {
         debug(`Saving session data for anonymous user to localStorage`);
-        
+
         // Import the localStorage save module
         const { saveToLocalStorage } = require('../tube-config-loader');
-        
+
         // Save state to localStorage
         await saveToLocalStorage(null, tubeCycler.getState());
-        
+
         // Save session data in the state
         const stateWithSession = {
           ...tubeCycler.getState(),
@@ -740,25 +765,26 @@ export function useZustandTripleHelixPlayer({
             stitchesCompleted: accumulatedSessionData.stitchesCompleted
           }
         };
-        
+
         // Save the enhanced state
         await saveToLocalStorage(null, stateWithSession);
-        
+
         // Make sure Zustand store is up to date with the latest state
         updateZustandFromLegacyState(stateWithSession);
-        
+
         // Sync to localStorage via Zustand store's persistence
         useZenjinStore.getState().saveToLocalStorage();
-        
+
         debug('Session data saved to localStorage');
       }
-      
+
       // If we need to navigate
       if (forceNavigate) {
         debug('Forced navigation requested');
-        window.location.href = '/dashboard';
+        // Use Next.js router instead of direct location navigation to preserve state
+        router.push('/dashboard');
       }
-      
+
       return true;
     } catch (err) {
       console.error('Error completing session:', err);

@@ -181,8 +181,8 @@ export default function Play() {
                   player.handleSessionComplete(results, true);
                 
                   setTimeout(() => {
-                    console.log('Fallback navigation to dashboard');
-                    window.location.href = '/dashboard';
+                    console.log('Fallback navigation to dashboard using Next.js router');
+                    router.push('/dashboard');
                   }, 2000);
                 } else {
                   player.handleSessionComplete(results, true);
