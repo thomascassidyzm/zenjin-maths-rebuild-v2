@@ -15,13 +15,20 @@ export default function SimpleZustandTest() {
   
   // Initialize on mount
   useEffect(() => {
-    // Create a consistent test ID for the session
-    const testId = `test-user-${Date.now()}`;
+    // Use a consistent test ID between refreshes
+    let testId = localStorage.getItem('zustand_test_user_id');
+
+    // If no ID exists, create a new one and store it
+    if (!testId) {
+      testId = `test-user-${Date.now()}`;
+      localStorage.setItem('zustand_test_user_id', testId);
+    }
+
     console.log(`Using test ID: ${testId}`);
-    
+
     // Set the userId
     setUserId(testId);
-    
+
     // Initialize the store with this ID
     useAppStore.getState().setUserInformation({
       userId: testId,
@@ -53,10 +60,20 @@ export default function SimpleZustandTest() {
       cycleCount: 0
     });
     
-    // Save to localStorage immediately after initialization
+    // Check if we should load existing data for this user
     setTimeout(() => {
-      useAppStore.getState().saveToLocalStorage();
-      console.log('Initial state saved to localStorage');
+      const key = `zenjin_state_${testId}`;
+      const existingState = localStorage.getItem(key);
+
+      if (existingState) {
+        console.log('Found existing state in localStorage, attempting to load it');
+        const success = useAppStore.getState().loadFromLocalStorage();
+        console.log(`Loaded existing state: ${success ? 'Success' : 'Failed'}`);
+      } else {
+        console.log('No existing state found, saving initial state');
+        useAppStore.getState().saveToLocalStorage();
+        console.log('Initial state saved to localStorage');
+      }
     }, 500);
     
   }, []);
