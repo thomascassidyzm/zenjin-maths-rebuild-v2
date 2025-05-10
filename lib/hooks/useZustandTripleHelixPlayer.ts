@@ -427,29 +427,41 @@ export function useZustandTripleHelixPlayer({
   };
 
 
-  // First, try to load state from server if user is authenticated
-  useEffect(() => {
-    if (userId && userId !== 'anonymous-pending' && !isAnonymous) {
-      debug(`Attempting to load state from server for authenticated user ${userId}`);
+  // State loader tracking - prevent race conditions
+  const [serverStateLoaded, setServerStateLoaded] = useState(false);
 
-      // Try to load state from server
+  // Always load state from server - for authenticated users and anonymous users
+  useEffect(() => {
+    if (userId && userId !== 'anonymous-pending') {
+      // For both authenticated and anonymous users
+      debug(`Attempting to load state from server for user ${userId} (anonymous: ${isAnonymous})`);
+
+      // Try to load state from server - it will return default starting state for anonymous users
       useZenjinStore.getState().loadFromServer(userId)
         .then(success => {
           if (success) {
             debug(`Successfully loaded state from server for user ${userId}`);
+            setServerStateLoaded(true);
           } else {
             debug(`Failed to load state from server for user ${userId}, will use localStorage`);
+            setServerStateLoaded(true); // Mark as loaded even on failure so we can proceed
           }
         })
         .catch(err => {
           debug(`Error loading state from server: ${err}`);
+          setServerStateLoaded(true); // Mark as loaded even on error so we can proceed
         });
+    } else {
+      // No valid user ID yet, mark as loaded so we can proceed with initialization
+      debug('No valid user ID yet, will attempt to load state later');
+      setServerStateLoaded(true);
     }
   }, [userId, isAnonymous]);
 
-  // Initialize TubeCycler when userId is available
+  // Initialize TubeCycler when userId is available AND server state loading is complete
   useEffect(() => {
-    if (isLoading && userId && userId !== 'anonymous-pending') {
+    // Only proceed when server state loading attempt is complete
+    if (isLoading && userId && userId !== 'anonymous-pending' && serverStateLoaded) {
       async function initialize() {
         debug(`Initializing TubeCycler for user ${userId} (anonymous: ${isAnonymous})`);
 

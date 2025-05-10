@@ -484,9 +484,11 @@ export const useZenjinStore = create<ZenjinStore>()(
         }
 
         try {
-          console.log(`Loading state from server for user ${userId}`);
+          const isAnonymous = userId.startsWith('anonymous');
+          console.log(`Loading state from server for ${isAnonymous ? 'anonymous' : 'authenticated'} user ${userId}`);
 
-          // Fetch state from server
+          // Fetch state from server - for both anonymous and authenticated users
+          // The server will return default starting state for anonymous users
           const response = await fetch(`/api/user-state?userId=${encodeURIComponent(userId)}`, {
             method: 'GET',
             headers: {
