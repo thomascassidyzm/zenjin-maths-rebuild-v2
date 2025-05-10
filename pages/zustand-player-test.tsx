@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useZustandTripleHelixPlayer } from '../lib/hooks/useZustandTripleHelixPlayer';
 import useZenjinStore from '../lib/store/zenjinStore';
@@ -16,6 +16,7 @@ export default function ZustandPlayerTest() {
     debug: (message) => console.log(`[TripleHelixPlayer] ${message}`),
     continuePreviousState: true
   });
+
 
   // Get state from Zustand store
   const userInfo = useZenjinStore(state => state.userInformation);
@@ -84,7 +85,10 @@ export default function ZustandPlayerTest() {
       }
 
       // Get initial points
-      const initialPoints = learningProgress?.points?.session || 0;
+      const initialPoints = learningProgress?.evoPoints || 0;
+
+      // Make sure we have a learning progress object
+      // The incrementPoints function now handles initializing learning progress if needed
 
       // Update points - add 10 points
       useZenjinStore.getState().incrementPoints(10);
@@ -93,7 +97,7 @@ export default function ZustandPlayerTest() {
       useZenjinStore.getState().saveToLocalStorage();
 
       // Get updated points
-      const updatedPoints = useZenjinStore(state => state.learningProgress?.points?.session);
+      const updatedPoints = useZenjinStore(state => state.learningProgress?.evoPoints);
 
       // Check if points were updated in the store
       if (updatedPoints !== initialPoints + 10) {
@@ -107,7 +111,7 @@ export default function ZustandPlayerTest() {
       const loadResult = useZenjinStore.getState().loadFromLocalStorage();
 
       // Check if points are still there after reload
-      const reloadedPoints = useZenjinStore(state => state.learningProgress?.points?.session);
+      const reloadedPoints = useZenjinStore(state => state.learningProgress?.evoPoints);
 
       return {
         success: loadResult && reloadedPoints === initialPoints + 10,
@@ -131,7 +135,7 @@ export default function ZustandPlayerTest() {
       }
 
       // Get initial points
-      const initialPoints = learningProgress?.points?.session || 0;
+      const initialPoints = learningProgress?.evoPoints || 0;
 
       // Complete the current stitch with a perfect score
       await player.completeStitch(
@@ -143,7 +147,7 @@ export default function ZustandPlayerTest() {
       );
 
       // Check if points were updated
-      const updatedPoints = useZenjinStore(state => state.learningProgress?.points?.session);
+      const updatedPoints = useZenjinStore(state => state.learningProgress?.evoPoints);
 
       // We expect points to increase by at least 20
       return {

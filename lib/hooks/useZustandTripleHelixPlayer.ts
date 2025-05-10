@@ -32,12 +32,11 @@ export function useZustandTripleHelixPlayer({
   const storeIsAnonymous = useZenjinStore(state => state.userInformation?.isAnonymous || false);
   const storeTubeState = useZenjinStore(state => state.tubeState);
   const storeLearningProgress = useZenjinStore(state => state.learningProgress);
-  const { 
-    setUserInformation, 
-    setTubeState, 
+  const {
+    setUserInformation,
+    setTubeState,
     setActiveTube,
     incrementPoints,
-    updateEvoPoints,
     syncToServer
   } = useZenjinStore();
 
@@ -427,12 +426,13 @@ export function useZustandTripleHelixPlayer({
     }
   };
 
+
   // Initialize TubeCycler when userId is available
   useEffect(() => {
     if (isLoading && userId && userId !== 'anonymous-pending') {
       async function initialize() {
         debug(`Initializing TubeCycler for user ${userId} (anonymous: ${isAnonymous})`);
-        
+
         try {
           // Import the TubeCycler initialization functionality
           const tubeCyclerModule = require('../tube-config-integration');

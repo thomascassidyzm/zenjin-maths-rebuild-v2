@@ -34,6 +34,7 @@ interface ZenjinStore {
   setLearningProgress: (progress: LearningProgress) => void;
   incrementTotalTimeSpent: (seconds: number) => void;
   updateEvoPoints: (points: number, operation: 'add' | 'set') => void;
+  incrementPoints: (points: number) => void; // Simpler alias for adding points
   updateBlinkSpeed: (newSessionBlinkSpeed: number) => void;
   incrementStitchesCompleted: (isPerfectScore: boolean) => void;
   
@@ -180,15 +181,48 @@ export const useZenjinStore = create<ZenjinStore>()(
       
       updateEvoPoints: (points, operation = 'add') => set((state) => {
         if (!state.learningProgress) return { lastUpdated: new Date().toISOString() };
-        
-        const newPoints = operation === 'add' 
-          ? state.learningProgress.evoPoints + points 
+
+        const newPoints = operation === 'add'
+          ? state.learningProgress.evoPoints + points
           : points;
-        
+
         // Recalculate evolution level
         const currentBlinkSpeed = state.learningProgress.currentBlinkSpeed || 1;
         const evolutionLevel = Math.floor(newPoints / currentBlinkSpeed);
-        
+
+        return {
+          learningProgress: {
+            ...state.learningProgress,
+            evoPoints: newPoints,
+            evolutionLevel
+          },
+          lastUpdated: new Date().toISOString()
+        };
+      }),
+
+      // Simpler alias for incrementing points
+      incrementPoints: (points) => set((state) => {
+        if (!state.learningProgress) {
+          // If learningProgress is null, create it with default values
+          return {
+            learningProgress: {
+              evoPoints: points,
+              evolutionLevel: points,
+              blinkSpeed: 1,
+              totalStitchesCompleted: 0,
+              perfectScores: 0
+            },
+            lastUpdated: new Date().toISOString()
+          };
+        }
+
+        // Just update evoPoints by adding points
+        const newPoints = state.learningProgress.evoPoints + points;
+
+        // Recalculate evolution level
+        const currentBlinkSpeed = state.learningProgress.currentBlinkSpeed || 1;
+        const evolutionLevel = Math.floor(newPoints / currentBlinkSpeed);
+
         return {
           learningProgress: {
             ...state.learningProgress,

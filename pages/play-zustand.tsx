@@ -41,10 +41,11 @@ export default function PlayZustand() {
   const showDevTools = router.query.dev === 'true';
 
   // Use the Zustand-based player hook
-  const player = useZustandTripleHelixPlayer({ 
+  const player = useZustandTripleHelixPlayer({
     debug: console.log,
     continuePreviousState // Pass the parameter to the hook
   });
+
 
   // Check authentication
   useEffect(() => {
