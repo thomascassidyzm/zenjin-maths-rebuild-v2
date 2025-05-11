@@ -345,28 +345,68 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   const transferAnonymousData = useCallback(async (userId: string) => {
     try {
       console.log('AuthContext: Transferring anonymous data to authenticated user');
-      
+
       // Check if we have anonymous data to transfer
       if (!hasAnonymousData()) {
         console.log('AuthContext: No anonymous data to transfer');
         return;
       }
-      
-      // Use the imported supabaseTransferData function directly for consistency
-      const transferred = await supabaseTransferData(userId);
-      
-      if (transferred) {
-        console.log('AuthContext: Anonymous data transferred successfully');
-        // In our unified approach, we no longer need to clean up anonymous data
-        // as anonymous accounts are real server-side accounts (just with TTL)
-        // and use the same data structures as authenticated accounts
-        
-        // cleanupAnonymousData(); // Removed - no longer needed in unified approach
+
+      // Get the stored anonymous ID
+      const anonymousId = localStorage.getItem('zenjin_anonymous_id') ||
+                          localStorage.getItem('anonymousId');
+
+      if (!anonymousId) {
+        console.log('AuthContext: No anonymous ID found for data transfer');
+        return;
+      }
+
+      // Get session token for API authorization
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        console.log('AuthContext: No access token available for data transfer');
+        return;
+      }
+
+      console.log(`AuthContext: Transferring data from anonymous ID ${anonymousId} to authenticated user ${userId}`);
+
+      // Call API to transfer anonymous user data (state, progress, etc.) to authenticated user
+      // This API should update the TTL flag and user references without data migration
+      const response = await fetch('/api/auth/migrate-anonymous-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          anonymousId,
+          authenticatedUserId: userId
+        }),
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        console.error(`AuthContext: Error transferring anonymous data: ${response.status}`);
+        return false;
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log('AuthContext: Anonymous data transferred successfully. User record updated with proper auth ID.');
+
+        // Clear anonymous IDs from storage now that the transfer is complete
+        localStorage.removeItem('zenjin_anonymous_id');
+        localStorage.removeItem('anonymousId');
+
+        return true;
       } else {
-        console.log('AuthContext: Anonymous data transfer was not completed');
+        console.log(`AuthContext: Anonymous data transfer failed: ${result.error}`);
+        return false;
       }
     } catch (e) {
       console.error('AuthContext: Exception in anonymous data transfer:', e);
+      return false;
     }
   }, []);
 
@@ -443,12 +483,22 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     try {
       console.log('AuthContext: Signing in anonymously');
       
-      // Generate random credentials with more robust IDs
+      // Generate UUIDs in the same format as authenticated users
+      // This uses a helper function to create a proper UUID v4 format
+      const generateUUID = () => {
+        // RFC4122 compliant UUID v4
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          const r = Math.random() * 16 | 0;
+          const v = c === 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+      };
+
+      // Generate proper UUID for anonymous user - same format as authenticated users
+      const anonymousId = generateUUID();
       const timestamp = Date.now();
-      const randomSuffix = Math.floor(Math.random() * 1000000);
-      const anonymousEmail = `anonymous-${timestamp}-${randomSuffix}@example.com`;
-      const password = `anon-${timestamp}-${randomSuffix}`;
-      const anonymousId = `anonymous-${timestamp}-${randomSuffix}`;
+      const anonymousEmail = `anonymous-${anonymousId}@example.com`;
+      const password = `anon-${timestamp}`;
       
       // Store anonymous ID in localStorage for tracking progress
       // Store in multiple locations for redundancy

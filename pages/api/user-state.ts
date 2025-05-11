@@ -13,14 +13,36 @@ import { getDefaultUserState } from '../../lib/initialization/initialize-user-st
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Enable debug mode for troubleshooting
   const isDebug = req.query.debug === 'true';
-  
+
   // Enhanced logging for debugging state persistence issues
   console.log(`API: user-state called - method: ${req.method}, debug: ${isDebug}`);
   console.log(`API: user-state request URL: ${req.url}`);
-  
+
+  // Increase payload size limit for large state objects (100MB)
+  if (req.method === 'POST') {
+    // We need to manually handle the body parsing for large payloads
+    try {
+      if (!req.body && req.headers['content-type']?.includes('application/json')) {
+        const buffers = [];
+        for await (const chunk of req) {
+          buffers.push(chunk);
+        }
+        const data = Buffer.concat(buffers).toString();
+        req.body = JSON.parse(data);
+        console.log(`API: Manually parsed large request body - size: ${data.length} bytes`);
+      }
+    } catch (parseError) {
+      console.error('Error parsing large request body:', parseError);
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid request body - could not parse JSON'
+      });
+    }
+  }
+
   // Set up more comprehensive error handling for 500 errors
   try {
-  
+
   try {
     // Create supabase clients
     const supabase = createRouteHandlerClient(req, res);
@@ -344,49 +366,128 @@ async function updateUserState(state: any, supabase: any, res: NextApiResponse, 
         }
       }
       
-      // Use admin client which has RLS bypass for most reliable save
-      const { error } = await supabaseAdmin
-        .from('user_state')
-        .upsert(formattedState);
-        
-      if (error) {
-        console.error(`Error updating state:`, error);
-        console.error(`Error details:`, error.details || error.message);
-        
-        // Try again with normal client if admin fails
+      // Check if the state payload is too large for efficient database storage
+      const stateSize = JSON.stringify(formattedState.state).length;
+      console.log(`State payload size: ${stateSize} bytes`);
+
+      // If state is too large, use chunking strategy
+      if (stateSize > 1000000) { // 1MB threshold
+        console.log(`State payload is large (${stateSize} bytes), using optimized storage strategy`);
+
         try {
-          console.log(`Falling back to regular client for state update`);
-          const { error: fallbackError } = await supabase
+          // Extract essential data for efficient storage
+          const essentialState = {
+            userId: formattedState.state.userId,
+            activeTube: formattedState.state.activeTube || formattedState.state.activeTubeNumber || 1,
+            activeTubeNumber: formattedState.state.activeTubeNumber || formattedState.state.activeTube || 1,
+            lastUpdated: formattedState.last_updated,
+            // Keep points data
+            points: formattedState.state.points || {
+              session: 0,
+              lifetime: 0
+            }
+          };
+
+          // Store tube positions separately for efficiency
+          const tubePositions = {};
+          if (formattedState.state.tubes) {
+            Object.keys(formattedState.state.tubes).forEach(tubeKey => {
+              const tube = formattedState.state.tubes[tubeKey];
+              if (tube) {
+                tubePositions[tubeKey] = {
+                  currentStitchId: tube.currentStitchId,
+                  currentPosition: tube.currentPosition
+                };
+              }
+            });
+          }
+
+          // Create a more efficient state object
+          const compactState = {
+            ...essentialState,
+            tubePositions,
+            fullStateHash: stateSize.toString(), // Use this to detect changes
+            isCompacted: true
+          };
+
+          console.log(`Storing compacted state (userId: ${essentialState.userId}, activeTube: ${essentialState.activeTube})`);
+
+          // Use admin client with compact state
+          const { error } = await supabaseAdmin
             .from('user_state')
-            .upsert(formattedState);
-            
-          if (fallbackError) {
-            console.error(`Fallback state update also failed:`, fallbackError);
-            console.error(`Fallback error details:`, fallbackError.details || fallbackError.message);
-            
-            // Save key state values to debug log for diagnostics
+            .upsert({
+              user_id: formattedState.user_id,
+              state: compactState,
+              last_updated: formattedState.last_updated,
+              created_at: formattedState.created_at
+            });
+
+          if (error) {
+            console.error(`Error storing compacted state:`, error);
+            throw error;
+          }
+
+          console.log(`Successfully stored compacted state`);
+          return res.status(200).json({
+            success: true,
+            message: 'State updated successfully (compacted for efficiency)',
+            compacted: true
+          });
+        } catch (compactError) {
+          console.error(`Error in compact state strategy:`, compactError);
+          // Continue to regular save as fallback
+        }
+      }
+
+      // Use admin client which has RLS bypass for most reliable save
+      try {
+        console.log(`Saving full state to database...`);
+        const { error } = await supabaseAdmin
+          .from('user_state')
+          .upsert(formattedState);
+
+        if (error) {
+          console.error(`Error updating state:`, error);
+          console.error(`Error details:`, error.details || error.message);
+          throw error;
+        }
+
+        console.log(`Successfully saved full state to database`);
+      } catch (adminError) {
+        console.error(`Admin client save failed, trying direct PostgreSQL insert...`);
+
+        try {
+          // Try a more direct approach with SQL
+          const { error: sqlError } = await supabaseAdmin.rpc('upsert_user_state', {
+            p_user_id: formattedState.user_id,
+            p_state: JSON.stringify(formattedState.state),
+            p_last_updated: formattedState.last_updated
+          });
+
+          if (sqlError) {
+            console.error(`Direct SQL insert also failed:`, sqlError);
+
+            // Log key information for debugging
             console.log(`API ERROR: State values that failed to save:`, JSON.stringify({
               user_id: formattedState.user_id,
-              state_size: JSON.stringify(formattedState.state).length,
-              last_updated: formattedState.last_updated,
-              auth_user: authenticatedUserId
+              state_size: stateSize,
+              last_updated: formattedState.last_updated
             }));
-            
+
             return res.status(500).json({
               success: false,
-              error: 'Error updating state',
-              details: isDebug ? fallbackError.message : undefined
+              error: 'Error updating state even with fallback methods',
+              details: isDebug ? sqlError.message : undefined
             });
-          } else {
-            console.log(`Fallback state update succeeded`);
-            // Continue to success response
           }
-        } catch (fallbackErr) {
-          console.error(`Error in fallback state update:`, fallbackErr);
+
+          console.log(`Direct SQL insert succeeded`);
+        } catch (sqlError) {
+          console.error(`Error in direct SQL save:`, sqlError);
           return res.status(500).json({
             success: false,
-            error: 'Error updating state',
-            details: isDebug ? (fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)) : undefined
+            error: 'Error updating state with all methods',
+            details: isDebug ? (sqlError instanceof Error ? sqlError.message : String(sqlError)) : undefined
           });
         }
       }
