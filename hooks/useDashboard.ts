@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { checkForPendingStateBackup, syncPendingStateBackupToServer, clearPendingStateBackup } from '../lib/stateReconciliation';
 
 interface EvolutionData {
   currentLevel: string;
@@ -184,10 +185,37 @@ export function useDashboard(): DashboardData {
     }
   };
 
-  // One-time fetch on component mount only - no automatic refreshing
+  // Check for pending state backup and sync if needed
   useEffect(() => {
-    refreshDashboard();
-    
+    // Function to handle state backup reconciliation
+    const handleStateBackup = async () => {
+      // Check if we have a pending state backup
+      const { hasPendingBackup, userId } = checkForPendingStateBackup();
+
+      if (hasPendingBackup && userId) {
+        console.log('Found pending state backup - attempting to sync to server');
+
+        // Try to sync the backup to the server
+        const syncSuccess = await syncPendingStateBackupToServer(userId);
+
+        if (syncSuccess) {
+          console.log('Successfully synced pending state backup to server');
+        } else {
+          console.warn('Failed to sync pending state backup - keeping backup in localStorage');
+          // Don't clear the backup markers so we can try again later
+        }
+      } else {
+        // No pending backup or missing userId, clear any stale markers
+        clearPendingStateBackup();
+      }
+
+      // Refresh dashboard data after backup reconciliation
+      refreshDashboard();
+    };
+
+    // Run the state backup handler
+    handleStateBackup();
+
     // No interval setup - dashboard data should only refresh when the user explicitly requests it
     // This follows the offline-first architecture and prevents potential performance issues
   }, []);

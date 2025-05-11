@@ -370,49 +370,124 @@ async function updateUserState(state: any, supabase: any, res: NextApiResponse, 
       const stateSize = JSON.stringify(formattedState.state).length;
       console.log(`State payload size: ${stateSize} bytes`);
 
-      // If state is too large, use chunking strategy
-      if (stateSize > 1000000) { // 1MB threshold
-        console.log(`State payload is large (${stateSize} bytes), using optimized storage strategy`);
+      // Always compress state for consistency and efficiency
+      // Lower threshold significantly to ensure all states are optimized
+      if (stateSize > 10000) { // 10KB threshold
+        console.log(`Optimizing state payload (${stateSize} bytes) for efficiency`);
 
         try {
-          // Extract essential data for efficient storage
-          const essentialState = {
-            userId: formattedState.state.userId,
-            activeTube: formattedState.state.activeTube || formattedState.state.activeTubeNumber || 1,
-            activeTubeNumber: formattedState.state.activeTubeNumber || formattedState.state.activeTube || 1,
-            lastUpdated: formattedState.last_updated,
-            // Keep points data
-            points: formattedState.state.points || {
-              session: 0,
-              lifetime: 0
-            }
-          };
+          // Helper function to extract stitch positions
+          function extractStitchPositions(stitches) {
+            if (!stitches || !Array.isArray(stitches)) return {};
 
-          // Store tube positions separately for efficiency
-          const tubePositions = {};
-          if (formattedState.state.tubes) {
-            Object.keys(formattedState.state.tubes).forEach(tubeKey => {
-              const tube = formattedState.state.tubes[tubeKey];
-              if (tube) {
-                tubePositions[tubeKey] = {
-                  currentStitchId: tube.currentStitchId,
-                  currentPosition: tube.currentPosition
+            const positions = {};
+            stitches.forEach(stitch => {
+              if (stitch && stitch.id) {
+                positions[stitch.id] = {
+                  position: stitch.position || 0,
+                  skipNumber: stitch.skipNumber || 3,
+                  distractorLevel: stitch.distractorLevel || 'L1'
                 };
               }
             });
+            return positions;
           }
 
-          // Create a more efficient state object
+          // Define essential state variable that will be set in either branch
+          let essentialState;
+
+          // Check if the state is already in our optimized format
+          // If it has stitchPositions property, it's likely already optimized
+          if (formattedState.state.tubes &&
+              Object.values(formattedState.state.tubes).some((tube: any) => tube.stitchPositions)) {
+            console.log('State appears to be already in optimized format');
+
+            // Just ensure the essential fields are present
+            essentialState = {
+              userId: formattedState.state.userId,
+              activeTube: formattedState.state.activeTube || formattedState.state.activeTubeNumber || 1,
+              activeTubeNumber: formattedState.state.activeTubeNumber || formattedState.state.activeTube || 1,
+              lastUpdated: formattedState.last_updated,
+              points: formattedState.state.points || {
+                session: 0,
+                lifetime: 0
+              },
+              // Just reference the existing tubes structure
+              tubes: formattedState.state.tubes,
+              // Add metadata about optimization
+              optimizationVersion: 1,
+              originalSize: stateSize
+            };
+          } else {
+            // Extract essential data for efficient storage
+            essentialState = {
+              userId: formattedState.state.userId,
+              activeTube: formattedState.state.activeTube || formattedState.state.activeTubeNumber || 1,
+              activeTubeNumber: formattedState.state.activeTubeNumber || formattedState.state.activeTube || 1,
+              lastUpdated: formattedState.last_updated,
+              // Keep points data
+              points: formattedState.state.points || {
+                session: 0,
+                lifetime: 0
+              },
+              // Add metadata about optimization
+              optimizationVersion: 1,
+              originalSize: stateSize
+            };
+
+            // Store optimized tube data with just positions
+            const tubes = {};
+            if (formattedState.state.tubes) {
+              Object.keys(formattedState.state.tubes).forEach(tubeKey => {
+                const tube = formattedState.state.tubes[tubeKey];
+                if (tube) {
+                  tubes[tubeKey] = {
+                    currentStitchId: tube.currentStitchId,
+                    threadId: tube.threadId || `thread-T${tubeKey}-001`,
+                    // Extract stitch positions if available
+                    stitchPositions: extractStitchPositions(tube.stitches)
+                  };
+                }
+              });
+            }
+
+            // Add the optimized tubes to the essential state
+            essentialState.tubes = tubes;
+          }
+
+          // Helper function to extract stitch positions
+          function extractStitchPositions(stitches) {
+            if (!stitches || !Array.isArray(stitches)) return {};
+
+            const positions = {};
+            stitches.forEach(stitch => {
+              if (stitch && stitch.id) {
+                positions[stitch.id] = {
+                  position: stitch.position || 0,
+                  skipNumber: stitch.skipNumber || 3,
+                  distractorLevel: stitch.distractorLevel || 'L1'
+                };
+              }
+            });
+            return positions;
+          }
+
+          // Create a more efficient state object for storage
+          // The essentialState already has all the optimization we need
           const compactState = {
             ...essentialState,
-            tubePositions,
-            fullStateHash: stateSize.toString(), // Use this to detect changes
-            isCompacted: true
+            isCompacted: true,
+            compactedAt: new Date().toISOString()
           };
 
-          console.log(`Storing compacted state (userId: ${essentialState.userId}, activeTube: ${essentialState.activeTube})`);
+          // Calculate compressed size for logging
+          const compressedSize = JSON.stringify(compactState).length;
+          const compressionRatio = stateSize > 0 ? ((stateSize - compressedSize) / stateSize * 100).toFixed(2) : 0;
 
-          // Use admin client with compact state
+          console.log(`Storing optimized state (userId: ${essentialState.userId}, activeTube: ${essentialState.activeTube})`);
+          console.log(`Original size: ${stateSize} bytes, Optimized size: ${compressedSize} bytes, Compression: ${compressionRatio}%`);
+
+          // Use admin client to store the compact state
           const { error } = await supabaseAdmin
             .from('user_state')
             .upsert({

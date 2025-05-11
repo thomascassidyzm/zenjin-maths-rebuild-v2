@@ -421,6 +421,54 @@ export const useZenjinStore = create<ZenjinStore>()(
         lastUpdated: new Date().toISOString()
       }),
       
+      // Helper function to extract minimal stitch positions
+      extractStitchPositions: (stitches = []) => {
+        if (!Array.isArray(stitches)) return {};
+
+        return stitches.reduce((acc, stitch) => {
+          if (stitch && stitch.id) {
+            acc[stitch.id] = {
+              position: stitch.position || 0,
+              skipNumber: stitch.skipNumber || 3,
+              distractorLevel: stitch.distractorLevel || 'L1'
+            };
+          }
+          return acc;
+        }, {});
+      },
+
+      // Helper function to extract minimal state
+      extractMinimalState: (state) => {
+        const minimalState = {
+          userId: state.userInformation?.userId,
+          activeTube: state.tubeState?.activeTube || 1,
+          activeTubeNumber: state.tubeState?.activeTubeNumber || 1,
+          tubes: {},
+          points: {
+            session: state.learningProgress?.evoPoints || 0,
+            lifetime: state.learningProgress?.evoPoints || 0
+          },
+          cycleCount: state.tubeState?.cycleCount || 0,
+          lastUpdated: state.lastUpdated
+        };
+
+        // Include only essential tube data
+        if (state.tubeState?.tubes) {
+          Object.entries(state.tubeState.tubes).forEach(([tubeKey, tube]) => {
+            if (tube) {
+              minimalState.tubes[tubeKey] = {
+                currentStitchId: tube.currentStitchId,
+                threadId: tube.threadId,
+                // Only essential position data for stitches
+                stitchPositions: get().extractStitchPositions(tube.stitches)
+              };
+            }
+          });
+        }
+
+        return minimalState;
+      },
+
       syncToServer: async () => {
         const state = get();
 
@@ -433,24 +481,17 @@ export const useZenjinStore = create<ZenjinStore>()(
         }
 
         try {
-          // Prepare the data for server sync - Use legacy format for compatibility
-          // with the existing API endpoint
+          // Extract minimal state for API call
+          const minimalState = get().extractMinimalState(state);
+
+          // Prepare the data for server sync
           const syncData = {
-            state: {
-              userId: state.userInformation.userId,
-              tubes: state.tubeState?.tubes || {},
-              activeTube: state.tubeState?.activeTube || 1,
-              activeTubeNumber: state.tubeState?.activeTubeNumber || 1,
-              points: {
-                session: state.learningProgress?.evoPoints || 0,
-                lifetime: state.learningProgress?.evoPoints || 0
-              },
-              cycleCount: state.tubeState?.cycleCount || 0,
-              lastUpdated: state.lastUpdated
-            }
+            state: minimalState
           };
 
-          console.log('Syncing state to server:', syncData);
+          // Log payload size for debugging
+          const payloadSize = JSON.stringify(syncData).length;
+          console.log(`Syncing minimal state to server (payload: ${payloadSize} bytes)`);
 
           // Send to server - using existing user-state API endpoint
           const response = await fetch('/api/user-state', {

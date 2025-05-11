@@ -1621,23 +1621,25 @@ export function useTripleHelixPlayer({
             // Pass scores to ensure the stitch completion is recorded properly
             await persistStateToServer(correctAnswers, totalQuestions);
             
-            // 3. For authenticated users only, clear localStorage to ensure next session starts fresh from server
-            // For anonymous users, we MUST preserve their state in localStorage
-            debug('Step 3: Clearing localStorage cache for authenticated user to ensure fresh state next session');
+            // 3. CRITICAL CHANGE: Instead of clearing localStorage, preserve it as backup
+            // Only clear after confirming server state was saved successfully
+            debug('Step 3: Creating localStorage state backup marker before dashboard navigation');
             try {
               if (typeof window !== 'undefined') {
-                // Clear only the authenticated user state from localStorage
-                // Keep the anonymous state intact as it's needed for continuity
-                localStorage.removeItem(`triple_helix_state_${userId}`);
-                
-                // Do NOT remove zenjin_anonymous_state for authenticated users either
-                // as they might switch back to anonymous mode in another window/session
-                // localStorage.removeItem('zenjin_anonymous_state');
-                
-                debug('Successfully cleared authenticated user state cache');
+                // Set a flag to indicate we have a pending server sync backup in localStorage
+                // The dashboard will check for this flag and handle appropriately
+                localStorage.setItem('zenjin_pending_state_backup', 'true');
+
+                // Store timestamp of the backup for reference
+                localStorage.setItem('zenjin_state_backup_time', Date.now().toString());
+
+                // IMPORTANT: Do NOT remove the state from localStorage yet!
+                // Keep it as backup in case server sync failed
+
+                debug('Successfully marked state backup in localStorage');
               }
-            } catch (clearError) {
-              debug(`Non-critical error clearing localStorage: ${clearError}`);
+            } catch (backupError) {
+              debug(`Non-critical error creating state backup marker: ${backupError}`);
               // Continue with navigation even if this fails
             }
             
