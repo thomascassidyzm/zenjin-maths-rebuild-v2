@@ -78,38 +78,72 @@ export class StateManager {
       case 'INITIALIZE_STATE':
         // CRITICAL FIX: Preserve active tube information if available
         // This prevents dashboard from resetting tube state
-        
+
         // Check if we're initializing from saved state with tube info
         const savedActiveTube = action.payload?.activeTubeNumber || action.payload?.activeTube;
         const hasSavedTubeInfo = typeof savedActiveTube !== 'undefined';
-        
+
         // Log what we're doing for debugging purposes
         if (typeof window !== 'undefined' && window.location.pathname.includes('dashboard')) {
           console.log(`STATE MANAGER: INITIALIZE_STATE called from dashboard page`);
           console.log(`STATE MANAGER: Saved state has activeTube=${action.payload?.activeTube}, activeTubeNumber=${action.payload?.activeTubeNumber}`);
-          
-          // If we have anonymous state saved, check if it has a different tube number
+
+          // Check for tube positions that indicate actual progress
+          let bestTubeNumber = savedActiveTube || 1;
+          let highestPosition = -1;
+
+          // First check the incoming state
+          if (action.payload.tubes) {
+            Object.entries(action.payload.tubes).forEach(([tubeNum, tube]) => {
+              // @ts-ignore
+              if (tube && tube.position && tube.position > highestPosition) {
+                // @ts-ignore
+                highestPosition = tube.position;
+                bestTubeNumber = parseInt(tubeNum, 10);
+                console.log(`STATE MANAGER: Found tube ${tubeNum} with high position ${
+                  // @ts-ignore
+                  tube.position} in incoming state`);
+              }
+            });
+          }
+
+          // Then also check anonymous state for comparison
           try {
             const anonymousState = localStorage.getItem('zenjin_anonymous_state');
             if (anonymousState) {
               const parsedState = JSON.parse(anonymousState);
-              if (parsedState && parsedState.state) {
-                const anonTube = parsedState.state.activeTubeNumber || parsedState.state.activeTube;
-                if (typeof anonTube !== 'undefined' && anonTube !== savedActiveTube) {
-                  console.log(`STATE MANAGER: WARNING - Anonymous state has different tube: ${anonTube} vs initializing with: ${savedActiveTube}`);
-                  console.log(`STATE MANAGER: Will prioritize anonymous state tube number: ${anonTube}`);
-                  // Override with the anonymous state tube number
-                  action.payload.activeTube = anonTube;
-                  action.payload.activeTubeNumber = anonTube;
-                }
+              if (parsedState && parsedState.state && parsedState.state.tubes) {
+                // First check for the active tube value
+                const anonActiveTube = parsedState.state.activeTubeNumber || parsedState.state.activeTube;
+                console.log(`STATE MANAGER: Anonymous state has activeTube=${anonActiveTube}`);
+
+                // Then check individual tube positions for more reliable evidence
+                Object.entries(parsedState.state.tubes).forEach(([tubeNum, tube]) => {
+                  // @ts-ignore
+                  if (tube && tube.position && tube.position > highestPosition) {
+                    // @ts-ignore
+                    highestPosition = tube.position;
+                    bestTubeNumber = parseInt(tubeNum, 10);
+                    console.log(`STATE MANAGER: Found tube ${tubeNum} with high position ${
+                      // @ts-ignore
+                      tube.position} in anonymous state`);
+                  }
+                });
               }
             }
           } catch (e) {
             console.error('Error checking anonymous state for active tube:', e);
           }
+
+          // Override with the best determined tube number based on position data
+          if (bestTubeNumber !== savedActiveTube) {
+            console.log(`STATE MANAGER: CRITICAL CORRECTION - Overriding activeTube from ${savedActiveTube} to ${bestTubeNumber} based on position data`);
+            action.payload.activeTube = bestTubeNumber;
+            action.payload.activeTubeNumber = bestTubeNumber;
+          }
         }
-        
-        // Perform initialization with preserved tube info
+
+        // Perform initialization with preserved and corrected tube info
         return {
           ...action.payload,
           lastUpdated: new Date().toISOString()
@@ -798,12 +832,40 @@ export class StateManager {
       // Simple logging of what's being saved
       const activeTubeNumber = state.activeTubeNumber || state.activeTube || 1;
       console.log('STATE MANAGER: Saving state with activeTube =', activeTubeNumber, 'and tubes =', Object.keys(state.tubes || {}));
-      
+
       // CRITICAL FIX: Check for a mismatch between activeTube and activeTubeNumber
       if (state.activeTube !== state.activeTubeNumber && state.activeTubeNumber) {
         console.log(`STATE MANAGER: CRITICAL - Detected mismatch between activeTube (${state.activeTube}) and activeTubeNumber (${state.activeTubeNumber})`);
         console.log(`STATE MANAGER: Fixing by setting both to activeTubeNumber (${state.activeTubeNumber})`);
         state.activeTube = state.activeTubeNumber;
+      }
+
+      // CRITICAL ADDITIONAL FIX: Check for tube position data to determine the real active tube
+      // This ensures we're preserving the actual progress rather than relying solely on activeTube
+      let bestTubeNumber = activeTubeNumber;
+      let highestPosition = -1;
+
+      // Check tubes for position data
+      if (state.tubes) {
+        Object.entries(state.tubes).forEach(([tubeNum, tube]) => {
+          // @ts-ignore
+          if (tube && tube.position && tube.position > highestPosition) {
+            // @ts-ignore
+            highestPosition = tube.position;
+            bestTubeNumber = parseInt(tubeNum, 10);
+            console.log(`STATE MANAGER: SaveState found tube ${tubeNum} with high position ${
+              // @ts-ignore
+              tube.position}`);
+          }
+        });
+      }
+
+      // If we found a tube with position > 0 and it's not the current active tube,
+      // use that as the active tube instead
+      if (highestPosition > 0 && bestTubeNumber !== activeTubeNumber) {
+        console.log(`STATE MANAGER: CRITICAL CORRECTION during save - Changing activeTube from ${activeTubeNumber} to ${bestTubeNumber} based on position data`);
+        state.activeTube = bestTubeNumber;
+        state.activeTubeNumber = bestTubeNumber;
       }
       
       // CRITICAL FIX: Check if we're in the anonymous dashboard and need to load the actual tube number
