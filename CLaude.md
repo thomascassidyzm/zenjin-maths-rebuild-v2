@@ -97,6 +97,22 @@ This simple change ensures we maintain a consistent offline-first experience whe
 - Always use content from localStorage or bundled defaults
 - Have a seamless experience, even without network connection
 
+## Anonymous User Migration Fix (May 5, 2025)
+
+We removed unnecessary anonymous user migration logic that was causing 500 errors by:
+
+1. Updating `context/AuthContext.tsx` to stop automatic migration attempts when users sign in
+2. Properly marking anonymous users as TTL accounts in the `signInAnonymously` function
+3. Deprecating the `transferAnonymousData` function in both AuthContext and supabaseClient
+4. Updating `authUtils.ts` to prevent unnecessary API calls to migrate anonymous data
+
+The improved implementation:
+- Treats anonymous users as proper TTL accounts that don't need migration
+- Prevents unnecessary API calls to the problematic `/api/auth/migrate-anonymous-user` endpoint
+- Properly updates authentication state when users sign in
+- Maintains a simpler and more reliable authentication flow
+- Fixes the "SIGNED_IN" event handler to avoid triggering unnecessary migrations
+
 ## Notes for Future Development
 
 1. The system currently assumes the first 10 stitches per tube as bundled content

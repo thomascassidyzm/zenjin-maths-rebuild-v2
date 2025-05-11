@@ -23,18 +23,19 @@ export const supabase = typeof window !== 'undefined'
  * Transfer anonymous session data to new authenticated user
  * @param {string} userId - The authenticated user ID
  * @returns {Promise<boolean>} Success status
+ * @deprecated No longer needed - anonymous users are now TTL accounts and don't need migration
  */
 export async function transferAnonymousData(userId: string) {
   try {
     if (typeof window === 'undefined') {
       return false;
     }
-    
-    // TEMPORARY FIX: Skip the data transfer process to avoid 504 timeouts
-    console.log('TEMPORARY FIX: Skipping anonymous data transfer due to server timeout issues');
-    console.log('Anonymous data will remain in localStorage for now');
-    
-    // Just return success to avoid blocking the authentication flow
+
+    // Anonymous users are now TTL accounts that don't require data migration
+    console.log('Anonymous data transfer is deprecated - TTL accounts do not require migration');
+    console.log('Anonymous users maintain their data through Supabase auth with TTL settings');
+
+    // Return success to avoid breaking existing code that still calls this function
     return true;
     
     /* TEMPORARILY DISABLED CODE - Will be restored once server issues are fixed

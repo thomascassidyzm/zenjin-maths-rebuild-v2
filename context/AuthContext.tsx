@@ -264,31 +264,29 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
             const currentAuthState = localStorage.getItem('zenjin_auth_state');
             const storedUserId = localStorage.getItem('zenjin_user_id');
             
-            // If previously anonymous or different user, handle data migration
-            if (currentAuthState === 'anonymous' || storedUserId !== session.user.id) {
-              console.log('AuthContext: Detected auth state transition, handling data migration');
-              
-              // Store auth token for API calls
-              const { data: { session: currentSession } } = await supabase.auth.getSession();
-              if (currentSession?.access_token) {
-                const authHeaders = {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${currentSession.access_token}`
-                };
-                localStorage.setItem('zenjin_auth_headers', JSON.stringify(authHeaders));
-              }
-              
-              // Update localStorage with new auth state BEFORE API calls
-              // This ensures subsequent API calls use authenticated credentials
-              localStorage.setItem('zenjin_auth_state', 'authenticated');
-              localStorage.setItem('zenjin_user_id', session.user.id);
-              if (session.user.email) {
-                localStorage.setItem('zenjin_user_email', session.user.email);
-              }
-              
-              // Attempt data migration - this will use the authentication we just set up
-              await transferAnonymousData(session.user.id);
-            }
+            // Update authentication state regardless of previous state
+          console.log('AuthContext: User signed in, setting authentication state');
+
+          // Store auth token for API calls
+          const { data: { session: currentSession } } = await supabase.auth.getSession();
+          if (currentSession?.access_token) {
+            const authHeaders = {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${currentSession.access_token}`
+            };
+            localStorage.setItem('zenjin_auth_headers', JSON.stringify(authHeaders));
+          }
+
+          // Update localStorage with new auth state
+          localStorage.setItem('zenjin_auth_state', 'authenticated');
+          localStorage.setItem('zenjin_user_id', session.user.id);
+          if (session.user.email) {
+            localStorage.setItem('zenjin_user_email', session.user.email);
+          }
+
+          // NOTE: We no longer attempt to migrate anonymous data on sign-in
+          // Anonymous users have TTL accounts and no migration is needed
+          // Migration will only happen when a user explicitly signs up from an anonymous state
           }
           
           // Update auth state
@@ -341,73 +339,14 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   /**
    * Transfer anonymous data to authenticated user account
    * @param userId - The authenticated user ID
+   * @deprecated No longer needed - anonymous users are now TTL accounts
+   * and don't require migration. This function is kept for backward compatibility.
    */
   const transferAnonymousData = useCallback(async (userId: string) => {
-    try {
-      console.log('AuthContext: Transferring anonymous data to authenticated user');
-
-      // Check if we have anonymous data to transfer
-      if (!hasAnonymousData()) {
-        console.log('AuthContext: No anonymous data to transfer');
-        return;
-      }
-
-      // Get the stored anonymous ID
-      const anonymousId = localStorage.getItem('zenjin_anonymous_id') ||
-                          localStorage.getItem('anonymousId');
-
-      if (!anonymousId) {
-        console.log('AuthContext: No anonymous ID found for data transfer');
-        return;
-      }
-
-      // Get session token for API authorization
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        console.log('AuthContext: No access token available for data transfer');
-        return;
-      }
-
-      console.log(`AuthContext: Transferring data from anonymous ID ${anonymousId} to authenticated user ${userId}`);
-
-      // Call API to transfer anonymous user data (state, progress, etc.) to authenticated user
-      // This API should update the TTL flag and user references without data migration
-      const response = await fetch('/api/auth/migrate-anonymous-user', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          anonymousId,
-          authenticatedUserId: userId
-        }),
-        credentials: 'include'
-      });
-
-      if (!response.ok) {
-        console.error(`AuthContext: Error transferring anonymous data: ${response.status}`);
-        return false;
-      }
-
-      const result = await response.json();
-
-      if (result.success) {
-        console.log('AuthContext: Anonymous data transferred successfully. User record updated with proper auth ID.');
-
-        // Clear anonymous IDs from storage now that the transfer is complete
-        localStorage.removeItem('zenjin_anonymous_id');
-        localStorage.removeItem('anonymousId');
-
-        return true;
-      } else {
-        console.log(`AuthContext: Anonymous data transfer failed: ${result.error}`);
-        return false;
-      }
-    } catch (e) {
-      console.error('AuthContext: Exception in anonymous data transfer:', e);
-      return false;
-    }
+    // This function is deprecated in favor of TTL-based anonymous accounts
+    // Return true immediately to avoid breaking existing code that still calls it
+    console.log('AuthContext: transferAnonymousData is deprecated - TTL accounts do not require migration');
+    return true;
   }, []);
 
   /**
@@ -443,21 +382,19 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         return { success: false, error };
       }
       
-      // If sign-in successful, check for anonymous data to transfer
+      // If sign-in successful, update auth state
       if (data.user) {
-        // Attempt to transfer anonymous data to the authenticated account
-        await transferAnonymousData(data.user.id);
-        
         // Set proper auth state in localStorage
         localStorage.setItem('zenjin_auth_state', 'authenticated');
         localStorage.setItem('zenjin_user_email', email);
         localStorage.setItem('zenjin_user_id', data.user.id);
-        
+
+        // NOTE: No longer attempting to transfer anonymous data
+        // Anonymous users have TTL accounts that need no migration
+
         // In our unified approach, we no longer need to clean up anonymous data
         // as anonymous accounts are real server-side accounts (just with TTL)
         // and use the same data structures as authenticated accounts
-        
-        // cleanupAnonymousData(); // Removed - no longer needed in unified approach
       }
       
       // Auth state will be updated by onAuthStateChange listener
@@ -545,9 +482,12 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
           email: anonymousEmail,
           password,
           options: {
-            // Add data property to store anonymous ID with the user
+            // Add data property to mark user as anonymous and TTL
             data: {
-              anonymous_id: anonymousId
+              anonymous_id: anonymousId,
+              is_anonymous: true,
+              is_ttl_account: true,
+              created_at: new Date().toISOString()
             }
           }
         });
@@ -863,11 +803,8 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       
       console.log('AuthContext: OTP verification successful', data);
       
-      // If verification successful, transfer anonymous data
+      // If verification successful, update auth state
       if (data?.user) {
-        // Attempt to transfer anonymous data to the authenticated account
-        await transferAnonymousData(data.user.id);
-        
         // Store auth state for app
         if (typeof window !== 'undefined') {
           localStorage.setItem('zenjin_auth_state', 'authenticated');
@@ -876,12 +813,13 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
             localStorage.setItem('zenjin_user_email', email);
           }
         }
-        
+
+        // NOTE: No longer attempting to transfer anonymous data
+        // Anonymous users have TTL accounts that need no migration
+
         // In our unified approach, we no longer need to clean up anonymous data
         // as anonymous accounts are real server-side accounts (just with TTL)
         // and use the same data structures as authenticated accounts
-        
-        // cleanupAnonymousData(); // Removed - no longer needed in unified approach
       }
       
       // Auth state will be updated by onAuthStateChange listener

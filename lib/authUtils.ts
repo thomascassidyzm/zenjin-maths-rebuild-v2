@@ -304,35 +304,16 @@ export function getAnonymousData(): any {
 /**
  * Transfers anonymous data to an authenticated user
  * This leverages the existing transferAnonymousData function in supabaseClient.ts
- * 
+ *
  * @param userId Authenticated user ID to transfer data to
  * @returns Promise with the transfer result
+ * @deprecated No longer needed - anonymous users are now TTL accounts and don't need migration
  */
 export async function transferAnonymousDataToUser(userId: string): Promise<boolean> {
-  try {
-    console.log('AuthUtils: Transferring anonymous data to user', userId);
-    
-    // Check if we have anonymous data to transfer
-    if (!hasAnonymousData()) {
-      console.log('AuthUtils: No anonymous data to transfer');
-      return false;
-    }
-    
-    // Import the function from supabaseClient (using dynamic import to avoid circular dependencies)
-    const { transferAnonymousData } = await import('./auth/supabaseClient');
-    
-    // Call the existing implementation that has been tested in production
-    const result = await transferAnonymousData(userId);
-    
-    if (result) {
-      console.log('AuthUtils: Anonymous data transferred successfully');
-      return true;
-    } else {
-      console.error('AuthUtils: Failed to transfer anonymous data');
-      return false;
-    }
-  } catch (error) {
-    console.error('AuthUtils: Error transferring anonymous data:', error);
-    return false;
-  }
+  // Anonymous users are now TTL accounts that don't require data migration
+  console.log('AuthUtils: Anonymous data transfer is deprecated - TTL accounts do not require migration');
+  console.log('AuthUtils: Anonymous users maintain their data through Supabase auth with TTL settings');
+
+  // Return success to avoid breaking existing code that still calls this function
+  return true;
 }
