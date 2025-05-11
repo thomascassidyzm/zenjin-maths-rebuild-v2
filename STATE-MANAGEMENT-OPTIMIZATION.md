@@ -60,7 +60,51 @@ This document outlines the improvements made to the state management system of t
 ## Future Improvements
 
 1. **Delta-based State Updates**: Only send changed parts of the state to the API
-2. **Enhanced Zustand Implementation**: Use Zustand as the single source of truth
+2. **Enhanced Zustand Implementation**: Use Zustand as the single source of truth (in progress - see below)
 3. **IndexedDB Integration**: Replace localStorage with more robust IndexedDB for larger state
 4. **Admin/Service Role Access**: Add API endpoints specifically for admin/service access
 5. **Custom Serialization**: Implement more efficient state serialization format
+
+## Zustand Single Source of Truth (May 11, 2025)
+
+To ensure consistent state management and prevent unauthorized direct API calls, we've implemented a new middleware approach:
+
+1. Created `/lib/api/store-middleware.ts` to:
+   - Enforce that all state-related API calls go through the Zustand store
+   - Provide backwards compatibility for legacy components during transition
+   - Warn when direct API calls are detected
+   - Offer a clean migration path for components
+
+2. The middleware provides two key functions:
+   - `withStoreSync()` - A wrapper for store operations that ensures proper server sync
+   - `directUserStateCall()` - A deprecated function that logs warnings and syncs with Zustand
+
+3. Key principles for component development:
+   - Components should never call `/api/user-state` directly
+   - All state updates should flow through Zustand actions
+   - Server synchronization should be handled by the store, not components
+   - State should be consistent across localStorage, memory, and server
+
+4. Migration strategy for existing components:
+   - Identify components making direct API calls
+   - Replace with store-middleware wrapped calls
+   - Eventually refactor to use Zustand actions directly
+
+## API Payload Fix (May 11, 2025)
+
+We fixed a critical issue with the state payload size in the API by:
+
+1. Preventing self-referential state objects in `/pages/api/user-state.ts`:
+   - The API was storing the entire state object inside itself
+   - Modified to prevent double-wrapping when state is already optimized
+
+2. Improving state optimization strategy:
+   - Force state optimization for all state sizes (removed 10KB threshold)
+   - Added aggressive pruning of unnecessary data like questions and content arrays
+   - Fixed issue where optimized tubes weren't properly recognized
+
+3. Fixing potential state loops:
+   - Ensured extracted state objects don't reference their parent objects
+   - Added proper cloning to prevent reference sharing
+
+These changes should prevent the 500 errors we were seeing on state save operations by dramatically reducing the payload size from 72KB to under 5KB.

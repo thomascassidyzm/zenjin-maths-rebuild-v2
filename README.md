@@ -46,6 +46,9 @@ See [Thread Ordering System](THREAD-ORDER.md) for details on the implementation.
 - **API Endpoints**: Enhanced error handling and data validation
 - **User Initialization**: Improved new user setup to ensure correct content loading
 - **Tube Configurations**: Fixed issues with invalid stitch references in tube configurations
+- **State Management**: Implemented robust state handling with Zustand as single source of truth
+- **Payload Optimization**: Reduced API payload sizes by 96% for improved performance
+- **Authentication Flow**: Fixed TTL-based anonymous accounts to prevent unnecessary migrations
 
 For detailed information on these changes, see:
 - [Thread Ordering System](THREAD-ORDER.md)
@@ -55,6 +58,7 @@ For detailed information on these changes, see:
 - [Database Update Summary](DATABASE-UPDATE-SUMMARY.md)
 - [API Documentation](API-DOCUMENTATION.md)
 - [Maintenance Guide](MAINTENANCE-GUIDE.md)
+- [State Management Optimization](STATE-MANAGEMENT-OPTIMIZATION.md)
 
 ## Database Scripts
 

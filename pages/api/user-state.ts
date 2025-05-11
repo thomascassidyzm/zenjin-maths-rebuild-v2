@@ -325,10 +325,12 @@ async function updateUserState(state: any, supabase: any, res: NextApiResponse, 
     // Always set/update the lastUpdated field to ensure state is current
     state.lastUpdated = lastUpdated;
     
-    // Format the state for database storage
+    // Format the state for database storage - check if we're getting a state that is already formatted
+    // This prevents double-wrapping and self-referential objects that bloat the payload
     const formattedState = {
       user_id: state.userId,
-      state: state,
+      // If state was already sent from a client using extractMinimalState, don't wrap it in another object
+      state: state.isCompacted || state.optimizationVersion ? state : { ...state },
       last_updated: lastUpdated,
       created_at: new Date().toISOString()
     };
@@ -370,9 +372,10 @@ async function updateUserState(state: any, supabase: any, res: NextApiResponse, 
       const stateSize = JSON.stringify(formattedState.state).length;
       console.log(`State payload size: ${stateSize} bytes`);
 
-      // Always compress state for consistency and efficiency
-      // Lower threshold significantly to ensure all states are optimized
-      if (stateSize > 10000) { // 10KB threshold
+      // Always compress state for consistency and efficiency, regardless of size
+      // This ensures every state gets optimized to prevent future growth
+      // IMPORTANT: Removed size threshold - always optimize
+      {
         console.log(`Optimizing state payload (${stateSize} bytes) for efficiency`);
 
         try {
@@ -435,18 +438,31 @@ async function updateUserState(state: any, supabase: any, res: NextApiResponse, 
               originalSize: stateSize
             };
 
-            // Store optimized tube data with just positions
+            // Store hyper-optimized tube data with only the absolute minimum needed fields
             const tubes = {};
             if (formattedState.state.tubes) {
               Object.keys(formattedState.state.tubes).forEach(tubeKey => {
                 const tube = formattedState.state.tubes[tubeKey];
                 if (tube) {
+                  // Store only the bare essentials needed to maintain tube state
                   tubes[tubeKey] = {
                     currentStitchId: tube.currentStitchId,
                     threadId: tube.threadId || `thread-T${tubeKey}-001`,
-                    // Extract stitch positions if available
-                    stitchPositions: extractStitchPositions(tube.stitches)
+                    // Extract stitch positions if available, or use existing optimized format
+                    stitchPositions: tube.stitchPositions || extractStitchPositions(tube.stitches)
                   };
+
+                  // CRITICAL: Remove any questions array which can be enormous
+                  // These are loaded from bundled content and don't need to be stored
+                  if (tubes[tubeKey].questions) {
+                    delete tubes[tubeKey].questions;
+                  }
+                  if (tubes[tubeKey].content) {
+                    delete tubes[tubeKey].content;
+                  }
+                  if (tubes[tubeKey].stitches) {
+                    delete tubes[tubeKey].stitches;
+                  }
                 }
               });
             }
@@ -496,7 +512,7 @@ async function updateUserState(state: any, supabase: any, res: NextApiResponse, 
           console.error(`Error in compact state strategy:`, compactError);
           // Continue to regular save as fallback
         }
-      }
+      } // End of optimization block (always runs now)
 
       // Use admin client which has RLS bypass for most reliable save
       try {
