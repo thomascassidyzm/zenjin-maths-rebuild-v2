@@ -21,6 +21,9 @@ export default function Document() {
         
         {/* Unregister service worker to fix API URL issues */}
         <script src="/unregister-sw.js"></script>
+
+        {/* EMERGENCY FIX: Disable unnecessary API calls to /api/user-state */}
+        <script src="/disable-api-calls.js"></script>
       </body>
     </Html>
   );

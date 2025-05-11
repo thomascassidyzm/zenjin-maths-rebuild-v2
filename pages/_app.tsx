@@ -7,6 +7,8 @@ import { stateManager } from '../lib/state/stateManager';
 import { contentManager } from '../lib/content/contentManager';
 import Script from 'next/script';
 import Head from 'next/head';
+// EMERGENCY FIX: Disable unnecessary API calls
+import '../lib/disableApiCalls';
 
 // Initialize app state via a wrapped component to ensure it runs client-side
 function AppStateInitializer() {

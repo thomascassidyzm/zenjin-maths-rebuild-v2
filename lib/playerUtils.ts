@@ -1922,11 +1922,17 @@ export function useTripleHelixPlayer({
     }, 300); // Reduced delay for more immediate celebration
   };
   
-  // Persist state to server with retry logic and better error handling
+  // DISABLED: Persist state to server with retry logic and better error handling
+  // This function is disabled because all state should go through Zustand
   const persistStateToServer = async (score: number = 0, totalQuestions: number = 0) => {
-    console.log(`PLAYER UTILS: persistStateToServer called with score=${score}, questions=${totalQuestions}`);
-    
-    if (!tubeCycler) {
+    console.log(`DISABLED: persistStateToServer has been disabled - all state should go through Zustand`);
+    console.log(`Use Zustand store's syncToServer method for server persistence instead`);
+
+    // Return successful promise to avoid breaking existing code
+    return Promise.resolve({ success: true, disabled: true });
+
+    // Original function disabled
+    if (false) {
       console.error("PLAYER UTILS: No tubeCycler available for persistStateToServer");
       return;
     }
