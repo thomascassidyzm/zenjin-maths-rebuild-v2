@@ -60,19 +60,8 @@ export default function MinimalPlayer() {
   const { user, isAuthenticated, loading: authLoading, signOut } = useAuth();
   const { isSubscribed, tier } = useSubscriptionStatus();
 
-  // Add a local loading state for auth resolution
-  const [isAuthResolved, setIsAuthResolved] = useState(false);
-
-  // Wait for auth state to be fully resolved before proceeding
-  useEffect(() => {
-    if (!authLoading) {
-      // Auth has finished loading, mark as resolved
-      setIsAuthResolved(true);
-    }
-  }, [authLoading]);
-
-  // If auth is still loading, show a loading indicator
-  if (authLoading || !isAuthResolved) {
+  // Simply check if auth is loading - no need for additional state
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center player-bg">
         <div className="bg-white/20 backdrop-blur-lg p-8 rounded-xl shadow-xl text-center">
@@ -104,16 +93,10 @@ export default function MinimalPlayer() {
   const showDevTools = dev === 'true';
   
   // Determine the correct player mode based solely on auth state - simple and clear
-  // Since we've now made sure auth is fully resolved, this will be accurate
   const playerMode = isAuthenticated && user?.id ? 'authenticated' : 'anonymous';
 
-  // Log the resolved auth state for debugging
-  console.log(`Auth fully resolved - User is ${isAuthenticated ? 'authenticated' : 'anonymous'}`);
-  if (user?.id) {
-    console.log(`Using authenticated user ID: ${user.id}`);
-  }
-
-  console.log(`Using mode: ${playerMode} with user ID: ${user?.id || 'anonymous'}`);
+  // Simplified logging - just a single log statement
+  console.log(`Auth state: User is ${isAuthenticated ? 'authenticated' : 'anonymous'}, mode: ${playerMode}, ID: ${user?.id || 'anonymous'}`);
   
   // If the user is anonymous and we have the create flag, ensure we create a proper account
   if (typeof window !== 'undefined' && !isAuthenticated) {
