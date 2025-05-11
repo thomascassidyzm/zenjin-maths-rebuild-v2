@@ -455,22 +455,6 @@ async function updateUserState(state: any, supabase: any, res: NextApiResponse, 
             essentialState.tubes = tubes;
           }
 
-          // Helper function to extract stitch positions
-          function extractStitchPositions(stitches) {
-            if (!stitches || !Array.isArray(stitches)) return {};
-
-            const positions = {};
-            stitches.forEach(stitch => {
-              if (stitch && stitch.id) {
-                positions[stitch.id] = {
-                  position: stitch.position || 0,
-                  skipNumber: stitch.skipNumber || 3,
-                  distractorLevel: stitch.distractorLevel || 'L1'
-                };
-              }
-            });
-            return positions;
-          }
 
           // Create a more efficient state object for storage
           // The essentialState already has all the optimization we need
