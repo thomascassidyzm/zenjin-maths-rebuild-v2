@@ -93,7 +93,9 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         },
         body: JSON.stringify({
           displayName: displayName || (session.user.email ? session.user.email.split('@')[0] : 'User'),
-          anonymousId: localStorage.getItem('zenjin_anonymous_id') || null
+          // We no longer pass anonymousId since we use server-generated IDs consistently
+          // This is kept for API backward compatibility but will be null
+          anonymousId: null
         }),
         credentials: 'include'
       });
@@ -419,63 +421,23 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   const signInAnonymously = async () => {
     try {
       console.log('AuthContext: Signing in anonymously');
-      
-      // Generate UUIDs in the same format as authenticated users
-      // This uses a helper function to create a proper UUID v4 format
-      const generateUUID = () => {
-        // RFC4122 compliant UUID v4
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-          const r = Math.random() * 16 | 0;
-          const v = c === 'x' ? r : (r & 0x3 | 0x8);
-          return v.toString(16);
-        });
-      };
 
-      // Generate proper UUID for anonymous user - same format as authenticated users
-      const anonymousId = generateUUID();
-      const timestamp = Date.now();
-      const anonymousEmail = `anonymous-${anonymousId}@example.com`;
-      const password = `anon-${timestamp}`;
-      
-      // Store anonymous ID in localStorage for tracking progress
-      // Store in multiple locations for redundancy
-      if (typeof window !== 'undefined') {
-        // Store anonymous ID in all common locations
-        localStorage.setItem('anonymousId', anonymousId);
-        localStorage.setItem('zenjin_anonymous_id', anonymousId);
-        
-        // Also store for API access
-        localStorage.setItem('zenjin_user_id', anonymousId);
-        localStorage.setItem('zenjin_auth_state', 'anonymous');
-        
-        console.log(`AuthContext: Created anonymous ID ${anonymousId} and stored in localStorage`);
-        
-        // Initialize empty progress data for anonymous user
-        const progressData = {
-          totalPoints: 0,
-          blinkSpeed: 2.5,
-          blinkSpeedTrend: 'steady',
-          evolution: {
-            currentLevel: 'Mind Spark',
-            levelNumber: 1,
-            progress: 0,
-            nextLevel: 'Thought Weaver'
-          },
-          lastSessionDate: new Date().toISOString()
-        };
-        
-        // Save initial progress data in all possible locations for redundancy
-        localStorage.setItem(`progressData_${anonymousId}`, JSON.stringify(progressData));
-        localStorage.setItem('zenjin_anonymous_progress', JSON.stringify(progressData));
-      }
-      
       // Update loading state
       setAuthState(prev => ({
         ...prev,
         loading: true,
         error: null
       }));
-      
+
+      // Instead of generating a client-side UUID, create a temporary identifier for email
+      // This will be replaced with the server-generated UUID after successful signup
+      const timestamp = Date.now();
+      const tempId = timestamp.toString(36) + Math.random().toString(36).substring(2);
+      const anonymousEmail = `anonymous-${tempId}@example.com`;
+      const password = `anon-${timestamp}`;
+
+      console.log('AuthContext: Creating anonymous account on server');
+
       // Sign up anonymous user (with error handling)
       try {
         const { data, error } = await supabase.auth.signUp({
@@ -484,71 +446,78 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
           options: {
             // Add data property to mark user as anonymous and TTL
             data: {
-              anonymous_id: anonymousId,
               is_anonymous: true,
               is_ttl_account: true,
               created_at: new Date().toISOString()
             }
           }
         });
-        
+
         if (error) {
           console.error('AuthContext: Anonymous sign up error:', error);
-          
+
           // Update error state
           setAuthState(prev => ({
             ...prev,
             loading: false,
             error: error.message
           }));
-          
-          // Fall back to local anonymous mode if signup fails
-          if (typeof window !== 'undefined') {
-            console.log('AuthContext: Falling back to local anonymous mode');
-            // Create pseudo-user with the anonymous ID
-            setAuthState(prev => ({
-              ...prev,
-              user: { 
-                id: anonymousId,
-                email: anonymousEmail
-              },
-              isAuthenticated: false, // Not truly authenticated but has an ID
-              loading: false,
-              error: null,
-              userData: {
-                progressData: {
-                  totalPoints: 0,
-                  blinkSpeed: 2.5,
-                  evolution: {
-                    currentLevel: 'Mind Spark',
-                    levelNumber: 1,
-                    progress: 0
-                  }
-                }
-              },
-              userDataLoading: false
-            }));
-            
-            return { 
-              success: true, 
-              data: null, 
-              anonymousId,
-              localOnly: true 
-            };
-          }
-          
+
           return { success: false, error };
         }
-        
+
+        // Extract the server-generated UUID
+        const serverUUID = data.user?.id;
+
+        if (serverUUID) {
+          console.log(`AuthContext: Received server-generated UUID: ${serverUUID}`);
+
+          // Store the server UUID in localStorage for tracking progress
+          // Critical: We ONLY use the server-generated UUID, not a client one
+          if (typeof window !== 'undefined') {
+            // Store server UUID in all common locations
+            localStorage.setItem('anonymousId', serverUUID);
+            localStorage.setItem('zenjin_anonymous_id', serverUUID);
+
+            // Also store for API access
+            localStorage.setItem('zenjin_user_id', serverUUID);
+            localStorage.setItem('zenjin_auth_state', 'anonymous');
+
+            console.log(`AuthContext: Stored server UUID ${serverUUID} in localStorage`);
+
+            // Initialize empty progress data for anonymous user
+            const progressData = {
+              totalPoints: 0,
+              blinkSpeed: 2.5,
+              blinkSpeedTrend: 'steady',
+              evolution: {
+                currentLevel: 'Mind Spark',
+                levelNumber: 1,
+                progress: 0,
+                nextLevel: 'Thought Weaver'
+              },
+              lastSessionDate: new Date().toISOString()
+            };
+
+            // Save initial progress data in all possible locations for redundancy
+            // Use only the server UUID, not client-generated ones
+            localStorage.setItem(`progressData_${serverUUID}`, JSON.stringify(progressData));
+            localStorage.setItem('zenjin_anonymous_progress', JSON.stringify(progressData));
+          }
+        } else {
+          console.warn('AuthContext: No UUID received from server after anonymous signup');
+        }
+
         // If successful registration but no session yet, manually set anonymous user
-        if (!data.session) {
+        // This happens in rare cases when Supabase doesn't return an immediate session
+        if (!data.session && serverUUID) {
           console.log('AuthContext: No session after anonymous signup - creating manual anonymous state');
-          
-          // Set anonymous user in auth state
+
+          // Set anonymous user in auth state using the server UUID
           setAuthState(prev => ({
             ...prev,
-            user: { 
-              id: anonymousId,
+            user: {
+              id: serverUUID,
               email: anonymousEmail
             },
             isAuthenticated: false, // Not authenticated but has anonymous ID
@@ -568,67 +537,31 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
             userDataLoading: false
           }));
         }
-        
+
         // Auth state will be updated by onAuthStateChange listener if session exists
-        return { success: true, data, anonymousId };
+        return { success: true, data, anonymousId: serverUUID };
       } catch (signupError) {
         console.error('AuthContext: Exception during anonymous signup:', signupError);
-        
-        // Fall back to local anonymous mode
-        if (typeof window !== 'undefined') {
-          console.log('AuthContext: Falling back to local anonymous mode after exception');
-          
-          // Create pseudo-user with the anonymous ID
-          setAuthState(prev => ({
-            ...prev,
-            user: { 
-              id: anonymousId,
-              email: anonymousEmail
-            },
-            isAuthenticated: false, // Not authenticated but has ID
-            loading: false,
-            error: null,
-            userData: {
-              progressData: {
-                totalPoints: 0,
-                blinkSpeed: 2.5,
-                evolution: {
-                  currentLevel: 'Mind Spark',
-                  levelNumber: 1,
-                  progress: 0
-                }
-              }
-            },
-            userDataLoading: false
-          }));
-          
-          return { 
-            success: true, 
-            data: null, 
-            anonymousId,
-            localOnly: true 
-          };
-        }
-        
-        // Update error state if local fallback not possible
+
+        // Update error state if server auth fails
         setAuthState(prev => ({
           ...prev,
           loading: false,
           error: signupError.message || 'Error during anonymous sign up'
         }));
-        
+
         return { success: false, error: signupError };
       }
     } catch (error: any) {
       console.error('AuthContext: Anonymous sign up outer exception:', error);
-      
+
       // Update error state
       setAuthState(prev => ({
         ...prev,
         loading: false,
         error: error.message || 'An error occurred during anonymous sign up'
       }));
-      
+
       return { success: false, error };
     }
   };

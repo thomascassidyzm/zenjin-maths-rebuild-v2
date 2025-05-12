@@ -18,23 +18,12 @@ export function cleanupAnonymousData() {
   const authenticatedUserId = localStorage.getItem('zenjin_user_id');
   const authHeaders = localStorage.getItem('zenjin_auth_headers');
   
-  // Check if transfer is in progress - if so, don't cleanup yet
+  // We no longer need the transfer logic as we use server-side IDs consistently
+  // Keeping these checks for backwards compatibility with existing localStorage data
   if (localStorage.getItem('zenjin_auth_transfer_in_progress') === 'true') {
-    console.log('AuthUtils: Transfer in progress - delaying cleanup');
-    
-    // If the flag has been set for more than 10 seconds, it's likely stuck
-    const transferStartTime = parseInt(localStorage.getItem('zenjin_auth_transfer_start_time') || '0');
-    const currentTime = Date.now();
-    if (transferStartTime > 0 && (currentTime - transferStartTime > 10000)) {
-      console.log('AuthUtils: Transfer flag appears stuck - clearing it');
-      localStorage.removeItem('zenjin_auth_transfer_in_progress');
-      localStorage.removeItem('zenjin_auth_transfer_start_time');
-    } else {
-      return;
-    }
-  } else {
-    // Set a timestamp to track how long the transfer flag has been set
-    localStorage.setItem('zenjin_auth_transfer_start_time', Date.now().toString());
+    console.log('AuthUtils: Transfer flag found (legacy) - clearing it');
+    localStorage.removeItem('zenjin_auth_transfer_in_progress');
+    localStorage.removeItem('zenjin_auth_transfer_start_time');
   }
   
   // Get all potential anonymous IDs
