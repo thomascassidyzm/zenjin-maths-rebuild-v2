@@ -15,9 +15,22 @@ import UserWelcomeButton from '../components/UserWelcomeButton';
 import useTestPane from '../hooks/useTestPane';
 
 // Dynamic import with no SSR to avoid issues with localStorage/window access
+// Add loading component to prevent hydration mismatch errors
 const TubeStateTestPane = dynamic(
   () => import('../components/TubeStateTestPane'),
-  { ssr: false }
+  {
+    ssr: false,
+    loading: () => null
+  }
+);
+
+// Import the simplified debugger for production
+const SimpleTubeStateDebugger = dynamic(
+  () => import('../components/SimpleTubeStateDebugger'),
+  {
+    ssr: false,
+    loading: () => null
+  }
 );
 
 // Component for playful loading messages that cycle every 2 seconds
@@ -67,7 +80,7 @@ export default function MinimalPlayer() {
   const { mode, force, resetPoints, dev, continue: shouldContinue, debug } = router.query;
   const { user, isAuthenticated, loading: authLoading, signOut } = useAuth();
   const { isSubscribed, tier } = useSubscriptionStatus();
-  const { isTestPaneVisible, showTestPane, hideTestPane, toggleTestPane } = useTestPane();
+  const { isTestPaneVisible, showTestPane, hideTestPane, toggleTestPane, isMounted } = useTestPane();
 
   // Simply check if auth is loading - no need for additional state
   if (authLoading) {
@@ -284,7 +297,7 @@ export default function MinimalPlayer() {
       {showDevTools && <DevTestPane player={player} />}
 
       {/* Show debug button when debug=true query param is provided */}
-      {debug === 'true' && (
+      {debug === 'true' && isMounted && (
         <div className="fixed bottom-4 left-4 z-50">
           <button
             onClick={toggleTestPane}
@@ -295,12 +308,18 @@ export default function MinimalPlayer() {
         </div>
       )}
 
-      {/* Tube State Test Pane */}
-      <TubeStateTestPane
-        userId={user?.id}
-        isVisible={isTestPaneVisible}
-        onClose={hideTestPane}
-      />
+      {/* Tube State Debugging - choose appropriate component based on environment */}
+      {process.env.NODE_ENV === 'production' ? (
+        // Use the simpler, more reliable component in production
+        debug === 'true' && <SimpleTubeStateDebugger />
+      ) : (
+        // Use the full featured component in development
+        <TubeStateTestPane
+          userId={user?.id}
+          isVisible={isTestPaneVisible}
+          onClose={hideTestPane}
+        />
+      )}
     </div>
   );
 }

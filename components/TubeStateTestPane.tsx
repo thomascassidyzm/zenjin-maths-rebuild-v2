@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
+// Track client-side mounting
+const isBrowser = typeof window !== 'undefined';
+
 // Import adapter directly to allow stitch completion simulation
 // Note: We use require() because we need this to be a late-bound import
 // to avoid issues with server-side rendering
@@ -21,23 +24,30 @@ interface TubeStateTestPaneProps {
  * - Stitch advancement with perfect scores
  * - State changes across tubes
  */
-const TubeStateTestPane: React.FC<TubeStateTestPaneProps> = ({ 
+const TubeStateTestPane: React.FC<TubeStateTestPaneProps> = ({
   userId,
   isVisible = true,
   onClose
 }) => {
+  // Use conditional guard for hydration issues
+  const [isMounted, setIsMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [tubeCycler, setTubeCycler] = useState<any>(null);
   const [currentState, setCurrentState] = useState<any>(null);
   const [activeTube, setActiveTube] = useState<number>(1);
   const [stateLog, setStateLog] = useState<string[]>([]);
   const [mode, setMode] = useState<'view' | 'simulate'>('view');
-  
+
   // Simulated question handling
   const [simulatedScore, setSimulatedScore] = useState(20);
   const [simulatedTotal, setSimulatedTotal] = useState(20);
   const [currentStitchId, setCurrentStitchId] = useState('');
   const [currentThreadId, setCurrentThreadId] = useState('');
+
+  // Set mounted state on client side only
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   
   // Initialize the test pane
   useEffect(() => {
@@ -336,8 +346,9 @@ const TubeStateTestPane: React.FC<TubeStateTestPaneProps> = ({
     );
   };
   
-  if (!isVisible) return null;
-  
+  // Don't render anything if not visible or not mounted (client-side)
+  if (!isVisible || !isMounted) return null;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 50 }}
