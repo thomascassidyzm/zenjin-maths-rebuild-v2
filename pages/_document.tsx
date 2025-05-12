@@ -24,6 +24,9 @@ export default function Document() {
 
         {/* EMERGENCY FIX: Disable unnecessary API calls to /api/user-state */}
         <script src="/disable-api-calls.js"></script>
+
+        {/* Keyboard-activated debug panel - Press Alt+T to show */}
+        <script src="/keyboard-debug.js"></script>
       </body>
     </Html>
   );
