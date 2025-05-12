@@ -7,22 +7,9 @@ import dynamic from 'next/dynamic';
 import useTestPane from '../hooks/useTestPane';
 
 // Dynamic import with no SSR to avoid issues with localStorage/window access
-// Add loading component to prevent hydration mismatch errors
 const TubeStateTestPane = dynamic(
   () => import('../components/TubeStateTestPane'),
-  {
-    ssr: false,
-    loading: () => null
-  }
-);
-
-// Import the simplified debugger for production
-const SimpleTubeStateDebugger = dynamic(
-  () => import('../components/SimpleTubeStateDebugger'),
-  {
-    ssr: false,
-    loading: () => null
-  }
+  { ssr: false }
 );
 
 /**
@@ -32,7 +19,7 @@ const SimpleTubeStateDebugger = dynamic(
  */
 export default function DebugTubes() {
   const router = useRouter();
-  const { isTestPaneVisible, showTestPane, hideTestPane, toggleTestPane, isMounted } = useTestPane();
+  const { isTestPaneVisible, showTestPane, hideTestPane, toggleTestPane } = useTestPane();
   const [userId, setUserId] = useState<string>('');
   const [debugInfo, setDebugInfo] = useState<any>({});
   const [allStates, setAllStates] = useState<Record<string, any>>({});
@@ -304,30 +291,22 @@ export default function DebugTubes() {
               Set Continue Flag
             </button>
 
-            {isMounted && (
-              <button
-                onClick={toggleTestPane}
-                className="bg-emerald-700 hover:bg-emerald-600 px-4 py-2 rounded-lg transition-colors"
-              >
-                {isTestPaneVisible ? 'Hide Test Pane' : 'Show Test Pane'}
-              </button>
-            )}
+            <button
+              onClick={toggleTestPane}
+              className="bg-emerald-700 hover:bg-emerald-600 px-4 py-2 rounded-lg transition-colors"
+            >
+              {isTestPaneVisible ? 'Hide Test Pane' : 'Show Test Pane'}
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Tube State Debugging - choose appropriate component based on environment */}
-      {process.env.NODE_ENV === 'production' ? (
-        // Always show the simple debugger in production on the debug page
-        <SimpleTubeStateDebugger />
-      ) : (
-        // Use the full featured component in development
-        <TubeStateTestPane
-          userId={userId}
-          isVisible={isTestPaneVisible}
-          onClose={hideTestPane}
-        />
-      )}
+      {/* Add the test pane component */}
+      <TubeStateTestPane
+        userId={userId}
+        isVisible={isTestPaneVisible}
+        onClose={hideTestPane}
+      />
     </div>
   );
 }

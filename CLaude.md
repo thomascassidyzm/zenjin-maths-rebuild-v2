@@ -151,13 +151,10 @@ This diagnostic solution helps track down why users sometimes lose their progres
    - Implemented real-time stitch completion with configurable scoring
    - Added visualization of how perfect scores (20/20) advance stitches
    - Created interactive tube cycling to test the transition behavior
-   - Added production-safe simplified debugger that works in deployed environments
 
 Access the diagnostic page at `/debug-tubes` to see full state details and compare values across different storage locations. Click "Show Test Pane" to open the interactive test panel, or press Alt+T as a keyboard shortcut.
 
 The test pane is also available directly in the player by adding `?debug=true` to the URL (e.g., `/minimal-player?debug=true`). This allows you to test stitch completion and tube cycling with the actual user's state while playing, without requiring page reload or losing context.
-
-In production environments, a simplified debugger is automatically used to ensure reliability and prevent React hydration errors. This simplified version shows key information about tube states across different storage locations without the interactive features.
 
 ## Notes for Future Development
 
