@@ -99,55 +99,6 @@ export default function MinimalPlayer() {
       
       // Set the state to show we're continuing from previous state
       setIsContinuingFromPrevious(true);
-
-      // DEBUGGING: Add toast notification to confirm we've loaded from Continue Learning
-      try {
-        // Try to get the active tube number from localStorage for more detailed debugging
-        let activeTube = "?";
-        const userId = localStorage.getItem('zenjin_user_id') ||
-                       localStorage.getItem('zenjin_anonymous_id') || 
-                       'anonymous';
-        
-        // Check the stored state for active tube info
-        try {
-          const tripleHelixState = localStorage.getItem(`triple_helix_state_${userId}`);
-          if (tripleHelixState) {
-            const parsedState = JSON.parse(tripleHelixState);
-            if (parsedState && (parsedState.activeTube || parsedState.activeTubeNumber)) {
-              activeTube = parsedState.activeTube || parsedState.activeTubeNumber;
-            }
-          }
-        } catch {}
-        
-        const toastDiv = document.createElement('div');
-        toastDiv.innerText = `✓ Continuing from previous state (Tube ${activeTube})`;
-        toastDiv.style.position = 'fixed';
-        toastDiv.style.bottom = '20px';
-        toastDiv.style.right = '20px';
-        toastDiv.style.backgroundColor = 'rgba(0, 100, 50, 0.8)';
-        toastDiv.style.color = 'white';
-        toastDiv.style.padding = '8px 16px';
-        toastDiv.style.borderRadius = '4px';
-        toastDiv.style.zIndex = '9999';
-        toastDiv.style.boxShadow = '0 2px 10px rgba(0,0,0,0.3)';
-        toastDiv.style.fontFamily = 'system-ui, -apple-system, sans-serif';
-        
-        document.body.appendChild(toastDiv);
-        
-        // Remove after 5 seconds
-        setTimeout(() => {
-          toastDiv.style.opacity = '0';
-          toastDiv.style.transition = 'opacity 0.5s ease';
-          
-          setTimeout(() => {
-            if (document.body.contains(toastDiv)) {
-              document.body.removeChild(toastDiv);
-            }
-          }, 500);
-        }, 5000);
-      } catch (e) {
-        console.error('Error showing debug toast:', e);
-      }
     }
   }, []);
   

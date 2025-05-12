@@ -1,15 +1,17 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { loadUserData, clearUserData } from '../lib/loadUserData';
-import { 
-  cleanupAnonymousData, 
+import {
+  cleanupAnonymousData,
   transferAnonymousDataToUser,
   getAnonymousData,
   hasAnonymousData,
-  withAuthHeaders 
+  withAuthHeaders
 } from '../lib/authUtils';
 // Import the transferAnonymousData function directly to avoid confusion
 import { transferAnonymousData as supabaseTransferData } from '../lib/auth/supabaseClient';
+// Import the anonymous user state initialization function
+import { initializeAndSaveAnonymousUserState } from '../lib/initialization/initialize-anonymous-state';
 
 // Initialize the Supabase client with hardcoded values for build process
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ggwoupzaruiaaliylyxga.supabase.co';
@@ -485,7 +487,12 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
 
             console.log(`AuthContext: Stored server UUID ${serverUUID} in localStorage`);
 
-            // Initialize empty progress data for anonymous user
+            // CRITICAL FIX: Initialize complete anonymous user state
+            // This creates a proper state with all bundled stitches in correct positions
+            console.log(`AuthContext: Initializing complete anonymous user state for ${serverUUID}`);
+            const completeAnonymousState = initializeAndSaveAnonymousUserState(serverUUID);
+
+            // Also initialize progress data for backward compatibility
             const progressData = {
               totalPoints: 0,
               blinkSpeed: 2.5,
@@ -513,7 +520,11 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         if (!data.session && serverUUID) {
           console.log('AuthContext: No session after anonymous signup - creating manual anonymous state');
 
-          // Set anonymous user in auth state using the server UUID
+          // Initialize complete anonymous user state before setting auth state
+          console.log(`AuthContext: Initializing complete anonymous user state for ${serverUUID}`);
+          const completeAnonymousState = initializeAndSaveAnonymousUserState(serverUUID);
+
+          // Set anonymous user in auth state using the server UUID and complete state
           setAuthState(prev => ({
             ...prev,
             user: {
@@ -532,7 +543,9 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
                   levelNumber: 1,
                   progress: 0
                 }
-              }
+              },
+              // Add the complete tube state for immediate access
+              tubeState: completeAnonymousState
             },
             userDataLoading: false
           }));

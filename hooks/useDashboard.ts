@@ -273,11 +273,37 @@ export function useDashboard(): DashboardData {
         
         // CRITICAL FIX: Just set initial state but DON'T do any API calls
         // This ensures we don't override localStorage state
+
+        // Check if we have tube state in localStorage to prioritize
+        let hasLocalTubeState = false;
+        if (typeof window !== 'undefined') {
+          // Check for user ID in various locations
+          const userId = localStorage.getItem('zenjin_user_id') ||
+                        localStorage.getItem('zenjin_anonymous_id') ||
+                        localStorage.getItem('anonymousId');
+
+          if (userId) {
+            // Check for state in various locations
+            const tripleHelixState = localStorage.getItem(`triple_helix_state_${userId}`);
+            const zenjinState = localStorage.getItem(`zenjin_state_${userId}`);
+            const anonymousState = localStorage.getItem('zenjin_anonymous_state');
+
+            // Check if any state contains tube information
+            hasLocalTubeState = Boolean(
+              tripleHelixState || zenjinState || anonymousState
+            );
+
+            console.log(`useDashboard: Found localStorage tube state: ${hasLocalTubeState ? 'YES' : 'NO'}`);
+          }
+        }
+
         setData(prev => ({
           ...prev,
           loading: false,
-          dataSource: 'local-state',
-          message: 'Using locally stored state'
+          dataSource: hasLocalTubeState ? 'local-storage-state' : 'local-state',
+          message: hasLocalTubeState
+            ? 'Using your stored progress from localStorage'
+            : 'Using locally stored state'
         }));
       }
     };
