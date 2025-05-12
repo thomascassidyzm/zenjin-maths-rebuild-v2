@@ -182,17 +182,15 @@ const SimpleTubeStateDebugger: React.FC = () => {
         StateMachineTubeCyclerAdapter = require('../lib/adapters/StateMachineTubeCyclerAdapter');
       }
 
+      // Import the load-bundled-stitches utility that ensures proper state initialization
+      const loadBundledStitches = require('../lib/load-bundled-stitches');
+
       // Get actual user ID
       const actualUserId = userId ||
                        localStorage.getItem('zenjin_user_id') ||
                        localStorage.getItem('zenjin_anonymous_id') ||
-                       localStorage.getItem('anonymousId');
-
-      if (!actualUserId) {
-        addLog(`[${new Date().toLocaleTimeString()}] ❌ No user ID found`);
-        setIsLoading(false);
-        return null;
-      }
+                       localStorage.getItem('anonymousId') ||
+                       'anonymous';
 
       // Initialize adapter with existing state from localStorage
       let initialState = null;
@@ -226,7 +224,46 @@ const SimpleTubeStateDebugger: React.FC = () => {
       }
 
       if (!initialState) {
-        addLog(`[${new Date().toLocaleTimeString()}] ⚠️ No existing state found, using default state`);
+        addLog(`[${new Date().toLocaleTimeString()}] ⚠️ No existing state found, creating clean state`);
+        initialState = {
+          userId: actualUserId,
+          activeTubeNumber: 1,
+          cycleCount: 0,
+          lastUpdated: new Date().toISOString(),
+          tubes: {} // Will be populated by loadBundledStitches
+        };
+      }
+
+      // Ensure proper state structure
+      initialState.userId = actualUserId;
+
+      // IMPORTANT: Load bundled stitches to ensure state has full structure
+      // This step is critical to prevent "stitches is undefined" errors
+      addLog(`[${new Date().toLocaleTimeString()}] 🔄 Loading bundled stitches...`);
+      if (loadBundledStitches && typeof loadBundledStitches.default === 'function') {
+        try {
+          await loadBundledStitches.default(initialState);
+          addLog(`[${new Date().toLocaleTimeString()}] ✅ Bundled stitches loaded successfully`);
+        } catch (e) {
+          console.error('Error loading bundled stitches:', e);
+          addLog(`[${new Date().toLocaleTimeString()}] ⚠️ Error loading bundled stitches, creating basic structure`);
+
+          // Create basic structure manually if loading fails
+          if (!initialState.tubes) initialState.tubes = {};
+
+          [1, 2, 3].forEach(tubeNum => {
+            if (!initialState.tubes[tubeNum]) {
+              initialState.tubes[tubeNum] = {
+                stitches: [],
+                threadId: `thread-T${tubeNum}-001`
+              };
+            }
+
+            if (!initialState.tubes[tubeNum].stitches) {
+              initialState.tubes[tubeNum].stitches = [];
+            }
+          });
+        }
       }
 
       // Create the tube cycler adapter
@@ -281,6 +318,7 @@ const SimpleTubeStateDebugger: React.FC = () => {
 
   // Handle stitch completion with a perfect score (20/20)
   const handleCompleteStitchPerfect = async () => {
+    // Initialize tubeCycler if needed - this ensures we have a proper state structure
     const adapter = tubeCycler || await initializeTubeCycler();
     if (!adapter) {
       addLog(`[${new Date().toLocaleTimeString()}] ❌ Cannot complete stitch: No tube cycler adapter`);
@@ -288,8 +326,10 @@ const SimpleTubeStateDebugger: React.FC = () => {
     }
 
     try {
-      // Get current stitch and thread
+      // Get current stitch using the adapter's API
       const currentStitch = adapter.getCurrentStitch();
+      
+      // Verify we have a valid stitch to complete
       if (!currentStitch) {
         addLog(`[${new Date().toLocaleTimeString()}] ❌ Cannot complete stitch: No current stitch found`);
         return;
@@ -319,6 +359,7 @@ const SimpleTubeStateDebugger: React.FC = () => {
 
   // Handle stitch completion with a partial score (10 FTC + 10 eventually correct)
   const handleCompleteStitchPartial = async () => {
+    // Initialize tubeCycler if needed - this ensures we have a proper state structure
     const adapter = tubeCycler || await initializeTubeCycler();
     if (!adapter) {
       addLog(`[${new Date().toLocaleTimeString()}] ❌ Cannot complete stitch: No tube cycler adapter`);
@@ -326,8 +367,10 @@ const SimpleTubeStateDebugger: React.FC = () => {
     }
 
     try {
-      // Get current stitch and thread
+      // Get current stitch using the adapter's API
       const currentStitch = adapter.getCurrentStitch();
+      
+      // Verify we have a valid stitch to complete
       if (!currentStitch) {
         addLog(`[${new Date().toLocaleTimeString()}] ❌ Cannot complete stitch: No current stitch found`);
         return;
@@ -358,6 +401,7 @@ const SimpleTubeStateDebugger: React.FC = () => {
 
   // Handle tube cycling
   const handleCycleTube = async () => {
+    // Initialize tubeCycler if needed - this ensures we have a proper state structure
     const adapter = tubeCycler || await initializeTubeCycler();
     if (!adapter) {
       addLog(`[${new Date().toLocaleTimeString()}] ❌ Cannot cycle tube: No tube cycler adapter`);
@@ -365,12 +409,13 @@ const SimpleTubeStateDebugger: React.FC = () => {
     }
 
     try {
+      // Get current tube number
       const currentTube = adapter.getCurrentTube();
       addLog(`[${new Date().toLocaleTimeString()}] 🔄 Cycling from tube ${currentTube}...`);
 
       // Cycle to next tube
       adapter.nextTube();
-
+      
       // Force refresh
       setIsRefreshing(true);
       checkTubeState();
