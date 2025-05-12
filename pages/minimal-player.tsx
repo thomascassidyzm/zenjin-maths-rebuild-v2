@@ -56,9 +56,14 @@ const LoadingMessage = ({ isAnonymous }: { isAnonymous: boolean }) => {
  */
 export default function MinimalPlayer() {
   const router = useRouter();
-  const { mode, force, resetPoints, dev, continue: shouldContinue } = router.query;
+  const { mode, force, resetPoints, dev, admin, continue: shouldContinue } = router.query;
   const { user, isAuthenticated, loading: authLoading, signOut } = useAuth();
   const { isSubscribed, tier } = useSubscriptionStatus();
+
+  // Add state for admin tube debugging
+  const [tubeInfo, setTubeInfo] = useState<any>({});
+  const [showAdminControls] = useState(admin === 'true');
+  const [adminMessage, setAdminMessage] = useState('');
 
   // Simply check if auth is loading - no need for additional state
   if (authLoading) {
@@ -129,6 +134,99 @@ export default function MinimalPlayer() {
       }
     }
   });
+
+  // Effect to get tube state info when admin mode is enabled
+  useEffect(() => {
+    if (!showAdminControls || typeof window === 'undefined') return;
+
+    // Get the user ID
+    const uid = localStorage.getItem('zenjin_user_id') ||
+              localStorage.getItem('zenjin_anonymous_id') ||
+              user?.id || 'anonymous';
+
+    // Get tube info from localStorage
+    const info: any = {};
+
+    // Check main state
+    try {
+      const stateKey = `zenjin_state_${uid}`;
+      const stateJson = localStorage.getItem(stateKey);
+
+      if (stateJson) {
+        const state = JSON.parse(stateJson);
+        info.main = {
+          activeTube: state.activeTube || state.activeTubeNumber,
+          lastUpdated: state.lastUpdated ? new Date(state.lastUpdated).toLocaleString() : 'unknown',
+          tubes: {}
+        };
+
+        // Add tube data
+        if (state.tubes) {
+          [1, 2, 3].forEach(tubeNumber => {
+            if (state.tubes[tubeNumber]) {
+              const tube = state.tubes[tubeNumber];
+              info.main.tubes[tubeNumber] = {
+                stitchCount: tube.stitches?.length || 0,
+                currentStitch: tube.stitches?.find((s: any) => s.position === 0)?.id || 'none'
+              };
+            }
+          });
+        }
+      }
+    } catch (e) {
+      console.error('Error reading main state:', e);
+    }
+
+    // Check anonymous state
+    try {
+      const anonStateJson = localStorage.getItem('zenjin_anonymous_state');
+      if (anonStateJson) {
+        const anonState = JSON.parse(anonStateJson);
+        if (anonState.state) {
+          const state = anonState.state;
+          info.anonymous = {
+            activeTube: state.activeTube || state.activeTubeNumber,
+            lastUpdated: state.lastUpdated ? new Date(state.lastUpdated).toLocaleString() : 'unknown'
+          };
+        }
+      }
+    } catch (e) {
+      console.error('Error reading anonymous state:', e);
+    }
+
+    // Check triple helix state
+    try {
+      const tripleHelixJson = localStorage.getItem(`triple_helix_state_${uid}`);
+      if (tripleHelixJson) {
+        const state = JSON.parse(tripleHelixJson);
+        info.tripleHelix = {
+          activeTube: state.activeTube || state.activeTubeNumber,
+          lastUpdated: state.lastUpdated ? new Date(state.lastUpdated).toLocaleString() : 'unknown'
+        };
+      }
+    } catch (e) {
+      console.error('Error reading triple helix state:', e);
+    }
+
+    // Check continue flag
+    info.continueFlag = localStorage.getItem('zenjin_continue_previous_state') === 'true';
+
+    // Update state
+    setTubeInfo(info);
+
+    // Global adapter reference
+    if (typeof window !== 'undefined') {
+      // Wait a bit for adapter to initialize
+      setTimeout(() => {
+        const adapter = (window as any).__stateMachineTubeCyclerAdapter;
+        if (adapter) {
+          console.log('Admin controls: Found tube cycler adapter in global scope');
+        } else {
+          console.log('Admin controls: No tube cycler adapter found in global scope');
+        }
+      }, 2000);
+    }
+  }, [showAdminControls, user?.id]);
 
   // We no longer need URL correction since we don't use mode parameters
 
@@ -273,6 +371,226 @@ export default function MinimalPlayer() {
       
       {/* DevTest Pane - only shown when dev=true query param is provided */}
       {showDevTools && <DevTestPane player={player} />}
+
+      {/* Simple Admin Controls - only shown when admin=true query param is provided */}
+      {showAdminControls && (
+        <div className="fixed top-20 right-4 z-50 bg-gray-900/90 p-4 rounded-lg shadow-lg text-white text-sm max-w-xs">
+          <h3 className="text-lg font-semibold mb-3 border-b border-gray-700 pb-2">Tube Admin Controls</h3>
+
+          <div className="space-y-3 mb-4">
+            <div className="flex items-center justify-between">
+              <span>Current Tube:</span>
+              <span className="font-bold">{player.currentStitch?.tubeNumber || 'Unknown'}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Current Stitch:</span>
+              <span className="font-mono text-xs">{player.currentStitch?.id || 'Unknown'}</span>
+            </div>
+
+            {/* Storage state summary */}
+            <div className="border-t border-gray-700 pt-2 mt-2">
+              <div className="text-xs mb-1 font-semibold">State Storage Summary:</div>
+
+              {/* Main state */}
+              {tubeInfo.main && (
+                <div className="flex items-center justify-between mb-1 text-xs">
+                  <span>Main state tube:</span>
+                  <span className={`font-medium ${tubeInfo.main.activeTube === player.currentStitch?.tubeNumber ? 'text-green-400' : 'text-red-400'}`}>
+                    Tube {tubeInfo.main.activeTube}
+                  </span>
+                </div>
+              )}
+
+              {/* Anonymous state */}
+              {tubeInfo.anonymous && (
+                <div className="flex items-center justify-between mb-1 text-xs">
+                  <span>Anonymous state tube:</span>
+                  <span className={`font-medium ${tubeInfo.anonymous.activeTube === player.currentStitch?.tubeNumber ? 'text-green-400' : 'text-red-400'}`}>
+                    Tube {tubeInfo.anonymous.activeTube}
+                  </span>
+                </div>
+              )}
+
+              {/* Triple helix state */}
+              {tubeInfo.tripleHelix && (
+                <div className="flex items-center justify-between mb-1 text-xs">
+                  <span>Triple helix state tube:</span>
+                  <span className={`font-medium ${tubeInfo.tripleHelix.activeTube === player.currentStitch?.tubeNumber ? 'text-green-400' : 'text-red-400'}`}>
+                    Tube {tubeInfo.tripleHelix.activeTube}
+                  </span>
+                </div>
+              )}
+
+              {/* Continue flag */}
+              <div className="flex items-center justify-between mb-1 text-xs">
+                <span>Continue flag:</span>
+                <span className={tubeInfo.continueFlag ? 'text-green-400' : 'text-gray-400'}>
+                  {tubeInfo.continueFlag ? 'Enabled' : 'Disabled'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col space-y-2">
+            {[1, 2, 3].map(tubeNumber => (
+              <button
+                key={tubeNumber}
+                onClick={() => {
+                  // Access any available adapter on the window object
+                  const adapter = (window as any).__stateMachineTubeCyclerAdapter;
+
+                  if (adapter && typeof adapter.setActiveTube === 'function') {
+                    try {
+                      adapter.setActiveTube(tubeNumber);
+                      setAdminMessage(`Switched to Tube ${tubeNumber}`);
+
+                      // Force refresh by location change to avoid React state issues
+                      setTimeout(() => {
+                        window.location.href = `/minimal-player?admin=true${shouldContinue ? '&continue=true' : ''}`;
+                      }, 500);
+                    } catch (e) {
+                      console.error('Error switching tube:', e);
+                      setAdminMessage(`Error: ${e.message}`);
+                    }
+                  } else {
+                    // Try direct localStorage manipulation as fallback
+                    try {
+                      const uid = localStorage.getItem('zenjin_user_id') ||
+                                localStorage.getItem('zenjin_anonymous_id') ||
+                                user?.id || 'anonymous';
+
+                      const stateKey = `zenjin_state_${uid}`;
+                      const stateJson = localStorage.getItem(stateKey);
+
+                      if (stateJson) {
+                        const state = JSON.parse(stateJson);
+
+                        // Update tube number
+                        state.activeTube = tubeNumber;
+                        state.activeTubeNumber = tubeNumber;
+                        state.lastUpdated = new Date().toISOString();
+
+                        // Save back to localStorage
+                        localStorage.setItem(stateKey, JSON.stringify(state));
+
+                        // Also save to anonymous state if that exists
+                        const anonStateJson = localStorage.getItem('zenjin_anonymous_state');
+                        if (anonStateJson) {
+                          try {
+                            const anonState = JSON.parse(anonStateJson);
+                            if (anonState.state) {
+                              anonState.state.activeTube = tubeNumber;
+                              anonState.state.activeTubeNumber = tubeNumber;
+                              anonState.state.lastUpdated = new Date().toISOString();
+                              localStorage.setItem('zenjin_anonymous_state', JSON.stringify(anonState));
+                            }
+                          } catch (e) {
+                            console.error('Error updating anonymous state:', e);
+                          }
+                        }
+
+                        // Also save to triple helix state
+                        const tripleHelixJson = localStorage.getItem(`triple_helix_state_${uid}`);
+                        if (tripleHelixJson) {
+                          try {
+                            const tripleHelix = JSON.parse(tripleHelixJson);
+                            tripleHelix.activeTube = tubeNumber;
+                            tripleHelix.activeTubeNumber = tubeNumber;
+                            tripleHelix.lastUpdated = new Date().toISOString();
+                            localStorage.setItem(`triple_helix_state_${uid}`, JSON.stringify(tripleHelix));
+                          } catch (e) {
+                            console.error('Error updating triple helix state:', e);
+                          }
+                        }
+
+                        setAdminMessage(`Switched to Tube ${tubeNumber}`);
+
+                        // Force refresh by location change to avoid React state issues
+                        setTimeout(() => {
+                          window.location.href = `/minimal-player?admin=true${shouldContinue ? '&continue=true' : ''}`;
+                        }, 500);
+                      } else {
+                        setAdminMessage('No state found to update');
+                      }
+                    } catch (e) {
+                      console.error('Error manipulating localStorage:', e);
+                      setAdminMessage(`Error: ${e.message}`);
+                    }
+                  }
+                }}
+                className={`py-2 px-4 rounded-lg font-medium ${
+                  player.currentStitch?.tubeNumber === tubeNumber
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-700 hover:bg-gray-600 text-white'
+                }`}
+              >
+                Switch to Tube {tubeNumber}
+              </button>
+            ))}
+
+            <button
+              onClick={() => {
+                // Try to complete current stitch with perfect score
+                const adapter = (window as any).__stateMachineTubeCyclerAdapter;
+
+                if (adapter && player.currentStitch) {
+                  try {
+                    adapter.handleStitchCompletion(
+                      player.currentStitch.threadId,
+                      player.currentStitch.id,
+                      20, // Perfect score
+                      20  // Total questions
+                    );
+                    setAdminMessage('Completed stitch with perfect score (20/20)');
+
+                    // Force refresh
+                    setTimeout(() => {
+                      window.location.href = `/minimal-player?admin=true${shouldContinue ? '&continue=true' : ''}`;
+                    }, 500);
+                  } catch (e) {
+                    console.error('Error completing stitch:', e);
+                    setAdminMessage(`Error: ${e.message}`);
+                  }
+                } else {
+                  setAdminMessage('No adapter or stitch available');
+                }
+              }}
+              className="mt-2 py-2 px-4 rounded-lg bg-green-700 hover:bg-green-600 text-white"
+            >
+              Complete Stitch 20/20
+            </button>
+
+            <button
+              onClick={() => {
+                // Set continue flag and force refresh
+                localStorage.setItem('zenjin_continue_previous_state', 'true');
+                setAdminMessage('Set continue flag to true');
+                setTimeout(() => {
+                  window.location.href = '/dashboard';
+                }, 500);
+              }}
+              className="py-2 px-4 rounded-lg bg-teal-700 hover:bg-teal-600 text-white"
+            >
+              End & Go to Dashboard
+            </button>
+
+            <button
+              onClick={() => {
+                window.location.href = `/minimal-player?admin=true${shouldContinue ? '&continue=true' : ''}`;
+              }}
+              className="py-2 px-4 rounded-lg bg-gray-700 hover:bg-gray-600 text-white"
+            >
+              Refresh
+            </button>
+          </div>
+
+          {adminMessage && (
+            <div className="mt-3 p-2 bg-gray-800 rounded text-xs text-gray-300">
+              {adminMessage}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
