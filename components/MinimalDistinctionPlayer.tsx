@@ -24,13 +24,58 @@ const shuffleArray = (array: any[]) => {
 };
 
 const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
-  thread,
+  thread: threadProp,
+  tubeNumber,
+  tubeData,
   onComplete,
   onEndSession,
   questionsPerSession = 10,
   sessionTotalPoints = 0,
   userId,
 }) => {
+  // Derive thread from tubeData if thread is not provided
+  const [derivedThread, setDerivedThread] = useState<Thread | null>(null);
+  const thread = threadProp || derivedThread;
+
+  // Create thread from tubeData if no thread prop is provided
+  useEffect(() => {
+    if (!threadProp && tubeData && tubeNumber) {
+      console.log(`Deriving thread from tubeData for tube ${tubeNumber}`);
+
+      const activeTube = tubeData[tubeNumber];
+      if (!activeTube) {
+        console.error(`No tube data found for tube ${tubeNumber}`);
+        return;
+      }
+
+      // Log the stitch IDs we have in the tube data
+      if (activeTube.stitches && activeTube.stitches.length > 0) {
+        console.log(`Tube ${tubeNumber} has ${activeTube.stitches.length} stitches:`,
+          activeTube.stitches.map(s => s.id).join(', '));
+
+        // Check if these stitch IDs are in the bundled content
+        const foundInBundled = activeTube.stitches.filter(s => BUNDLED_FULL_CONTENT[s.id]);
+        console.log(`Found ${foundInBundled.length} of ${activeTube.stitches.length} stitches in bundled content`);
+      } else {
+        console.error(`Tube ${tubeNumber} has no stitches`);
+      }
+
+      // Create thread from tube data
+      const thread: Thread = {
+        id: activeTube.threadId || `thread-T${tubeNumber}-001`,
+        name: `Tube ${tubeNumber}`,
+        description: `Learning content for Tube ${tubeNumber}`,
+        stitches: (activeTube.stitches || []).map(stitch => ({
+          id: stitch.id,
+          name: stitch.id.split('-').pop() || 'Stitch',
+          description: `Stitch ${stitch.id}`,
+          questions: [] // Questions will be loaded from bundled content
+        }))
+      };
+
+      setDerivedThread(thread);
+    }
+  }, [threadProp, tubeData, tubeNumber]);
   // Initialize Next.js router for client-side navigation
   const router = useRouter();
 
@@ -103,7 +148,32 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
   
   // Initialize questions for the session
   useEffect(() => {
-    if (thread && thread.stitches && thread.stitches.length > 0) {
+    console.log('🔍 PLAYER DEBUG: Checking thread data', {
+      threadId: thread?.id,
+      hasThread: !!thread,
+      hasStitches: !!(thread?.stitches?.length > 0),
+      stitchCount: thread?.stitches?.length || 0
+    });
+
+    // Guard clause - don't proceed if we don't have proper thread data
+    if (!thread) {
+      console.warn('No thread data available for MinimalDistinctionPlayer');
+      return;
+    }
+
+    // Guard clause for stitches array
+    if (!thread.stitches || thread.stitches.length === 0) {
+      console.warn(`Thread ${thread.id} has no stitches`);
+      return;
+    }
+
+    // Log the first few stitch IDs for debugging
+    if (thread.stitches.length > 0) {
+      const stitchIds = thread.stitches.slice(0, 5).map(s => s.id);
+      console.log(`🧵 Thread ${thread.id} has stitches:`, stitchIds.join(', '));
+    }
+
+    // Now we know we have thread and stitches
       const stitch = thread.stitches[0]; // Use first stitch for now
       const threadId = thread.id;
       
@@ -150,6 +220,40 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
         stitch.questions = [];
       }
       
+      // Enhanced debug logging for stitch content
+      console.log(`Initializing stitch ${stitch.id} in thread ${threadId}`, {
+        hasInitialQuestions: stitch.questions && stitch.questions.length > 0,
+        initialQuestionCount: stitch.questions ? stitch.questions.length : 0
+      });
+
+      // Log all bundled content keys to debug missing content issues
+      console.log(`Available bundled content stitches: ${Object.keys(BUNDLED_FULL_CONTENT).length}`);
+      if (Object.keys(BUNDLED_FULL_CONTENT).length > 0) {
+        console.log(`Bundled content keys (first 5): ${Object.keys(BUNDLED_FULL_CONTENT).slice(0, 5).join(', ')}`);
+      }
+
+      // Simple debug logging to help understand issues
+      console.log(`DEBUG: Looking for stitch ID ${stitch.id} in bundled content`);
+
+      // Log some stats about bundled content
+      const bundledContentCount = Object.keys(BUNDLED_FULL_CONTENT).length;
+      console.log(`DEBUG: BUNDLED_FULL_CONTENT has ${bundledContentCount} entries`);
+
+      // Check if the stitch is in bundled content
+      const hasStitchInBundledContent = BUNDLED_FULL_CONTENT.hasOwnProperty(stitch.id);
+      console.log(`DEBUG: Stitch ${stitch.id} ${hasStitchInBundledContent ? 'IS' : 'IS NOT'} in BUNDLED_FULL_CONTENT`);
+
+      if (hasStitchInBundledContent) {
+        // Log details about the stitch in bundled content
+        const bundledStitch = BUNDLED_FULL_CONTENT[stitch.id];
+        console.log(`DEBUG: Stitch details:`, {
+          id: bundledStitch.id,
+          threadId: bundledStitch.threadId,
+          hasQuestions: !!bundledStitch.questions,
+          questionCount: bundledStitch.questions?.length || 0
+        });
+      }
+
       // First check if we have this stitch in bundled content
       if (BUNDLED_FULL_CONTENT[stitch.id] && BUNDLED_FULL_CONTENT[stitch.id].questions && BUNDLED_FULL_CONTENT[stitch.id].questions.length > 0) {
         console.log(`Using ${BUNDLED_FULL_CONTENT[stitch.id].questions.length} questions from bundled content for stitch ${stitch.id}`);
@@ -169,23 +273,66 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
         if (validQuestions.length === 0) {
           console.error(`No valid questions found for stitch ${stitch.id} in thread ${thread.id}`);
           
-          // Use placeholder error questions instead of generating random content
-          const errorQuestions = [
-            {
-              id: `${stitch.id}-error-1`,
-              text: 'Content missing. Please contact support.',
-              correctAnswer: 'Contact support',
-              distractors: {
-                L1: 'Try again later',
-                L2: 'Refresh page',
-                L3: 'Check settings'
+          // Check if this is an anonymous user, provide sample math questions instead of error
+          const isAnonymousUser = userId && userId.startsWith('anon-');
+
+          if (isAnonymousUser) {
+            // Use basic math questions for anonymous users to ensure they have a good experience
+            const sampleQuestions = [
+              {
+                id: `${stitch.id}-sample-1`,
+                text: '3 + 5',
+                correctAnswer: '8',
+                distractors: { L1: '7', L2: '9', L3: '6' }
+              },
+              {
+                id: `${stitch.id}-sample-2`,
+                text: '7 - 2',
+                correctAnswer: '5',
+                distractors: { L1: '4', L2: '6', L3: '3' }
+              },
+              {
+                id: `${stitch.id}-sample-3`,
+                text: '4 × 3',
+                correctAnswer: '12',
+                distractors: { L1: '6', L2: '10', L3: '9' }
+              },
+              {
+                id: `${stitch.id}-sample-4`,
+                text: '10 ÷ 2',
+                correctAnswer: '5',
+                distractors: { L1: '4', L2: '6', L3: '2' }
+              },
+              {
+                id: `${stitch.id}-sample-5`,
+                text: '9 + 7',
+                correctAnswer: '16',
+                distractors: { L1: '15', L2: '17', L3: '6' }
               }
-            }
-          ];
-          
-          // Set the error questions on the stitch
-          stitch.questions = errorQuestions;
-          console.log(`Using error placeholder question for stitch ${stitch.id}`);
+            ];
+
+            // Set the sample questions on the stitch
+            stitch.questions = sampleQuestions;
+            console.log(`Using ${sampleQuestions.length} sample math questions for anonymous user (stitch ${stitch.id})`);
+          } else {
+            // For authenticated users, show the error message
+            const errorQuestions = [
+              {
+                id: `${stitch.id}-error-1`,
+                text: 'Content missing. Please contact support.',
+                correctAnswer: 'Contact support',
+                distractors: {
+                  L1: 'Try again later',
+                  L2: 'Refresh page',
+                  L3: 'Check settings'
+                }
+              }
+            ];
+
+            // Set the error questions on the stitch
+            stitch.questions = errorQuestions;
+            console.log(`Using error placeholder question for stitch ${stitch.id}`);
+          }
         } else {
           console.log(`Using ${validQuestions.length} valid existing questions from database for stitch ${stitch.id}`);
           stitch.questions = validQuestions;
@@ -198,6 +345,15 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       // Double-check we have questions
       if (allQuestions.length === 0) {
         console.warn("Still no questions available after attempted initialization");
+
+        // Additional debug info to identify the issue
+        console.error(`CRITICAL ERROR: No questions found for stitch ${stitch.id}`);
+        console.error(`- Stitch exists in BUNDLED_FULL_CONTENT: ${BUNDLED_FULL_CONTENT.hasOwnProperty(stitch.id)}`);
+        if (BUNDLED_FULL_CONTENT.hasOwnProperty(stitch.id)) {
+          console.error(`- Bundled stitch has questions: ${!!(BUNDLED_FULL_CONTENT[stitch.id].questions)}`);
+          console.error(`- Bundled stitch question count: ${BUNDLED_FULL_CONTENT[stitch.id].questions?.length || 0}`);
+        }
+
         return; // Exit early - will show the "no questions" UI
       }
       

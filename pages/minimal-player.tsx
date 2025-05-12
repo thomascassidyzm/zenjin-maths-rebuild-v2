@@ -292,21 +292,58 @@ export default function MinimalPlayer() {
   
   // Conditionally render different player components based on upgrade flag and player mode
   const renderPlayer = () => {
+    // Check if we have valid tube data to render the player
+    if (!tubeData || !activeTubeNumber || !tubeData[activeTubeNumber]) {
+      console.error('Missing required tube data for rendering player');
+      return (
+        <div className="bg-white/20 backdrop-blur-lg p-8 rounded-xl shadow-xl text-center">
+          <div className="text-white text-xl mb-4">No content available</div>
+          <div className="text-white text-opacity-70 mb-6">
+            Unable to load learning content. Please try refreshing the page.
+          </div>
+        </div>
+      );
+    }
+
+    // Get the active tube data
+    const activeTube = tubeData[activeTubeNumber];
+
+    // Convert tube data to thread format expected by MinimalDistinctionPlayer
+    const thread = {
+      id: activeTube.threadId || `thread-T${activeTubeNumber}-001`,
+      name: `Tube ${activeTubeNumber}`,
+      description: `Learning content for Tube ${activeTubeNumber}`,
+      stitches: activeTube.stitches ? activeTube.stitches.map(stitch => ({
+        id: stitch.id,
+        name: stitch.id.split('-').pop() || 'Stitch',
+        description: `Stitch ${stitch.id}`,
+        questions: [] // Questions will be loaded from bundled content
+      })) : []
+    };
+
+    console.log(`Rendering player with thread ${thread.id}, containing ${thread.stitches.length} stitches`);
+
     // Regular player render
     return (
       <MinimalDistinctionPlayer
-        tubeNumber={activeTubeNumber}
-        tubeData={tubeData}
-        onRecordAnswer={recordAnswer}
-        onNextQuestion={nextQuestion}
-        onCelebrateStitch={(points) => {
-          celebrateCurrentStitch();
-          onCelebrateStitch(points);
+        thread={thread}
+        onComplete={(results) => {
+          console.log('Session complete, recording results', results);
+          // Handle any tube-specific logic here before passing to general handler
+          if (results && results.goDashboard) {
+            // Navigate or handle completion
+          }
+          // Pass to original handlers
+          recordAnswer && recordAnswer(results);
+          nextQuestion && nextQuestion();
         }}
-        onSwitchStitch={switchToNextStitch}
-        isSubscribed={isSubscribed}
+        onEndSession={(results) => {
+          console.log('Session ended manually', results);
+          // Could add additional tube-specific logic here
+        }}
+        questionsPerSession={10} // Default to 10 questions per session
+        sessionTotalPoints={totalPoints || 0} // Use accumulated points
         userId={user?.id}
-        tier={tier}
       />
     );
   };
