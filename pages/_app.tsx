@@ -63,11 +63,7 @@ function MyApp({ Component, pageProps }: AppProps) {
       
       {/* Service worker registration - only on client side */}
       {typeof window !== 'undefined' && (
-        <>
-          <Script src="/register-sw.js" strategy="afterInteractive" />
-          {/* Simple debug controls - always visible, no keyboard shortcuts needed */}
-          <Script src="/simple-debug-controls.js" strategy="afterInteractive" />
-        </>
+        <Script src="/register-sw.js" strategy="afterInteractive" />
       )}
 
       {/* State initialization */}

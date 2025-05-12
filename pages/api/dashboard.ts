@@ -40,7 +40,17 @@ export default async function handler(
   try {
     console.log('Dashboard API: Starting request');
     console.log('Dashboard API: Cookies:', req.cookies);
-    
+
+    // CRITICAL FLAG: Check if this request is coming from the Continue Learning flow
+    // If so, we'll skip loading default state to prevent overriding the state in localStorage
+    const isContinueLearningFlow = req.headers['x-zenjin-continue-learning'] === 'true';
+
+    if (isContinueLearningFlow) {
+      console.log('Dashboard API: Request is from Continue Learning flow - will skip loading default state');
+      // Set response header to track this special case
+      res.setHeader('X-Zenjin-Continue-Learning', 'true');
+    }
+
     // Create only the admin client for maximum reliability - ALWAYS USE ADMIN CLIENT
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ggwoupzaruiaaliylxga.supabase.co',
@@ -49,21 +59,21 @@ export default async function handler(
 
     // Extract user ID from multiple sources for maximum reliability
     let userId;
-    
+
     // Try extracting from query params first
     if (req.query.userId) {
       userId = req.query.userId as string;
       console.log('Dashboard API: Using userId from query param:', userId);
-    } 
+    }
     // Next try auth header
     else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
       // Extract token
       const token = req.headers.authorization.substring(7);
-      
+
       try {
         // Verify the token with admin client
         const { data: userData, error } = await supabaseAdmin.auth.getUser(token);
-        
+
         if (!error && userData?.user) {
           userId = userData.user.id;
           console.log('Dashboard API: Extracted userId from valid JWT:', userId);
@@ -79,13 +89,13 @@ export default async function handler(
       userId = req.headers['x-user-id'] as string;
       console.log('Dashboard API: Using userId from x-user-id header:', userId);
     }
-    
+
     // If still no user ID, try to get from cookies with createRouteHandlerClient
     if (!userId) {
       try {
         const supabaseClient = createRouteHandlerClient(req, res);
         const { data: sessionData, error } = await supabaseClient.auth.getSession();
-        
+
         if (!error && sessionData?.session?.user) {
           userId = sessionData.session.user.id;
           console.log('Dashboard API: Extracted userId from cookie session:', userId);
@@ -96,21 +106,53 @@ export default async function handler(
         console.error('Dashboard API: Error getting session from cookies:', e);
       }
     }
-    
+
     // Last resort - check if anonymous ID is provided
     if (!userId && req.headers['x-anonymous-id']) {
       userId = req.headers['x-anonymous-id'] as string;
       console.log('Dashboard API: Using anonymous ID as fallback:', userId);
     }
-    
+
+    // CRITICAL FIX: When in Continue Learning flow, if we have a user ID but no DB data,
+    // return a stripped-down response without overriding localStorage state
+    if (isContinueLearningFlow && userId) {
+      // Since we're in Continue Learning flow, we'll return minimal data
+      // This prevents the dashboard from resetting localStorage state
+
+      console.log('Dashboard API: Returning minimal data for Continue Learning flow');
+
+      return res.status(200).json({
+        userId: userId,
+        totalPoints: 0, // These will be updated by the session recording logic
+        blinkSpeed: 2.5,
+        blinkSpeedTrend: 'steady',
+        evolution: {
+          currentLevel: 'Mind Spark',
+          levelNumber: 1,
+          progress: 0,
+          nextLevel: 'Thought Weaver'
+        },
+        globalStanding: {
+          percentile: null,
+          date: null,
+          message: "Continue learning to see your ranking"
+        },
+        recentSessions: [],
+        dataSource: 'continue-learning-flow',
+        message: 'Continuing from previous learning state...',
+        // No fallbackContent to ensure we use the state from localStorage
+        preserveLocalState: true
+      });
+    }
+
     // If still no user ID, we can't proceed - but rather than 401, provide bundled content
     if (!userId) {
       console.log('Dashboard API: No user ID found, generating fallback content');
-      
+
       // Generate a random bundled content path
       const fallbackContent = generateRandomLearningPath();
       const suggestedStitch = getSuggestedFallbackStitch();
-      
+
       return res.status(200).json({
         userId: 'anonymous',
         totalPoints: 0,
@@ -484,9 +526,9 @@ export default async function handler(
       globalStanding,
       recentSessions,
       dataSource: useCache ? 'cache' : 'database',
-      message: useCache 
-        ? 'Using cached data - progress won\'t be saved until connection is restored' 
-        : 'Data retrieved from database',
+      message: useCache
+        ? 'Using cached data - progress won\'t be saved until connection is restored'
+        : 'Your global standings have been updated. Keep learning to improve your position!',
       // Include fallback content if using cache
       fallbackContent: fallbackContentData
     });

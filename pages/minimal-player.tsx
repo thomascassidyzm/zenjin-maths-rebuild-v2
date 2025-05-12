@@ -87,12 +87,69 @@ export default function MinimalPlayer() {
   const continuePreviousState = 
     shouldContinue === 'true' || 
     (typeof window !== 'undefined' && localStorage.getItem('zenjin_continue_previous_state') === 'true');
+  
+  // Add state to track if we're continuing from previous state
+  const [isContinuingFromPrevious, setIsContinuingFromPrevious] = useState(false);
     
   // Clear the flag after reading it to prevent persisting the state indefinitely
-  if (typeof window !== 'undefined' && localStorage.getItem('zenjin_continue_previous_state') === 'true') {
-    console.log('CRITICAL: Clearing zenjin_continue_previous_state flag after reading');
-    localStorage.removeItem('zenjin_continue_previous_state');
-  }
+  useEffect(() => {
+    if (typeof window !== 'undefined' && localStorage.getItem('zenjin_continue_previous_state') === 'true') {
+      console.log('CRITICAL: Clearing zenjin_continue_previous_state flag after reading');
+      localStorage.removeItem('zenjin_continue_previous_state');
+      
+      // Set the state to show we're continuing from previous state
+      setIsContinuingFromPrevious(true);
+
+      // DEBUGGING: Add toast notification to confirm we've loaded from Continue Learning
+      try {
+        // Try to get the active tube number from localStorage for more detailed debugging
+        let activeTube = "?";
+        const userId = localStorage.getItem('zenjin_user_id') ||
+                       localStorage.getItem('zenjin_anonymous_id') || 
+                       'anonymous';
+        
+        // Check the stored state for active tube info
+        try {
+          const tripleHelixState = localStorage.getItem(`triple_helix_state_${userId}`);
+          if (tripleHelixState) {
+            const parsedState = JSON.parse(tripleHelixState);
+            if (parsedState && (parsedState.activeTube || parsedState.activeTubeNumber)) {
+              activeTube = parsedState.activeTube || parsedState.activeTubeNumber;
+            }
+          }
+        } catch {}
+        
+        const toastDiv = document.createElement('div');
+        toastDiv.innerText = `✓ Continuing from previous state (Tube ${activeTube})`;
+        toastDiv.style.position = 'fixed';
+        toastDiv.style.bottom = '20px';
+        toastDiv.style.right = '20px';
+        toastDiv.style.backgroundColor = 'rgba(0, 100, 50, 0.8)';
+        toastDiv.style.color = 'white';
+        toastDiv.style.padding = '8px 16px';
+        toastDiv.style.borderRadius = '4px';
+        toastDiv.style.zIndex = '9999';
+        toastDiv.style.boxShadow = '0 2px 10px rgba(0,0,0,0.3)';
+        toastDiv.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+        
+        document.body.appendChild(toastDiv);
+        
+        // Remove after 5 seconds
+        setTimeout(() => {
+          toastDiv.style.opacity = '0';
+          toastDiv.style.transition = 'opacity 0.5s ease';
+          
+          setTimeout(() => {
+            if (document.body.contains(toastDiv)) {
+              document.body.removeChild(toastDiv);
+            }
+          }, 500);
+        }, 5000);
+      } catch (e) {
+        console.error('Error showing debug toast:', e);
+      }
+    }
+  }, []);
   
   // Check if dev mode is enabled
   const showDevTools = dev === 'true';
@@ -175,578 +232,243 @@ export default function MinimalPlayer() {
     }
   }
   
-  // Use the shared player hook with the appropriate mode
-  const player = useTripleHelixPlayer({
+  // Initialize the triple-helix player - this is now cleaner and decoupled from the UI
+  const { 
+    tubeData, 
+    mode: playerStatus, 
+    isActive, 
+    activeTubeNumber, 
+    recordAnswer, 
+    nextQuestion,
+    celebrateCurrentStitch,
+    switchToNextStitch,
+    isLoading,
+    getStitchInfo,
+    error,
+    completedSessions,
+    totalPoints,
+    sessionPoints,
+    restart, 
+  } = useTripleHelixPlayer({ 
     mode: playerMode,
-    resetPoints: shouldResetPoints, // Reset points but maintain stitch progress
-    continuePreviousState: continuePreviousState, // Continue from previous state (for Continue Playing button)
-    // Enhanced debug for better visibility of player continuation issues
+    resetPoints: shouldResetPoints,
+    continuePreviousState,
     debug: (message) => {
-      console.log(`🔄 PLAYER[${playerMode}]: ${message}`);
-
-      // Add extra debugging for tube state issues
-      if (message.includes('tube') || message.includes('Tube') ||
-          message.includes('state') || message.includes('State') ||
-          message.includes('continue') || message.includes('Continue')) {
-        console.log(`🔍 TUBE-DEBUG: ${message}`);
-      }
-    },
-    onInitialized: (tubeCycler) => {
-      // Expose the tubeCycler adapter to window for debugging
-      if (typeof window !== 'undefined' && tubeCycler) {
-        console.log('🛠️ DEBUG: Exposing tubeCycler to global window scope');
-        (window as any).__stateMachineTubeCyclerAdapter = tubeCycler;
-      }
+      console.log(message); 
+      setAdminMessage(message);
     }
   });
-
-  // Effect to get tube state info when admin mode is enabled
+  
+  // Track tube info for admin tools
   useEffect(() => {
-    if (!showAdminControls || typeof window === 'undefined') return;
-
-    // Get the user ID
-    const uid = localStorage.getItem('zenjin_user_id') ||
-              localStorage.getItem('zenjin_anonymous_id') ||
-              user?.id || 'anonymous';
-
-    // Get tube info from localStorage
-    const info: any = {};
-
-    // Check main state
+    if (showAdminControls && tubeData && activeTubeNumber) {
+      const activeTube = tubeData[activeTubeNumber];
+      if (activeTube) {
+        // Get stitch info for admin display
+        const currentStitchId = activeTube.currentStitchId;
+        const stitchInfo = getStitchInfo(activeTubeNumber, currentStitchId);
+        setTubeInfo({
+          activeTubeNumber,
+          currentStitchId,
+          totalStitches: activeTube.stitches?.length || 0,
+          stitchInfo
+        });
+      }
+    }
+  }, [tubeData, activeTubeNumber, showAdminControls, getStitchInfo]);
+  
+  // Show a special celebration when a stitch is completed
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebrationPoints, setCelebrationPoints] = useState(0);
+  const [celebrationLevel, setCelebrationLevel] = useState(1);
+  
+  // Handle celebration events
+  const onCelebrateStitch = (points: number, level: number = 1) => {
+    console.log(`Celebrating stitch completion with ${points} points at level ${level}`);
+    setCelebrationPoints(points);
+    setCelebrationLevel(level);
+    setShowCelebration(true);
+    
+    // Record the celebration in analytics if available
     try {
-      const stateKey = `zenjin_state_${uid}`;
-      const stateJson = localStorage.getItem(stateKey);
-
-      if (stateJson) {
-        const state = JSON.parse(stateJson);
-        info.main = {
-          activeTube: state.activeTube || state.activeTubeNumber,
-          lastUpdated: state.lastUpdated ? new Date(state.lastUpdated).toLocaleString() : 'unknown',
-          tubes: {}
-        };
-
-        // Add tube data
-        if (state.tubes) {
-          [1, 2, 3].forEach(tubeNumber => {
-            if (state.tubes[tubeNumber]) {
-              const tube = state.tubes[tubeNumber];
-              info.main.tubes[tubeNumber] = {
-                stitchCount: tube.stitches?.length || 0,
-                currentStitch: tube.stitches?.find((s: any) => s.position === 0)?.id || 'none'
-              };
-            }
-          });
-        }
+      if (typeof window !== 'undefined' && (window as any).gtag) {
+        (window as any).gtag('event', 'stitch_completed', {
+          'level': level,
+          'points': points,
+          'tube': activeTubeNumber
+        });
       }
     } catch (e) {
-      console.error('Error reading main state:', e);
+      console.error('Error logging analytics:', e);
     }
-
-    // Check anonymous state
-    try {
-      const anonStateJson = localStorage.getItem('zenjin_anonymous_state');
-      if (anonStateJson) {
-        const anonState = JSON.parse(anonStateJson);
-        if (anonState.state) {
-          const state = anonState.state;
-          info.anonymous = {
-            activeTube: state.activeTube || state.activeTubeNumber,
-            lastUpdated: state.lastUpdated ? new Date(state.lastUpdated).toLocaleString() : 'unknown'
-          };
-        }
-      }
-    } catch (e) {
-      console.error('Error reading anonymous state:', e);
-    }
-
-    // Check triple helix state
-    try {
-      const tripleHelixJson = localStorage.getItem(`triple_helix_state_${uid}`);
-      if (tripleHelixJson) {
-        const state = JSON.parse(tripleHelixJson);
-        info.tripleHelix = {
-          activeTube: state.activeTube || state.activeTubeNumber,
-          lastUpdated: state.lastUpdated ? new Date(state.lastUpdated).toLocaleString() : 'unknown'
-        };
-      }
-    } catch (e) {
-      console.error('Error reading triple helix state:', e);
-    }
-
-    // Check continue flag
-    info.continueFlag = localStorage.getItem('zenjin_continue_previous_state') === 'true';
-
-    // Update state
-    setTubeInfo(info);
-
-    // Global adapter reference
-    if (typeof window !== 'undefined') {
-      // Wait a bit for adapter to initialize
-      setTimeout(() => {
-        const adapter = (window as any).__stateMachineTubeCyclerAdapter;
-        if (adapter) {
-          console.log('Admin controls: Found tube cycler adapter in global scope');
-        } else {
-          console.log('Admin controls: No tube cycler adapter found in global scope');
-        }
-      }, 2000);
-    }
-  }, [showAdminControls, user?.id]);
-
-  // We no longer need URL correction since we don't use mode parameters
-
-  return (
-    <div className="min-h-screen player-bg relative">
-      <Head>
-        <title>{player.isAnonymous ? 'Free Maths Practice' : 'Zenjin Maths'}</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-      </Head>
-      
-      {/* Background bubbles at the page level for continuous animation */}
-      <BackgroundBubbles />
-
-      {/* Simple debug buttons - remove after testing */}
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 bg-black/50 p-3 rounded-lg backdrop-blur-sm">
-        <div className="text-white text-xs font-bold mb-1">Debug Controls:</div>
-        <div className="text-white text-xs mb-2">Current Tube: <span className="font-bold">{player.currentStitch?.tubeNumber || '?'}</span></div>
-        <div className="flex gap-2">
-          <button
+  };
+  
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center player-bg">
+        <div className="bg-white/20 backdrop-blur-lg p-8 rounded-xl shadow-xl text-center">
+          <div className="animate-spin mb-4 h-12 w-12 border-4 border-t-teal-500 border-teal-200 rounded-full mx-auto"></div>
+          <h2 className="text-xl font-medium text-white">
+            <LoadingMessage isAnonymous={playerMode === 'anonymous'} />
+          </h2>
+          <p className="text-white/70 mt-2">This should only take a moment...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center player-bg">
+        <div className="bg-white/20 backdrop-blur-lg p-8 rounded-xl shadow-xl text-center">
+          <svg className="w-16 h-16 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <h2 className="text-xl font-medium text-white">Oops! Something went wrong</h2>
+          <p className="text-white/70 mt-2 mb-4">{error}</p>
+          <button 
+            onClick={restart}
+            className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-500 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+  
+  // Conditionally render different player components based on upgrade flag and player mode
+  const renderPlayer = () => {
+    // Regular player render
+    return (
+      <MinimalDistinctionPlayer
+        tubeNumber={activeTubeNumber}
+        tubeData={tubeData}
+        onRecordAnswer={recordAnswer}
+        onNextQuestion={nextQuestion}
+        onCelebrateStitch={(points) => {
+          celebrateCurrentStitch();
+          onCelebrateStitch(points);
+        }}
+        onSwitchStitch={switchToNextStitch}
+        isSubscribed={isSubscribed}
+        userId={user?.id}
+        tier={tier}
+      />
+    );
+  };
+  
+  // Admin tools rendering
+  const renderAdminTools = () => {
+    if (!showAdminControls) return null;
+    
+    return (
+      <div className="fixed bottom-0 left-0 z-50 bg-gray-800 text-white p-4 rounded-tr-lg text-xs w-64 max-h-[300px] overflow-auto">
+        <h3 className="font-bold">Admin Debug</h3>
+        <div className="mt-2">
+          <div>Active Tube: {activeTubeNumber}</div>
+          <div>Current Stitch: {tubeInfo.currentStitchId}</div>
+          <div>Stitches in Tube: {tubeInfo.totalStitches}</div>
+          <div>Session Points: {sessionPoints}</div>
+          <div>Total Points: {totalPoints}</div>
+          <div>Completed Sessions: {completedSessions}</div>
+        </div>
+        <div className="mt-2">
+          <div className="font-bold">Stitch Info:</div>
+          <div className="text-gray-300">{tubeInfo.stitchInfo ? JSON.stringify(tubeInfo.stitchInfo) : 'N/A'}</div>
+        </div>
+        <div className="mt-2">
+          <div className="font-bold">Last Message:</div>
+          <div className="text-gray-300">{adminMessage}</div>
+        </div>
+        <div className="mt-2 pt-2 border-t border-gray-600">
+          <button 
             onClick={() => switchTube(1)}
-            className="text-xs bg-blue-600 text-white px-2 py-1 rounded"
+            className="px-2 py-1 bg-blue-600 text-white rounded mr-2 text-xs"
           >
             Tube 1
           </button>
-          <button
+          <button 
             onClick={() => switchTube(2)}
-            className="text-xs bg-green-600 text-white px-2 py-1 rounded"
+            className="px-2 py-1 bg-green-600 text-white rounded mr-2 text-xs"
           >
             Tube 2
           </button>
-          <button
+          <button 
             onClick={() => switchTube(3)}
-            className="text-xs bg-purple-600 text-white px-2 py-1 rounded"
+            className="px-2 py-1 bg-purple-600 text-white rounded text-xs"
           >
             Tube 3
           </button>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => {
-              // Try to complete with perfect score
-              const adapter = (window as any).__stateMachineTubeCyclerAdapter;
-
-              if (adapter && player.currentStitch) {
-                try {
-                  adapter.handleStitchCompletion(
-                    player.currentStitch.threadId,
-                    player.currentStitch.id,
-                    20, // Perfect score
-                    20  // Total questions
-                  );
-                  alert('Completed stitch with perfect score (20/20)');
-                  window.location.reload();
-                } catch (e) {
-                  console.error('Error completing stitch:', e);
-                  alert(`Error: ${e.message}`);
-                }
-              } else {
-                alert('No adapter or stitch available');
-              }
-            }}
-            className="text-xs bg-green-600 text-white px-2 py-1 rounded"
-          >
-            Complete 20/20
-          </button>
-          <button
-            onClick={() => {
-              // Try to complete with partial score
-              const adapter = (window as any).__stateMachineTubeCyclerAdapter;
-
-              if (adapter && player.currentStitch) {
-                try {
-                  adapter.handleStitchCompletion(
-                    player.currentStitch.threadId,
-                    player.currentStitch.id,
-                    10, // Partial score
-                    20  // Total questions
-                  );
-                  alert('Completed stitch with partial score (10/20)');
-                  window.location.reload();
-                } catch (e) {
-                  console.error('Error completing stitch:', e);
-                  alert(`Error: ${e.message}`);
-                }
-              } else {
-                alert('No adapter or stitch available');
-              }
-            }}
-            className="text-xs bg-amber-600 text-white px-2 py-1 rounded"
-          >
-            Complete 10/20
-          </button>
-        </div>
-        <button
-          onClick={() => {
-            localStorage.setItem('zenjin_continue_previous_state', 'true');
-            window.location.href = '/dashboard';
-          }}
-          className="text-xs bg-purple-600 text-white px-2 py-1 rounded"
-        >
-          End + Go Dashboard
-        </button>
       </div>
-
-      {/* Track current stitch ID in a global variable to help the StitchCelebration component */}
-      {player.currentStitch && (
-        <script dangerouslySetInnerHTML={{
-          __html: `
-            window.__PLAYER_STATE__ = window.__PLAYER_STATE__ || {};
-            window.__PLAYER_STATE__.currentStitch = {
-              id: "${player.currentStitch.id}",
-              threadId: "${player.currentStitch.threadId}",
-              timestamp: ${Date.now()}
-            };
-            // Track celebrations at window level to ensure consistency
-            window.__PLAYER_CELEBRATIONS__ = window.__PLAYER_CELEBRATIONS__ || {};
-            // Debug output in case we need it
-            console.log('Current stitch in player: ${player.currentStitch.id}');
-          `
-        }} />
+    );
+  };
+  
+  const DeveloperTools = () => {
+    if (!showDevTools) return null;
+    
+    return (
+      <div className="absolute bottom-5 left-5 z-50 m-4">
+        <DevTestPane
+          tubeData={tubeData}
+          activeTubeNumber={activeTubeNumber}
+        />
+      </div>
+    );
+  };
+  
+  // User welcome/account display - shown in the top-right corner
+  const UserDisplay = () => {
+    return (
+      <div className="absolute top-5 right-5 z-50">
+        <div className="flex items-center space-x-4">
+          <SubscriptionStatusIndicator />
+          <UserWelcomeButton />
+        </div>
+      </div>
+    );
+  };
+  
+  return (
+    <div className="min-h-screen player-bg">
+      <Head>
+        <title>Zenjin Maths | {isSubscribed ? 'Premium' : 'Free'} Learning</title>
+        <meta name="description" content="Interactive maths learning with Zenjin" />
+      </Head>
+      
+      {/* Celebration overlay */}
+      {showCelebration && (
+        <StitchCelebration 
+          points={celebrationPoints} 
+          level={celebrationLevel}
+          onClose={() => setShowCelebration(false)}
+        />
       )}
       
-      {/* Welcome message with user name */}
-      <div className="absolute top-4 left-4 z-20">
-        <UserWelcomeButton user={user} isAuthenticated={isAuthenticated} />
-      </div>
+      {/* Background bubbles animation */}
+      <BackgroundBubbles />
       
-      {/* Remove login prompt for anonymous users */}
-      
-      {/* Main content area */}
-      <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-screen relative" style={{zIndex: 'auto'}}>
-        {player.isLoading ? (
-          <div className="bg-white/20 backdrop-blur-lg rounded-xl p-6 text-center shadow-xl">
-            <div className="inline-block animate-spin h-10 w-10 border-4 border-blue-300 border-t-transparent rounded-full mb-2"></div>
-            <p className="text-white text-lg">
-              {/* Fun loading messages that cycle every 2 seconds */}
-              <LoadingMessage isAnonymous={player.isAnonymous} />
-            </p>
+      {/* Player UI */}
+      <main className="min-h-screen flex flex-col relative z-10">
+        {/* User display in top right */}
+        <UserDisplay />
+        
+        {/* Main container */}
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="w-full max-w-4xl">
+            {renderPlayer()}
           </div>
-        ) : player.loadError ? (
-          <div className="bg-white/20 backdrop-blur-lg rounded-xl p-8 text-center max-w-md">
-            <h2 className="text-2xl font-bold mb-4 text-white">Error Loading Content</h2>
-            <div className="bg-red-500/20 border border-red-300/30 text-red-100 rounded-lg p-4 mb-6">
-              {player.loadError}
-            </div>
-            <button
-              onClick={() => window.location.reload()}
-              className="bg-teal-600 hover:bg-teal-500 text-white font-medium py-2 px-6 rounded-lg transition-colors"
-            >
-              Try Again
-            </button>
-          </div>
-        ) : !player.currentStitch ? (
-          <div className="bg-white/20 backdrop-blur-lg rounded-xl p-8 text-center max-w-md">
-            <h2 className="text-2xl font-bold mb-4 text-white">No Content Available</h2>
-            <p className="mb-4 text-white">There is no active content.</p>
-            <button
-              onClick={() => router.push('/')}
-              className="bg-teal-600 hover:bg-teal-500 text-white font-medium py-2 px-6 rounded-lg transition-colors"
-            >
-              Back to Home
-            </button>
-          </div>
-        ) : (
-          /* Render the player with celebration pill properly positioned relative to it */
-          <div className="relative">
-            {/* Position the celebration inside the player container */}
-            {player.showCelebration && (
-              <StitchCelebration 
-                isVisible={player.showCelebration}
-                onComplete={() => {
-                  console.log('🎬 MinimalPlayer: StitchCelebration complete - setting showCelebration to false');
-                  player.setShowCelebration(false);
-                }}
-              />
-            )}
-            
-            {/* Use the subscription-aware player component */}
-            <MinimalDistinctionPlayerWithUpgrade
-              thread={{
-                id: player.currentStitch.threadId,
-                name: player.currentStitch.threadId,
-                description: `Thread ${player.currentStitch.threadId}`,
-                stitches: [player.currentStitch],
-                // Add original stitch count to help the upgrade component determine limits
-                originalStitchCount: player.currentStitch.totalStitchesInThread || undefined
-              }}
-              onComplete={(results) => {
-                console.log('🎯 MinimalPlayer: onComplete called with results', { points: results.totalPoints });
-                // Just handle stitch progression normally - continue in the player
-                player.handleSessionComplete(results);
-              }}
-              onEndSession={(results) => {
-                console.log('🚪 MinimalPlayer: onEndSession called with results', { 
-                  points: results.totalPoints, 
-                  goDashboard: results.goDashboard || false
-                });
-                
-                // Force navigation to dashboard when the user clicks "Continue to Dashboard"
-                if (results.goDashboard) {
-                  console.log('🚪 Forcing navigation to dashboard as requested by Continue to Dashboard button');
-                  // First record the session
-                  player.handleSessionComplete(results, true);
-                
-                  // Determine which dashboard to navigate to based on authentication state
-                  // Authenticated users should always go to the authenticated dashboard
-                  const isAnonymous = !isAuthenticated && (player.isAnonymous || mode === 'anonymous');
-                  const dashboardUrl = isAnonymous ? '/anon-dashboard' : '/dashboard';
-                  
-                  console.log(`🚪 Preparing navigation to ${dashboardUrl} (user is ${isAnonymous ? 'anonymous' : 'authenticated'})`);
-                  
-                  // Fallback navigation - after a delay, if we're still here, force navigation to appropriate dashboard
-                  setTimeout(() => {
-                    console.log(`🚪 Fallback navigation to ${dashboardUrl} (delayed)`);
-                    // Use router.push instead of window.location for better state preservation
-                    router.push(dashboardUrl);
-                  }, 2000);
-                } else {
-                  // Normal end session flow:
-                  // 1. Session data is saved (either to localStorage or server)
-                  // 2. Tube configuration is persisted (for continuation later)
-                  // 3. Navigation to dashboard happens automatically in handleSessionComplete
-                  player.handleSessionComplete(results, true);
-                }
-              }}
-              questionsPerSession={20}
-              sessionTotalPoints={player.accumulatedSessionData.totalPoints}
-              userId={user?.id} // Pass the user ID for authentication
-            />
-          </div>
-        )}
-      </div>
-      
-      {/* DevTest Pane - only shown when dev=true query param is provided */}
-      {showDevTools && <DevTestPane player={player} />}
-
-      {/* Simple Admin Controls - only shown when admin=true query param is provided */}
-      {showAdminControls && (
-        <div className="fixed top-20 right-4 z-50 bg-gray-900/90 p-4 rounded-lg shadow-lg text-white text-sm max-w-xs">
-          <h3 className="text-lg font-semibold mb-3 border-b border-gray-700 pb-2">Tube Admin Controls</h3>
-
-          <div className="space-y-3 mb-4">
-            <div className="flex items-center justify-between">
-              <span>Current Tube:</span>
-              <span className="font-bold">{player.currentStitch?.tubeNumber || 'Unknown'}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Current Stitch:</span>
-              <span className="font-mono text-xs">{player.currentStitch?.id || 'Unknown'}</span>
-            </div>
-
-            {/* Storage state summary */}
-            <div className="border-t border-gray-700 pt-2 mt-2">
-              <div className="text-xs mb-1 font-semibold">State Storage Summary:</div>
-
-              {/* Main state */}
-              {tubeInfo.main && (
-                <div className="flex items-center justify-between mb-1 text-xs">
-                  <span>Main state tube:</span>
-                  <span className={`font-medium ${tubeInfo.main.activeTube === player.currentStitch?.tubeNumber ? 'text-green-400' : 'text-red-400'}`}>
-                    Tube {tubeInfo.main.activeTube}
-                  </span>
-                </div>
-              )}
-
-              {/* Anonymous state */}
-              {tubeInfo.anonymous && (
-                <div className="flex items-center justify-between mb-1 text-xs">
-                  <span>Anonymous state tube:</span>
-                  <span className={`font-medium ${tubeInfo.anonymous.activeTube === player.currentStitch?.tubeNumber ? 'text-green-400' : 'text-red-400'}`}>
-                    Tube {tubeInfo.anonymous.activeTube}
-                  </span>
-                </div>
-              )}
-
-              {/* Triple helix state */}
-              {tubeInfo.tripleHelix && (
-                <div className="flex items-center justify-between mb-1 text-xs">
-                  <span>Triple helix state tube:</span>
-                  <span className={`font-medium ${tubeInfo.tripleHelix.activeTube === player.currentStitch?.tubeNumber ? 'text-green-400' : 'text-red-400'}`}>
-                    Tube {tubeInfo.tripleHelix.activeTube}
-                  </span>
-                </div>
-              )}
-
-              {/* Continue flag */}
-              <div className="flex items-center justify-between mb-1 text-xs">
-                <span>Continue flag:</span>
-                <span className={tubeInfo.continueFlag ? 'text-green-400' : 'text-gray-400'}>
-                  {tubeInfo.continueFlag ? 'Enabled' : 'Disabled'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col space-y-2">
-            {[1, 2, 3].map(tubeNumber => (
-              <button
-                key={tubeNumber}
-                onClick={() => {
-                  // Access any available adapter on the window object
-                  const adapter = (window as any).__stateMachineTubeCyclerAdapter;
-
-                  if (adapter && typeof adapter.setActiveTube === 'function') {
-                    try {
-                      adapter.setActiveTube(tubeNumber);
-                      setAdminMessage(`Switched to Tube ${tubeNumber}`);
-
-                      // Force refresh by location change to avoid React state issues
-                      setTimeout(() => {
-                        window.location.href = `/minimal-player?admin=true${shouldContinue ? '&continue=true' : ''}`;
-                      }, 500);
-                    } catch (e) {
-                      console.error('Error switching tube:', e);
-                      setAdminMessage(`Error: ${e.message}`);
-                    }
-                  } else {
-                    // Try direct localStorage manipulation as fallback
-                    try {
-                      const uid = localStorage.getItem('zenjin_user_id') ||
-                                localStorage.getItem('zenjin_anonymous_id') ||
-                                user?.id || 'anonymous';
-
-                      const stateKey = `zenjin_state_${uid}`;
-                      const stateJson = localStorage.getItem(stateKey);
-
-                      if (stateJson) {
-                        const state = JSON.parse(stateJson);
-
-                        // Update tube number
-                        state.activeTube = tubeNumber;
-                        state.activeTubeNumber = tubeNumber;
-                        state.lastUpdated = new Date().toISOString();
-
-                        // Save back to localStorage
-                        localStorage.setItem(stateKey, JSON.stringify(state));
-
-                        // Also save to anonymous state if that exists
-                        const anonStateJson = localStorage.getItem('zenjin_anonymous_state');
-                        if (anonStateJson) {
-                          try {
-                            const anonState = JSON.parse(anonStateJson);
-                            if (anonState.state) {
-                              anonState.state.activeTube = tubeNumber;
-                              anonState.state.activeTubeNumber = tubeNumber;
-                              anonState.state.lastUpdated = new Date().toISOString();
-                              localStorage.setItem('zenjin_anonymous_state', JSON.stringify(anonState));
-                            }
-                          } catch (e) {
-                            console.error('Error updating anonymous state:', e);
-                          }
-                        }
-
-                        // Also save to triple helix state
-                        const tripleHelixJson = localStorage.getItem(`triple_helix_state_${uid}`);
-                        if (tripleHelixJson) {
-                          try {
-                            const tripleHelix = JSON.parse(tripleHelixJson);
-                            tripleHelix.activeTube = tubeNumber;
-                            tripleHelix.activeTubeNumber = tubeNumber;
-                            tripleHelix.lastUpdated = new Date().toISOString();
-                            localStorage.setItem(`triple_helix_state_${uid}`, JSON.stringify(tripleHelix));
-                          } catch (e) {
-                            console.error('Error updating triple helix state:', e);
-                          }
-                        }
-
-                        setAdminMessage(`Switched to Tube ${tubeNumber}`);
-
-                        // Force refresh by location change to avoid React state issues
-                        setTimeout(() => {
-                          window.location.href = `/minimal-player?admin=true${shouldContinue ? '&continue=true' : ''}`;
-                        }, 500);
-                      } else {
-                        setAdminMessage('No state found to update');
-                      }
-                    } catch (e) {
-                      console.error('Error manipulating localStorage:', e);
-                      setAdminMessage(`Error: ${e.message}`);
-                    }
-                  }
-                }}
-                className={`py-2 px-4 rounded-lg font-medium ${
-                  player.currentStitch?.tubeNumber === tubeNumber
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-700 hover:bg-gray-600 text-white'
-                }`}
-              >
-                Switch to Tube {tubeNumber}
-              </button>
-            ))}
-
-            <button
-              onClick={() => {
-                // Try to complete current stitch with perfect score
-                const adapter = (window as any).__stateMachineTubeCyclerAdapter;
-
-                if (adapter && player.currentStitch) {
-                  try {
-                    adapter.handleStitchCompletion(
-                      player.currentStitch.threadId,
-                      player.currentStitch.id,
-                      20, // Perfect score
-                      20  // Total questions
-                    );
-                    setAdminMessage('Completed stitch with perfect score (20/20)');
-
-                    // Force refresh
-                    setTimeout(() => {
-                      window.location.href = `/minimal-player?admin=true${shouldContinue ? '&continue=true' : ''}`;
-                    }, 500);
-                  } catch (e) {
-                    console.error('Error completing stitch:', e);
-                    setAdminMessage(`Error: ${e.message}`);
-                  }
-                } else {
-                  setAdminMessage('No adapter or stitch available');
-                }
-              }}
-              className="mt-2 py-2 px-4 rounded-lg bg-green-700 hover:bg-green-600 text-white"
-            >
-              Complete Stitch 20/20
-            </button>
-
-            <button
-              onClick={() => {
-                // Set continue flag and force refresh
-                localStorage.setItem('zenjin_continue_previous_state', 'true');
-                setAdminMessage('Set continue flag to true');
-                setTimeout(() => {
-                  window.location.href = '/dashboard';
-                }, 500);
-              }}
-              className="py-2 px-4 rounded-lg bg-teal-700 hover:bg-teal-600 text-white"
-            >
-              End & Go to Dashboard
-            </button>
-
-            <button
-              onClick={() => {
-                window.location.href = `/minimal-player?admin=true${shouldContinue ? '&continue=true' : ''}`;
-              }}
-              className="py-2 px-4 rounded-lg bg-gray-700 hover:bg-gray-600 text-white"
-            >
-              Refresh
-            </button>
-          </div>
-
-          {adminMessage && (
-            <div className="mt-3 p-2 bg-gray-800 rounded text-xs text-gray-300">
-              {adminMessage}
-            </div>
-          )}
         </div>
-      )}
+        
+        {/* Admin tools */}
+        {renderAdminTools()}
+        
+        {/* Dev tools */}
+        <DeveloperTools />
+      </main>
     </div>
   );
 }

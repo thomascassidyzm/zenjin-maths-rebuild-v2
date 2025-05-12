@@ -52,8 +52,8 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0f172a] to-[#1e293b] text-white">
       <Head>
-        <title>Dashboard | Zenjin Maths</title>
-        <meta name="description" content="Your Zenjin Maths dashboard" />
+        <title>Learning Dashboard | Zenjin Maths</title>
+        <meta name="description" content="Track your progress and compare your global scores in Zenjin Maths" />
       </Head>
       
       {/* Header */}
@@ -112,14 +112,14 @@ export default function Dashboard() {
                 </p>
               </div>
               <div className="ml-auto flex space-x-2">
-                <button 
-                  onClick={() => dashboardData.refresh()} 
+                <button
+                  onClick={() => dashboardData.refresh()}
                   className="bg-amber-600/30 hover:bg-amber-600/50 text-amber-100 text-xs py-1 px-3 rounded flex items-center"
                 >
                   <svg className={`w-3 h-3 mr-1 ${dashboardData.loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
-                  Try Again
+                  Update Scores
                 </button>
                 
                 {dashboardData.fallbackContent && (
@@ -368,57 +368,60 @@ export default function Dashboard() {
                        try {
                          // Get the anonymous/user ID from any valid location
                          const userId = localStorage.getItem('zenjin_user_id') ||
-                                      localStorage.getItem('zenjin_anonymous_id') || 
+                                      localStorage.getItem('zenjin_anonymous_id') ||
                                       localStorage.getItem('anonymousId');
-                                      
+
                          if (!userId) {
                            console.error('No user ID found in localStorage - cannot prepare state');
                            return;
                          }
-                         
+
                          console.log(`UNIFIED APPROACH: Preparing continue playing with userId: ${userId}`);
-                         
+
+                         // DEBUG: Add marker to confirm that Continue Learning is used
+                         localStorage.setItem('zenjin_continue_learning_clicked', 'true');
+
                          // Check all possible state storage locations and find the most recent one
                          const stateOptions = [
                            { key: `zenjin_state_${userId}`, label: 'main state' },
                            { key: 'zenjin_anonymous_state', label: 'anonymous state' },
                            { key: `triple_helix_state_${userId}`, label: 'triple helix state' }
                          ];
-                         
+
                          let mostRecentState = null;
                          let mostRecentTimestamp = 0;
                          let stateSource = '';
-                         
+
                          // Find the most recent valid state with tube information
                          stateOptions.forEach(option => {
                            try {
                              const stateJson = localStorage.getItem(option.key);
                              if (stateJson) {
                                const parsedState = JSON.parse(stateJson);
-                               
+
                                // Check if it's a valid state with tube information
                                // Different states have different structures
                                let stateObj = null;
                                let lastUpdated = null;
                                let activeTube = null;
-                               
+
                                // Check for state in zenjin_anonymous_state format
                                if (parsedState && parsedState.state && parsedState.state.tubes) {
                                  stateObj = parsedState.state;
                                  lastUpdated = parsedState.state.lastUpdated;
                                  activeTube = parsedState.state.activeTubeNumber || parsedState.state.activeTube;
-                               } 
+                               }
                                // Check for state in direct UserState format
                                else if (parsedState && parsedState.tubes && (parsedState.activeTube || parsedState.activeTubeNumber)) {
                                  stateObj = parsedState;
                                  lastUpdated = parsedState.lastUpdated;
                                  activeTube = parsedState.activeTubeNumber || parsedState.activeTube;
                                }
-                               
+
                                if (stateObj && activeTube) {
                                  // Parse the timestamp and compare with the most recent
                                  const timestamp = lastUpdated ? new Date(lastUpdated).getTime() : 0;
-                                 
+
                                  if (timestamp > mostRecentTimestamp) {
                                    mostRecentState = stateObj;
                                    mostRecentTimestamp = timestamp;
@@ -430,15 +433,15 @@ export default function Dashboard() {
                              console.error(`Error checking ${option.label}:`, e);
                            }
                          });
-                         
+
                          // If we found a valid state, ensure it's in all required formats
                          if (mostRecentState) {
                            const activeTube = mostRecentState.activeTubeNumber || mostRecentState.activeTube || 1;
                            console.log(`UNIFIED APPROACH: Found most recent state from ${stateSource} with activeTube=${activeTube}`);
-                           
+
                            // CRITICAL FIX: Deep copy the state to avoid reference issues
                            const deepCopy = JSON.parse(JSON.stringify(mostRecentState));
-                           
+
                            // Make sure activeTube and activeTubeNumber are both set correctly
                            // CRITICAL FIX: Preserve all tube and stitch positioning information
                            const normalizedState = {
@@ -447,9 +450,13 @@ export default function Dashboard() {
                              activeTubeNumber: activeTube,
                              userId: userId, // Ensure userId is set correctly
                              // Preserve the tubes with their full configuration
-                             tubes: deepCopy.tubes || {}
+                             tubes: deepCopy.tubes || {},
+                             // Add a timestamp to ensure we can compare states
+                             lastUpdated: new Date().toISOString(),
+                             // CRITICAL FIX: Add flag to prevent dashboard auto-refresh from overriding
+                             fromContinueLearning: true
                            };
-                           
+
                            // Important: Save this normalized state to ALL storage locations
                            // This ensures consistent state no matter which path the code takes
                            console.log(`UNIFIED APPROACH: Saving normalized state with activeTube=${activeTube} to all storage locations`);
@@ -463,18 +470,18 @@ export default function Dashboard() {
                                  deepCopy.tubes[1].stitches && deepCopy.tubes[1].stitches[0] &&
                                  deepCopy.tubes[1].stitches[0].position !== undefined ? 'good ✓' : 'bad ✗'}
                            `);
-                           
+
                            // Store in all formats for maximum compatibility
                            localStorage.setItem(`zenjin_state_${userId}`, JSON.stringify(normalizedState));
                            localStorage.setItem(`triple_helix_state_${userId}`, JSON.stringify(normalizedState));
                            localStorage.setItem('zenjin_anonymous_state', JSON.stringify({ state: normalizedState }));
-                           
+
                            // Also flag that we should continue from previous state
                            localStorage.setItem('zenjin_continue_previous_state', 'true');
-                           
+
                            // Also ensure the zenjin_user_id is set
                            localStorage.setItem('zenjin_user_id', userId);
-                           
+
                            console.log(`UNIFIED APPROACH: Successfully prepared state for continue playing`);
                          } else {
                            console.warn(`No valid state found - continuing with default state`);
@@ -500,16 +507,16 @@ export default function Dashboard() {
                   </Link>
                 )}
                 
-                <button 
-                  onClick={() => dashboardData.refresh()} 
+                <button
+                  onClick={() => dashboardData.refresh()}
                   disabled={dashboardData.loading}
-                  className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                  aria-label="Refresh dashboard data"
+                  className="px-4 py-2 bg-indigo-600/80 hover:bg-indigo-500/90 text-white rounded-lg transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Compare your scores with other learners"
                 >
                   <svg className={`w-5 h-5 mr-2 ${dashboardData.loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
-                  Refresh
+                  Compare Global Scores
                 </button>
               </motion.div>
             </div>

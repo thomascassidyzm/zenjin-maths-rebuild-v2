@@ -76,10 +76,35 @@ export function useDashboard(): DashboardData {
 
   // Add a manual refresh function to force reload dashboard data
   const refreshDashboard = async () => {
-    console.log('useDashboard: Starting dashboard data refresh');
-    setData(prev => ({ ...prev, loading: true }));
+    console.log('useDashboard: Updating global standings and scores');
+    setData(prev => ({
+      ...prev,
+      loading: true,
+      message: 'Comparing your scores with other learners...'
+    }));
     
     try {
+      // CRITICAL CHECK: If we're currently in the "Continue Learning" flow,
+      // skip the dashboard refresh to avoid overriding the state we just set up
+      const continueFlowActive = typeof window !== 'undefined' && 
+                                localStorage.getItem('zenjin_continue_learning_clicked') === 'true';
+      
+      if (continueFlowActive) {
+        console.log('useDashboard: Skipping refresh because Continue Learning flow is active');
+        // Clear the marker after detecting it
+        localStorage.removeItem('zenjin_continue_learning_clicked');
+        
+        // Update data state but preserve loading=false and don't make an API call
+        setData(prev => ({
+          ...prev,
+          loading: false,
+          dataSource: 'continue-learning-flow',
+          message: 'Using continue learning state...'
+        }));
+        
+        return; // Skip the API call entirely
+      }
+
       // Add a timestamp to prevent caching
       const timestamp = Date.now();
       // Get various potential auth tokens/IDs from localStorage - crucial for auth
@@ -121,6 +146,27 @@ export function useDashboard(): DashboardData {
         
         if (anonymousId) {
           authHeaders['x-anonymous-id'] = anonymousId;
+        }
+        
+        // CRITICAL FIX: Check if the state includes the "fromContinueLearning" flag
+        // If so, add a special header to tell the dashboard API not to return default state
+        try {
+          const userIdForState = userId || anonymousId;
+          if (userIdForState) {
+            // Check for state in triple_helix format first (most likely to have latest data)
+            const stateJson = localStorage.getItem(`triple_helix_state_${userIdForState}`) ||
+                             localStorage.getItem(`zenjin_state_${userIdForState}`);
+            
+            if (stateJson) {
+              const parsedState = JSON.parse(stateJson);
+              if (parsedState && parsedState.fromContinueLearning) {
+                console.log('useDashboard: Found fromContinueLearning flag, adding header');
+                authHeaders['x-zenjin-continue-learning'] = 'true';
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Error checking for continue learning flag:', e);
         }
       }
       
@@ -200,17 +246,40 @@ export function useDashboard(): DashboardData {
 
         if (syncSuccess) {
           console.log('Successfully synced pending state backup to server');
+          
+          // CRITICAL FIX: Do NOT auto-refresh after syncing backup
+          // Instead, just update the state with success message
+          setData(prev => ({
+            ...prev,
+            loading: false,
+            dataSource: 'sync-complete',
+            message: 'State backup synchronized with server'
+          }));
         } else {
           console.warn('Failed to sync pending state backup - keeping backup in localStorage');
           // Don't clear the backup markers so we can try again later
+          
+          // Update the UI but don't refresh
+          setData(prev => ({
+            ...prev,
+            loading: false,
+            dataSource: 'sync-failed',
+            message: 'State backup could not be synchronized' 
+          }));
         }
       } else {
         // No pending backup or missing userId, clear any stale markers
         clearPendingStateBackup();
+        
+        // CRITICAL FIX: Just set initial state but DON'T do any API calls
+        // This ensures we don't override localStorage state
+        setData(prev => ({
+          ...prev,
+          loading: false,
+          dataSource: 'local-state',
+          message: 'Using locally stored state'
+        }));
       }
-
-      // Refresh dashboard data after backup reconciliation
-      refreshDashboard();
     };
 
     // Run the state backup handler

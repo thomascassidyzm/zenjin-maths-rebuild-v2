@@ -7,12 +7,20 @@ import { useAuth } from '../context/AuthContext';
 const StateMachineTubeCyclerAdapter = require('./adapters/StateMachineTubeCyclerAdapter');
 
 // Utility for creating and managing the triple-helix player
-export function useTripleHelixPlayer({ 
+export function useTripleHelixPlayer({
   mode = 'default',
   resetPoints = false, // Reset points but maintain stitch progress
   continuePreviousState = false, // Continue from previous state (used by "Continue Playing" button)
   debug = (message: string) => { console.log(message); }
 }) {
+  // CRITICAL FIX: Check if we have the "Continue Learning" flag in localStorage
+  // This ensures we respect the state prepared by the dashboard
+  if (typeof window !== 'undefined' && localStorage.getItem('zenjin_continue_learning_clicked') === 'true') {
+    console.log('playerUtils: Found zenjin_continue_learning_clicked flag - setting continuePreviousState to true');
+    continuePreviousState = true;
+    // Clear the flag after detecting it
+    localStorage.removeItem('zenjin_continue_learning_clicked');
+  }
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
   
