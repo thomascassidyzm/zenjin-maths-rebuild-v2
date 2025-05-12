@@ -366,73 +366,59 @@ export default function Dashboard() {
                      onClick={() => {
                        // UNIFIED APPROACH: Before navigation, ensure the state is properly synchronized
                        try {
-                         // Import state logger for debugging
-                         const { logActiveTubeState, compareLocalStorageStates, logStateDebug } = require('../lib/logging/stateLogger');
-
-                         // Log detailed state information to help diagnose tube persistence issues
-                         console.group('Continue Learning - State Diagnostics');
-                         console.log('=======================================================');
-                         console.log('TUBE STATE DIAGNOSTICS - Continue Learning Button Click');
-                         console.log('=======================================================');
-                         logActiveTubeState();
-                         compareLocalStorageStates();
-
                          // Get the anonymous/user ID from any valid location
                          const userId = localStorage.getItem('zenjin_user_id') ||
-                                      localStorage.getItem('zenjin_anonymous_id') ||
+                                      localStorage.getItem('zenjin_anonymous_id') || 
                                       localStorage.getItem('anonymousId');
-
+                                      
                          if (!userId) {
                            console.error('No user ID found in localStorage - cannot prepare state');
                            return;
                          }
-
+                         
                          console.log(`UNIFIED APPROACH: Preparing continue playing with userId: ${userId}`);
-
+                         
                          // Check all possible state storage locations and find the most recent one
                          const stateOptions = [
                            { key: `zenjin_state_${userId}`, label: 'main state' },
                            { key: 'zenjin_anonymous_state', label: 'anonymous state' },
                            { key: `triple_helix_state_${userId}`, label: 'triple helix state' }
                          ];
-
+                         
                          let mostRecentState = null;
                          let mostRecentTimestamp = 0;
                          let stateSource = '';
-
+                         
                          // Find the most recent valid state with tube information
                          stateOptions.forEach(option => {
                            try {
                              const stateJson = localStorage.getItem(option.key);
                              if (stateJson) {
                                const parsedState = JSON.parse(stateJson);
-
+                               
                                // Check if it's a valid state with tube information
                                // Different states have different structures
                                let stateObj = null;
                                let lastUpdated = null;
                                let activeTube = null;
-
+                               
                                // Check for state in zenjin_anonymous_state format
                                if (parsedState && parsedState.state && parsedState.state.tubes) {
                                  stateObj = parsedState.state;
                                  lastUpdated = parsedState.state.lastUpdated;
                                  activeTube = parsedState.state.activeTubeNumber || parsedState.state.activeTube;
-                               }
+                               } 
                                // Check for state in direct UserState format
                                else if (parsedState && parsedState.tubes && (parsedState.activeTube || parsedState.activeTubeNumber)) {
                                  stateObj = parsedState;
                                  lastUpdated = parsedState.lastUpdated;
                                  activeTube = parsedState.activeTubeNumber || parsedState.activeTube;
                                }
-
+                               
                                if (stateObj && activeTube) {
                                  // Parse the timestamp and compare with the most recent
                                  const timestamp = lastUpdated ? new Date(lastUpdated).getTime() : 0;
-
-                                 // Log for additional debugging
-                                 console.log(`TUBE STATE: ${option.label} has activeTube=${activeTube}, timestamp=${new Date(lastUpdated).toISOString()}`);
-
+                                 
                                  if (timestamp > mostRecentTimestamp) {
                                    mostRecentState = stateObj;
                                    mostRecentTimestamp = timestamp;
@@ -444,79 +430,44 @@ export default function Dashboard() {
                              console.error(`Error checking ${option.label}:`, e);
                            }
                          });
-
+                         
                          // If we found a valid state, ensure it's in all required formats
                          if (mostRecentState) {
                            const activeTube = mostRecentState.activeTubeNumber || mostRecentState.activeTube || 1;
                            console.log(`UNIFIED APPROACH: Found most recent state from ${stateSource} with activeTube=${activeTube}`);
-
-                           // CRITICAL: Check if there are tube records that indicate actual usage
-                           // This ensures we don't override actual tube state with a default value
-                           let hasTubeData = false;
-                           let altTube = 0;
-                           if (mostRecentState.tubes) {
-                             Object.entries(mostRecentState.tubes).forEach(([tubeNumber, tubeData]) => {
-                               // @ts-ignore
-                               if (tubeData && tubeData.currentStitchId && tubeData.currentStitchId !== '') {
-                                 console.log(`TUBE CHECK: Tube ${tubeNumber} has stitch ${
-                                   // @ts-ignore
-                                   tubeData.currentStitchId}`);
-                                 hasTubeData = true;
-
-                                 // If any tube has a non-zero position, it's likely been used
-                                 // @ts-ignore
-                                 if (tubeData.position && tubeData.position > 0) {
-                                   // @ts-ignore
-                                   console.log(`IMPORTANT: Tube ${tubeNumber} has position=${tubeData.position} > 0`);
-                                   altTube = parseInt(tubeNumber, 10);
-                                 }
-                               }
-                             });
-                           }
-
-                           // If there's a tube with position > 0, prefer using that as the active tube
-                           // This resolves cases where the tube state gets incorrectly reset to 1
-                           const correctedTube = (altTube > 0 && altTube !== activeTube) ? altTube : activeTube;
-
-                           if (correctedTube !== activeTube) {
-                             console.log(`🔄 TUBE CORRECTION: Changing active tube from ${activeTube} to ${correctedTube} based on position data`);
-                           }
-
+                           
                            // CRITICAL FIX: Deep copy the state to avoid reference issues
                            const deepCopy = JSON.parse(JSON.stringify(mostRecentState));
-
-                           // Make sure activeTube and activeTubeNumber are both set correctly with the corrected value
+                           
+                           // Make sure activeTube and activeTubeNumber are both set correctly
                            const normalizedState = {
                              ...deepCopy,
-                             activeTube: correctedTube,
-                             activeTubeNumber: correctedTube,
+                             activeTube: activeTube,
+                             activeTubeNumber: activeTube,
                              userId: userId // Ensure userId is set correctly
                            };
-
+                           
                            // Important: Save this normalized state to ALL storage locations
                            // This ensures consistent state no matter which path the code takes
-                           console.log(`UNIFIED APPROACH: Saving normalized state with activeTube=${correctedTube} to all storage locations`);
-
+                           console.log(`UNIFIED APPROACH: Saving normalized state with activeTube=${activeTube} to all storage locations`);
+                           
                            // Store in all formats for maximum compatibility
                            localStorage.setItem(`zenjin_state_${userId}`, JSON.stringify(normalizedState));
                            localStorage.setItem(`triple_helix_state_${userId}`, JSON.stringify(normalizedState));
                            localStorage.setItem('zenjin_anonymous_state', JSON.stringify({ state: normalizedState }));
-
+                           
                            // Also flag that we should continue from previous state
                            localStorage.setItem('zenjin_continue_previous_state', 'true');
-
+                           
                            // Also ensure the zenjin_user_id is set
                            localStorage.setItem('zenjin_user_id', userId);
-
-                           console.log(`UNIFIED APPROACH: Successfully prepared state for continue playing with tube ${correctedTube}`);
-                           console.groupEnd();
+                           
+                           console.log(`UNIFIED APPROACH: Successfully prepared state for continue playing`);
                          } else {
                            console.warn(`No valid state found - continuing with default state`);
-                           console.groupEnd();
                          }
                        } catch (e) {
                          console.error('Error in Continue Playing preparation:', e);
-                         console.groupEnd();
                        }
                      }}
                   >

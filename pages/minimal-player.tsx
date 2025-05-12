@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import dynamic from 'next/dynamic';
 import MinimalDistinctionPlayer from '../components/MinimalDistinctionPlayer';
 import MinimalDistinctionPlayerWithUpgrade from '../components/MinimalDistinctionPlayerWithUpgrade';
 import BackgroundBubbles from '../components/BackgroundBubbles';
@@ -12,13 +11,6 @@ import { useAuth } from '../context/AuthContext';
 import { useTripleHelixPlayer } from '../lib/playerUtils';
 import { useSubscriptionStatus } from '../hooks/useSubscriptionStatus';
 import UserWelcomeButton from '../components/UserWelcomeButton';
-import useTestPane from '../hooks/useTestPane';
-
-// Dynamic import with no SSR to avoid issues with localStorage/window access
-const TubeStateTestPane = dynamic(
-  () => import('../components/TubeStateTestPane'),
-  { ssr: false }
-);
 
 // Component for playful loading messages that cycle every 2 seconds
 const LoadingMessage = ({ isAnonymous }: { isAnonymous: boolean }) => {
@@ -64,10 +56,9 @@ const LoadingMessage = ({ isAnonymous }: { isAnonymous: boolean }) => {
  */
 export default function MinimalPlayer() {
   const router = useRouter();
-  const { mode, force, resetPoints, dev, continue: shouldContinue, debug } = router.query;
+  const { mode, force, resetPoints, dev, continue: shouldContinue } = router.query;
   const { user, isAuthenticated, loading: authLoading, signOut } = useAuth();
   const { isSubscribed, tier } = useSubscriptionStatus();
-  const { isTestPaneVisible, showTestPane, hideTestPane, toggleTestPane } = useTestPane();
 
   // Simply check if auth is loading - no need for additional state
   if (authLoading) {
@@ -282,25 +273,6 @@ export default function MinimalPlayer() {
       
       {/* DevTest Pane - only shown when dev=true query param is provided */}
       {showDevTools && <DevTestPane player={player} />}
-
-      {/* Show debug button when debug=true query param is provided */}
-      {debug === 'true' && (
-        <div className="fixed bottom-4 left-4 z-50">
-          <button
-            onClick={toggleTestPane}
-            className="bg-gray-800/80 hover:bg-gray-700/80 text-white px-3 py-2 rounded-lg text-sm font-medium shadow-lg backdrop-blur-sm border border-gray-700/50"
-          >
-            {isTestPaneVisible ? 'Hide Test Pane' : 'Show Test Pane'}
-          </button>
-        </div>
-      )}
-
-      {/* Tube State Test Pane */}
-      <TubeStateTestPane
-        userId={user?.id}
-        isVisible={isTestPaneVisible}
-        onClose={hideTestPane}
-      />
     </div>
   );
 }

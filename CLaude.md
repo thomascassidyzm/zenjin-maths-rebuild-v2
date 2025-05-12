@@ -113,49 +113,6 @@ The improved implementation:
 - Maintains a simpler and more reliable authentication flow
 - Fixes the "SIGNED_IN" event handler to avoid triggering unnecessary migrations
 
-## API Payload Fix (May 5, 2025)
-
-We addressed the issue of oversized API payloads that were causing 500 errors by:
-
-1. Disabling unnecessary API calls to `/api/user-state`:
-   - Modified `persistStateToServer` function in `lib/playerUtils.ts` to return a successful Promise without making API calls
-   - Added clear logging to indicate the function is deprecated in favor of Zustand state management
-
-2. Added server-side circuit breaker:
-   - Modified `/pages/api/user-state.ts` to return 200 responses for all POST requests
-   - Added documentation indicating this endpoint is deprecated for direct API calls
-
-## Tube State Persistence Fix (May 11, 2025)
-
-We created a diagnostic solution to help track down issues with tube state persistence:
-
-1. Added a detailed state diagnostic page:
-   - Created `/pages/debug-tubes.tsx` for viewing all state across storage locations
-   - Implemented detailed inspection of tube states, positions, and stitches
-   - Added visual tools to compare state differences between storage locations
-
-2. Enhanced state logging:
-   - Added `/lib/logging/stateLogger.ts` with utilities for structured state logging
-   - Implemented comparative state analysis across different storage locations
-   - Added automatic tube state verification and inconsistency detection
-
-3. Added detailed logging to the dashboard:
-   - Enhanced the "Continue Learning" button click handler with robust logging
-   - Added localized debugging around tube state preservation
-   - Implemented pre-navigation state verification
-
-This diagnostic solution helps track down why users sometimes lose their progress when completing a session in a tube (e.g., Tube 2), but upon returning through the dashboard's "Continue Learning" button, are incorrectly sent back to Tube 1.
-
-4. Added interactive test pane for live stitch simulation:
-   - Created a floating test panel that works with any existing user state
-   - Implemented real-time stitch completion with configurable scoring
-   - Added visualization of how perfect scores (20/20) advance stitches
-   - Created interactive tube cycling to test the transition behavior
-
-Access the diagnostic page at `/debug-tubes` to see full state details and compare values across different storage locations. Click "Show Test Pane" to open the interactive test panel, or press Alt+T as a keyboard shortcut.
-
-The test pane is also available directly in the player by adding `?debug=true` to the URL (e.g., `/minimal-player?debug=true`). This allows you to test stitch completion and tube cycling with the actual user's state while playing, without requiring page reload or losing context.
-
 ## Notes for Future Development
 
 1. The system currently assumes the first 10 stitches per tube as bundled content
