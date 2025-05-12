@@ -173,9 +173,39 @@ This component:
 
 ## Migration Guide
 
-### Migrating from MinimalDistinctionPlayer
+### Hybrid Approach with ZustandContentProvider
 
-To migrate from the old MinimalDistinctionPlayer to the new ZustandDistinctionPlayer:
+For a smoother transition, we've created a hybrid approach that combines:
+1. The stability of the existing MinimalDistinctionPlayer UI
+2. The improved content loading system using Zustand
+
+This approach works by using a wrapper component called `ZustandContentProvider` that:
+1. Fetches content using the Zustand hooks
+2. Converts the content to the format expected by MinimalDistinctionPlayer
+3. Passes the content to MinimalDistinctionPlayer
+
+To use the hybrid approach:
+
+```tsx
+import ZustandContentProvider from '../components/ZustandContentProvider';
+
+// In your component
+return (
+  <ZustandContentProvider
+    stitchId="stitch-T1-001-01"
+    tubeNumber={1}
+    onComplete={handleComplete}
+    questionsPerSession={10}
+    sessionTotalPoints={0}
+  />
+);
+```
+
+This approach gives you all the benefits of the Zustand content system while maintaining the reliable UI of the existing player component.
+
+### Direct Migration to ZustandDistinctionPlayer
+
+Alternatively, you can directly use the full Zustand-based player:
 
 1. Replace imports:
    ```diff

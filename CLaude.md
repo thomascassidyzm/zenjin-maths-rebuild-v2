@@ -119,9 +119,9 @@ The improved implementation:
 
 1. The system fetches all content from the server API for all user types
 2. The content system is fully integrated with Zustand for state management
-3. Hooks provide a simplified interface for components to access content
+3. A hybrid approach (ZustandContentProvider) combines the new fetching system with the existing UI
 4. All content is cached in the Zustand store for efficient access
-5. Consider implementing a prefetching strategy for upcoming content
+5. The `/hybrid-player` page demonstrates the recommended implementation
 6. Future improvements could include offline support via service workers
 
 ## Important Instructions for Claude
