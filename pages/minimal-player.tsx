@@ -190,6 +190,13 @@ export default function MinimalPlayer() {
           message.includes('continue') || message.includes('Continue')) {
         console.log(`🔍 TUBE-DEBUG: ${message}`);
       }
+    },
+    onInitialized: (tubeCycler) => {
+      // Expose the tubeCycler adapter to window for debugging
+      if (typeof window !== 'undefined' && tubeCycler) {
+        console.log('🛠️ DEBUG: Exposing tubeCycler to global window scope');
+        (window as any).__stateMachineTubeCyclerAdapter = tubeCycler;
+      }
     }
   });
 
