@@ -102,6 +102,64 @@ export default function MinimalPlayer() {
 
   // Simplified logging - just a single log statement
   console.log(`Auth state: User is ${isAuthenticated ? 'authenticated' : 'anonymous'}, mode: ${playerMode}, ID: ${user?.id || 'anonymous'}`);
+
+  // Function to manually switch tubes (for debugging)
+  const switchTube = (tubeNumber: number) => {
+    // Get the user ID
+    const uid = localStorage.getItem('zenjin_user_id') ||
+                localStorage.getItem('zenjin_anonymous_id') ||
+                user?.id || 'anonymous';
+
+    try {
+      // Update main state
+      const stateKey = `zenjin_state_${uid}`;
+      const stateJson = localStorage.getItem(stateKey);
+
+      if (stateJson) {
+        const state = JSON.parse(stateJson);
+        state.activeTube = tubeNumber;
+        state.activeTubeNumber = tubeNumber;
+        state.lastUpdated = new Date().toISOString();
+        localStorage.setItem(stateKey, JSON.stringify(state));
+
+        // Also update anonymous state if it exists
+        const anonStateJson = localStorage.getItem('zenjin_anonymous_state');
+        if (anonStateJson) {
+          try {
+            const anonState = JSON.parse(anonStateJson);
+            if (anonState.state) {
+              anonState.state.activeTube = tubeNumber;
+              anonState.state.activeTubeNumber = tubeNumber;
+              localStorage.setItem('zenjin_anonymous_state', JSON.stringify(anonState));
+            }
+          } catch (e) {
+            console.error('Error updating anonymous state:', e);
+          }
+        }
+
+        // Also update triple helix state
+        const tripleHelixJson = localStorage.getItem(`triple_helix_state_${uid}`);
+        if (tripleHelixJson) {
+          try {
+            const tripleHelix = JSON.parse(tripleHelixJson);
+            tripleHelix.activeTube = tubeNumber;
+            tripleHelix.activeTubeNumber = tubeNumber;
+            localStorage.setItem(`triple_helix_state_${uid}`, JSON.stringify(tripleHelix));
+          } catch (e) {
+            console.error('Error updating triple helix state:', e);
+          }
+        }
+
+        // Reload to see changes
+        window.location.reload();
+      } else {
+        alert('No state found to update');
+      }
+    } catch (e) {
+      console.error('Error switching tube:', e);
+      alert(`Error: ${e.message}`);
+    }
+  };
   
   // If the user is anonymous and we have the create flag, ensure we create a proper account
   if (typeof window !== 'undefined' && !isAuthenticated) {
@@ -239,7 +297,42 @@ export default function MinimalPlayer() {
       
       {/* Background bubbles at the page level for continuous animation */}
       <BackgroundBubbles />
-      
+
+      {/* Simple debug buttons - remove after testing */}
+      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 bg-black/50 p-3 rounded-lg backdrop-blur-sm">
+        <div className="text-white text-xs font-bold mb-1">Debug Controls:</div>
+        <div className="text-white text-xs mb-2">Current Tube: <span className="font-bold">{player.currentStitch?.tubeNumber || '?'}</span></div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => switchTube(1)}
+            className="text-xs bg-blue-600 text-white px-2 py-1 rounded"
+          >
+            Tube 1
+          </button>
+          <button
+            onClick={() => switchTube(2)}
+            className="text-xs bg-green-600 text-white px-2 py-1 rounded"
+          >
+            Tube 2
+          </button>
+          <button
+            onClick={() => switchTube(3)}
+            className="text-xs bg-purple-600 text-white px-2 py-1 rounded"
+          >
+            Tube 3
+          </button>
+        </div>
+        <button
+          onClick={() => {
+            localStorage.setItem('zenjin_continue_previous_state', 'true');
+            window.location.href = '/dashboard';
+          }}
+          className="text-xs bg-amber-600 text-white px-2 py-1 rounded"
+        >
+          End + Go Dashboard
+        </button>
+      </div>
+
       {/* Track current stitch ID in a global variable to help the StitchCelebration component */}
       {player.currentStitch && (
         <script dangerouslySetInnerHTML={{
