@@ -157,7 +157,16 @@ Access the diagnostic page at `/debug-tubes` to see full state details and compa
 
 The test pane is also available directly in the player by adding `?debug=true` to the URL (e.g., `/minimal-player?debug=true`). This allows you to test stitch completion and tube cycling with the actual user's state while playing, without requiring page reload or losing context.
 
-In production environments, a simplified debugger is automatically used to ensure reliability and prevent React hydration errors. This simplified version shows key information about tube states across different storage locations without the interactive features.
+In production environments, a simplified debugger is automatically used to ensure reliability and prevent React hydration errors. This simplified version provides:
+
+1. Real-time monitoring of tube states across all storage locations
+2. Live event logging of state changes as they happen
+3. Color-coded tube indicators (blue for Tube 1, green for Tube 2, purple for Tube 3)
+4. Detailed timestamps of when changes occur
+5. Automatic detection and warning of inconsistent tube states
+6. Live updates every 2 seconds with manual refresh option
+
+The debugger stays open during active play, allowing you to observe state changes in real-time as you complete stitches with perfect scores and cycle through tubes. This makes it perfect for diagnosing tube state persistence issues during actual usage.
 
 ## Notes for Future Development
 
