@@ -440,16 +440,29 @@ export default function Dashboard() {
                            const deepCopy = JSON.parse(JSON.stringify(mostRecentState));
                            
                            // Make sure activeTube and activeTubeNumber are both set correctly
+                           // CRITICAL FIX: Preserve all tube and stitch positioning information
                            const normalizedState = {
                              ...deepCopy,
                              activeTube: activeTube,
                              activeTubeNumber: activeTube,
-                             userId: userId // Ensure userId is set correctly
+                             userId: userId, // Ensure userId is set correctly
+                             // Preserve the tubes with their full configuration
+                             tubes: deepCopy.tubes || {}
                            };
                            
                            // Important: Save this normalized state to ALL storage locations
                            // This ensures consistent state no matter which path the code takes
                            console.log(`UNIFIED APPROACH: Saving normalized state with activeTube=${activeTube} to all storage locations`);
+
+                           // DEBUG: Log the structure to verify we're preserving stitch positions
+                           console.log(`DEBUG - Continue state structure:
+                              Tube 1 has ${deepCopy.tubes && deepCopy.tubes[1] ? deepCopy.tubes[1].stitches?.length || 0 : 0} stitches
+                              Tube 2 has ${deepCopy.tubes && deepCopy.tubes[2] ? deepCopy.tubes[2].stitches?.length || 0 : 0} stitches
+                              Tube 3 has ${deepCopy.tubes && deepCopy.tubes[3] ? deepCopy.tubes[3].stitches?.length || 0 : 0} stitches
+                              First stitch position preservation looks ${deepCopy.tubes && deepCopy.tubes[1] &&
+                                 deepCopy.tubes[1].stitches && deepCopy.tubes[1].stitches[0] &&
+                                 deepCopy.tubes[1].stitches[0].position !== undefined ? 'good ✓' : 'bad ✗'}
+                           `);
                            
                            // Store in all formats for maximum compatibility
                            localStorage.setItem(`zenjin_state_${userId}`, JSON.stringify(normalizedState));
