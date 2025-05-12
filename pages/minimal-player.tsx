@@ -322,12 +322,68 @@ export default function MinimalPlayer() {
             Tube 3
           </button>
         </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              // Try to complete with perfect score
+              const adapter = (window as any).__stateMachineTubeCyclerAdapter;
+
+              if (adapter && player.currentStitch) {
+                try {
+                  adapter.handleStitchCompletion(
+                    player.currentStitch.threadId,
+                    player.currentStitch.id,
+                    20, // Perfect score
+                    20  // Total questions
+                  );
+                  alert('Completed stitch with perfect score (20/20)');
+                  window.location.reload();
+                } catch (e) {
+                  console.error('Error completing stitch:', e);
+                  alert(`Error: ${e.message}`);
+                }
+              } else {
+                alert('No adapter or stitch available');
+              }
+            }}
+            className="text-xs bg-green-600 text-white px-2 py-1 rounded"
+          >
+            Complete 20/20
+          </button>
+          <button
+            onClick={() => {
+              // Try to complete with partial score
+              const adapter = (window as any).__stateMachineTubeCyclerAdapter;
+
+              if (adapter && player.currentStitch) {
+                try {
+                  adapter.handleStitchCompletion(
+                    player.currentStitch.threadId,
+                    player.currentStitch.id,
+                    10, // Partial score
+                    20  // Total questions
+                  );
+                  alert('Completed stitch with partial score (10/20)');
+                  window.location.reload();
+                } catch (e) {
+                  console.error('Error completing stitch:', e);
+                  alert(`Error: ${e.message}`);
+                }
+              } else {
+                alert('No adapter or stitch available');
+              }
+            }}
+            className="text-xs bg-amber-600 text-white px-2 py-1 rounded"
+          >
+            Complete 10/20
+          </button>
+        </div>
         <button
           onClick={() => {
             localStorage.setItem('zenjin_continue_previous_state', 'true');
             window.location.href = '/dashboard';
           }}
-          className="text-xs bg-amber-600 text-white px-2 py-1 rounded"
+          className="text-xs bg-purple-600 text-white px-2 py-1 rounded"
         >
           End + Go Dashboard
         </button>
