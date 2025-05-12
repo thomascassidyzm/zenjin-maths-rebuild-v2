@@ -67,6 +67,8 @@ function MyApp({ Component, pageProps }: AppProps) {
           <Script src="/register-sw.js" strategy="afterInteractive" />
           {/* Debug tool loader - works with URL param ?debug=true or keyboard shortcut Ctrl+Shift+D */}
           <Script src="/debug-loader.js" strategy="afterInteractive" />
+          {/* Enhanced state debugger - works with Alt+D or URL param ?debug=true */}
+          <Script src="/load-enhanced-debugger.js" strategy="afterInteractive" />
         </>
       )}
 
