@@ -1,17 +1,25 @@
+/**
+ * ZustandDistinctionPlayer
+ * 
+ * A new implementation of MinimalDistinctionPlayer that uses Zustand for state management
+ * and the new content fetching hooks to eliminate dependency on bundled content.
+ */
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/router';
-import { Thread, Question } from '../lib/types/distinction-learning';
+import { Question } from '../lib/types/distinction-learning';
 import { calculateBonuses, calculateTotalPoints, calculateBasePoints } from '../lib/bonusCalculator';
-import { useStitchContent } from '../lib/hooks/useStitchContent';
 import { useZenjinStore } from '../lib/store/zenjinStore';
+import { useStitchContent } from '../lib/hooks/useStitchContent';
 
-interface MinimalDistinctionPlayerProps {
-  thread: Thread;
+interface ZustandDistinctionPlayerProps {
+  stitchId: string;
+  tubeNumber?: 1 | 2 | 3;
   onComplete: (results: any) => void;
-  onEndSession?: (results: any) => void; // Optional callback for when user manually ends session
+  onEndSession?: (results: any) => void;
   questionsPerSession?: number;
-  sessionTotalPoints?: number; // Optional total points accumulated across the session
-  userId?: string; // User ID for API authentication
+  sessionTotalPoints?: number;
+  userId?: string;
 }
 
 // Helper function to shuffle an array
@@ -24,69 +32,25 @@ const shuffleArray = (array: any[]) => {
   return newArray;
 };
 
-const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
-  thread: threadProp,
+const ZustandDistinctionPlayer: React.FC<ZustandDistinctionPlayerProps> = ({
+  stitchId,
   tubeNumber,
-  tubeData,
   onComplete,
   onEndSession,
   questionsPerSession = 10,
   sessionTotalPoints = 0,
   userId,
 }) => {
-  // Derive thread from tubeData if thread is not provided
-  const [derivedThread, setDerivedThread] = useState<Thread | null>(null);
-  const thread = threadProp || derivedThread;
-
-  // Create thread from tubeData if no thread prop is provided
-  useEffect(() => {
-    if (!threadProp && tubeData && tubeNumber) {
-      console.log(`Deriving thread from tubeData for tube ${tubeNumber}`);
-
-      const activeTube = tubeData[tubeNumber];
-      if (!activeTube) {
-        console.error(`No tube data found for tube ${tubeNumber}`);
-        return;
-      }
-
-      // Log the stitch IDs we have in the tube data
-      if (activeTube.stitches && activeTube.stitches.length > 0) {
-        console.log(`Tube ${tubeNumber} has ${activeTube.stitches.length} stitches:`,
-          activeTube.stitches.map(s => s.id).join(', '));
-
-        // Check if these stitch IDs are in the bundled content
-        const foundInBundled = activeTube.stitches.filter(s => BUNDLED_FULL_CONTENT[s.id]);
-        console.log(`Found ${foundInBundled.length} of ${activeTube.stitches.length} stitches in bundled content`);
-      } else {
-        console.error(`Tube ${tubeNumber} has no stitches`);
-      }
-
-      // Create thread from tube data
-      const thread: Thread = {
-        id: activeTube.threadId || `thread-T${tubeNumber}-001`,
-        name: `Tube ${tubeNumber}`,
-        description: `Learning content for Tube ${tubeNumber}`,
-        stitches: (activeTube.stitches || []).map(stitch => ({
-          id: stitch.id,
-          name: stitch.id.split('-').pop() || 'Stitch',
-          description: `Stitch ${stitch.id}`,
-          questions: [] // Questions will be loaded from bundled content
-        }))
-      };
-
-      setDerivedThread(thread);
-    }
-  }, [threadProp, tubeData, tubeNumber]);
   // Initialize Next.js router for client-side navigation
   const router = useRouter();
 
+  // Use the Zustand store hooks
+  const { stitch, loading: stitchLoading, error: stitchError } = useStitchContent(stitchId);
+  const incrementPoints = useZenjinStore(state => state.incrementPoints);
+  const recordStitchInteraction = useZenjinStore(state => state.recordStitchInteraction);
+  
   // Create explicit fallbacks for all session context functions we might need
   const dummySessionState = { questionResults: [], points: 0 };
-  const startSession = (params: any) => console.log('Session context not available - startSession', params);
-  const recordQuestionResult = (result: any) => console.log('Session context not available - recordQuestionResult', result);
-  const addPoints = (points: number) => console.log('Session context not available - addPoints', points);
-  const contextEndSession = async () => ({ success: false, error: 'Session context not available' });
-  const contextCompleteSession = async () => ({ success: false, error: 'Session context not available' });
   
   // State for tracking questions and session
   const [sessionQuestions, setSessionQuestions] = useState<Question[]>([]);
@@ -143,68 +107,17 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     };
   }, []);
 
-  // Keep track of which stitches we've already initialized for each thread
-  const initializedStitchRef = useRef({});
-  const previousThreadRef = useRef(null);
-  
   // Initialize questions for the session
   useEffect(() => {
-    console.log('🔍 PLAYER DEBUG: Checking thread data', {
-      threadId: thread?.id,
-      hasThread: !!thread,
-      hasStitches: !!(thread?.stitches?.length > 0),
-      stitchCount: thread?.stitches?.length || 0
-    });
-
-    // Guard clause - don't proceed if we don't have proper thread data
-    if (!thread) {
-      console.warn('No thread data available for MinimalDistinctionPlayer');
+    // Don't proceed if we don't have the stitch content yet
+    if (!stitch || stitchLoading) {
       return;
     }
 
-    // Guard clause for stitches array
-    if (!thread.stitches || thread.stitches.length === 0) {
-      console.warn(`Thread ${thread.id} has no stitches`);
-      return;
-    }
+    console.log(`Initializing ZustandDistinctionPlayer with stitch ${stitch.id}`);
 
-    // Log the first few stitch IDs for debugging
-    if (thread.stitches.length > 0) {
-      const stitchIds = thread.stitches.slice(0, 5).map(s => s.id);
-      console.log(`🧵 Thread ${thread.id} has stitches:`, stitchIds.join(', '));
-    }
-
-    // Now we know we have thread and stitches
-    const stitch = thread.stitches[0]; // Use first stitch for now
-    const threadId = thread.id;
-
-    // Check if we're switching to a different thread (tube)
-    const isNewThread = previousThreadRef.current !== threadId;
-
-    // Track if this specific thread+stitch combination has been initialized
-    const threadStitchKey = `${threadId}:${stitch.id}`;
-    const alreadyInitialized = initializedStitchRef.current[threadStitchKey];
-
-    // Update the previous thread ref for next time
-    previousThreadRef.current = threadId;
-
-    // Allow re-initialization when switching threads/tubes, or for first initialization
-    if (alreadyInitialized && !isNewThread) {
-      console.log(`Skipping re-initialization for stitch ${stitch.id} in thread ${threadId} - already initialized and not a thread change`);
-      return;
-    }
-
-    // Mark this thread-stitch combination as initialized
-    initializedStitchRef.current[threadStitchKey] = true;
-
-    console.log(`Initializing with thread ${threadId}, stitch ${stitch.id}${isNewThread ? ' (NEW THREAD)' : ' (SAME THREAD)'}`);
-
-    // Skip initializing session in context as it's not available
-
-    // Reset state for the new thread/stitch - but keep points and session results accumulated from previous stitches
+    // Reset state for the new stitch - but keep points and session results accumulated from previous stitches
     setCurrentQuestionIndex(0);
-    // Don't reset sessionResults to [] here to maintain questions history across stitches
-    // Don't reset points to 0 here to maintain accumulated points across stitches
     setIsSessionComplete(false);
 
     // Stop any running animations/timers
@@ -216,424 +129,21 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       timerTimeoutRef.current = null;
     }
 
-    // Always ensure the stitch has a questions array
-    if (!stitch.questions) {
-      stitch.questions = [];
-    }
-      
-    // Enhanced debug logging for stitch content
-    console.log(`Initializing stitch ${stitch.id} in thread ${threadId}`, {
-      hasInitialQuestions: stitch.questions && stitch.questions.length > 0,
-      initialQuestionCount: stitch.questions ? stitch.questions.length : 0
-    });
-
-    // Log all bundled content keys to debug missing content issues
-    console.log(`Available bundled content stitches: ${Object.keys(BUNDLED_FULL_CONTENT).length}`);
-    if (Object.keys(BUNDLED_FULL_CONTENT).length > 0) {
-      console.log(`Bundled content keys (first 5): ${Object.keys(BUNDLED_FULL_CONTENT).slice(0, 5).join(', ')}`);
-    }
-
-    // Detailed analysis of stitch ID format to help with matching
-    const stitchFormatMatch = stitch.id.match(/stitch-T(\d+)-(\d+)-(\d+)/);
-    if (stitchFormatMatch) {
-      const [_, tubeNum, threadNum, posNum] = stitchFormatMatch;
-      console.log(`DEBUG: Stitch ID format analysis - Tube: ${tubeNum}, Thread: ${threadNum}, Position: ${posNum}`);
-
-      // Check if any stitches with similar patterns exist
-      const similarPatternKeys = Object.keys(BUNDLED_FULL_CONTENT).filter(key =>
-        key.startsWith(`stitch-T${tubeNum}-`) || key.includes(`-${threadNum}-`)
-      ).slice(0, 5);
-
-      if (similarPatternKeys.length > 0) {
-        console.log(`DEBUG: Similar pattern stitches found: ${similarPatternKeys.join(', ')}`);
-      } else {
-        console.log(`DEBUG: No similar pattern stitches found for T${tubeNum}-${threadNum}`);
-      }
-    }
-
-    // Simple debug logging to help understand issues
-    console.log(`DEBUG: Looking for stitch ID ${stitch.id} in bundled content`);
-
-    // Log some stats about bundled content
-    const bundledContentCount = Object.keys(BUNDLED_FULL_CONTENT).length;
-    console.log(`DEBUG: BUNDLED_FULL_CONTENT has ${bundledContentCount} entries`);
-
-    // Check if the stitch is in bundled content - try both direct access and normalized format
-    let hasStitchInBundledContent = BUNDLED_FULL_CONTENT.hasOwnProperty(stitch.id);
-    let bundledStitch = hasStitchInBundledContent ? BUNDLED_FULL_CONTENT[stitch.id] : null;
-
-    // If not found, try case-insensitive matching (important for cross-platform compatibility)
-    if (!hasStitchInBundledContent) {
-      const matchingKey = Object.keys(BUNDLED_FULL_CONTENT).find(
-        key => key.toLowerCase() === stitch.id.toLowerCase()
-      );
-
-      if (matchingKey) {
-        console.log(`DEBUG: Found case-insensitive match: ${matchingKey} for ${stitch.id}`);
-        hasStitchInBundledContent = true;
-        bundledStitch = BUNDLED_FULL_CONTENT[matchingKey];
-      }
-    }
-
-    console.log(`DEBUG: Stitch ${stitch.id} ${hasStitchInBundledContent ? 'IS' : 'IS NOT'} in BUNDLED_FULL_CONTENT`);
-
-    if (hasStitchInBundledContent && bundledStitch) {
-      // Log details about the stitch in bundled content
-      console.log(`DEBUG: Stitch details:`, {
-        id: bundledStitch.id,
-        threadId: bundledStitch.threadId,
-        hasQuestions: !!bundledStitch.questions,
-        questionCount: bundledStitch.questions?.length || 0
-      });
-
-      // Additional check if questions exist but are empty
-      if (bundledStitch.questions && bundledStitch.questions.length === 0) {
-        console.log(`WARNING: Stitch ${stitch.id} has an empty questions array in bundled content`);
-      }
-    }
-
-    // First check if we have this stitch in bundled content - using the bundledStitch variable
-    // which might contain a case-insensitive match
-    if (bundledStitch && bundledStitch.questions && bundledStitch.questions.length > 0) {
-      console.log(`Using ${bundledStitch.questions.length} questions from bundled content for stitch ${stitch.id}`);
-      // Use the bundled content's questions directly
-      stitch.questions = [...bundledStitch.questions];
-    }
-    // Fallback to standard lookup if the case-insensitive match failed
-    else if (BUNDLED_FULL_CONTENT[stitch.id] && BUNDLED_FULL_CONTENT[stitch.id].questions && BUNDLED_FULL_CONTENT[stitch.id].questions.length > 0) {
-      console.log(`Using ${BUNDLED_FULL_CONTENT[stitch.id].questions.length} questions from bundled content for stitch ${stitch.id}`);
-      // Use the bundled content's questions directly
-      stitch.questions = [...BUNDLED_FULL_CONTENT[stitch.id].questions];
-    }
-    // If failed with direct access, try to dynamically generate a stitch ID that might match the format
-    else {
-      // Try to normalize the stitch ID and see if it exists in that format
-      const tubeMatch = stitch.id.match(/stitch-T(\d+)-(\d+)-(\d+)/i);
-      let dynamicStitchId = null;
-
-      if (tubeMatch) {
-        // Reconstruct a potentially matching stitch ID
-        const [_, tubeNum, threadNum, posNum] = tubeMatch;
-        dynamicStitchId = `stitch-T${tubeNum}-${threadNum}-${posNum.padStart(2, '0')}`;
-
-        console.log(`DEBUG: Trying normalized stitch ID: ${dynamicStitchId}`);
-
-        // Check if this normalized ID exists in bundled content
-        if (dynamicStitchId !== stitch.id &&
-            BUNDLED_FULL_CONTENT[dynamicStitchId] &&
-            BUNDLED_FULL_CONTENT[dynamicStitchId].questions &&
-            BUNDLED_FULL_CONTENT[dynamicStitchId].questions.length > 0) {
-          console.log(`SUCCESS: Found matching stitch using normalized ID ${dynamicStitchId}`);
-          stitch.questions = [...BUNDLED_FULL_CONTENT[dynamicStitchId].questions];
-        } else {
-          // If still not found, fall back to sample questions
-          console.log(`Normalized stitch ID ${dynamicStitchId} not found in bundled content, falling back to samples`);
-          useFallbackQuestions();
-        }
-      } else {
-        // Fallback to checking passed-in questions when stitch is not in bundled content
-        console.log(`Stitch ${stitch.id} not found in bundled content, checking passed-in questions`);
-        useFallbackQuestions();
-      }
-    }
-
-    // Helper function to use fallback questions when needed
-    function useFallbackQuestions() {
-      // Check if the questions array has valid questions
-      // NOTE: This is a safety measure - the questions should already be properly formatted
-      const validQuestions = stitch.questions.filter(q => (
-        q.text && q.correctAnswer && q.distractors &&
-        q.distractors.L1 && q.distractors.L2 && q.distractors.L3
-      ));
-
-      if (validQuestions.length === 0) {
-        console.error(`No valid questions found for stitch ${stitch.id} in thread ${thread.id}`);
-
-        // For anonymous users, always provide sample math questions
-        // This ensures consistent experience for all user types
-        const isAnonymousUser = !userId || userId.startsWith('anon-');
-
-        if (isAnonymousUser) {
-          // Use basic math questions for anonymous users to ensure they have a good experience
-          let sampleQuestions = [];
-
-          // Try to determine tube type from stitch ID to provide appropriate questions
-          const tubeMatch = stitch.id.match(/stitch-T(\d+)-/i);
-          const tubeNumber = tubeMatch ? parseInt(tubeMatch[1]) : 1;
-
-          if (tubeNumber === 1) {
-            // Tube 1: Number Facts - counting, comparison, sequences
-            sampleQuestions = [
-              {
-                id: `${stitch.id}-sample-1`,
-                text: 'What number comes after 5?',
-                correctAnswer: '6',
-                distractors: { L1: '7', L2: '4', L3: '5' }
-              },
-              {
-                id: `${stitch.id}-sample-2`,
-                text: 'Which is greater: 8 or 4?',
-                correctAnswer: '8',
-                distractors: { L1: '4', L2: 'They are equal', L3: 'Cannot compare' }
-              },
-              {
-                id: `${stitch.id}-sample-3`,
-                text: 'What comes next: 2, 4, 6, ?',
-                correctAnswer: '8',
-                distractors: { L1: '7', L2: '10', L3: '9' }
-              },
-              {
-                id: `${stitch.id}-sample-4`,
-                text: 'Count to 10. What number comes after 7?',
-                correctAnswer: '8',
-                distractors: { L1: '6', L2: '9', L3: '7' }
-              },
-              {
-                id: `${stitch.id}-sample-5`,
-                text: 'What is the smallest number: 3, 7, or 2?',
-                correctAnswer: '2',
-                distractors: { L1: '3', L2: '7', L3: '10' }
-              }
-            ];
-          } else if (tubeNumber === 2) {
-            // Tube 2: Basic Operations - addition, subtraction
-            sampleQuestions = [
-              {
-                id: `${stitch.id}-sample-1`,
-                text: '3 + 5',
-                correctAnswer: '8',
-                distractors: { L1: '7', L2: '9', L3: '6' }
-              },
-              {
-                id: `${stitch.id}-sample-2`,
-                text: '7 - 2',
-                correctAnswer: '5',
-                distractors: { L1: '4', L2: '6', L3: '3' }
-              },
-              {
-                id: `${stitch.id}-sample-3`,
-                text: '4 + 6',
-                correctAnswer: '10',
-                distractors: { L1: '8', L2: '12', L3: '9' }
-              },
-              {
-                id: `${stitch.id}-sample-4`,
-                text: '10 - 5',
-                correctAnswer: '5',
-                distractors: { L1: '4', L2: '6', L3: '15' }
-              },
-              {
-                id: `${stitch.id}-sample-5`,
-                text: '9 + 7',
-                correctAnswer: '16',
-                distractors: { L1: '15', L2: '17', L3: '14' }
-              }
-            ];
-          } else if (tubeNumber === 3) {
-            // Tube 3: Problem Solving - word problems
-            sampleQuestions = [
-              {
-                id: `${stitch.id}-sample-1`,
-                text: 'Sarah has 5 apples. Tom gives her 3 more. How many apples does Sarah have now?',
-                correctAnswer: '8',
-                distractors: { L1: '7', L2: '2', L3: '15' }
-              },
-              {
-                id: `${stitch.id}-sample-2`,
-                text: 'Jack has 10 stickers. He gives 4 to his friend. How many stickers does Jack have left?',
-                correctAnswer: '6',
-                distractors: { L1: '14', L2: '4', L3: '5' }
-              },
-              {
-                id: `${stitch.id}-sample-3`,
-                text: 'There are 8 birds on a tree. 3 more birds join them. How many birds are there now?',
-                correctAnswer: '11',
-                distractors: { L1: '10', L2: '12', L3: '5' }
-              },
-              {
-                id: `${stitch.id}-sample-4`,
-                text: 'Emma has 9 sweets. She eats 4 sweets. How many sweets does she have left?',
-                correctAnswer: '5',
-                distractors: { L1: '13', L2: '4', L3: '6' }
-              },
-              {
-                id: `${stitch.id}-sample-5`,
-                text: 'There are 7 children on the bus. At the stop, 3 more children get on. How many children are on the bus now?',
-                correctAnswer: '10',
-                distractors: { L1: '4', L2: '9', L3: '11' }
-              }
-            ];
-          } else {
-            // Default mixed questions
-            sampleQuestions = [
-              {
-                id: `${stitch.id}-sample-1`,
-                text: '3 + 5',
-                correctAnswer: '8',
-                distractors: { L1: '7', L2: '9', L3: '6' }
-              },
-              {
-                id: `${stitch.id}-sample-2`,
-                text: '7 - 2',
-                correctAnswer: '5',
-                distractors: { L1: '4', L2: '6', L3: '3' }
-              },
-              {
-                id: `${stitch.id}-sample-3`,
-                text: '4 × 3',
-                correctAnswer: '12',
-                distractors: { L1: '6', L2: '10', L3: '9' }
-              },
-              {
-                id: `${stitch.id}-sample-4`,
-                text: '10 ÷ 2',
-                correctAnswer: '5',
-                distractors: { L1: '4', L2: '6', L3: '2' }
-              },
-              {
-                id: `${stitch.id}-sample-5`,
-                text: '9 + 7',
-                correctAnswer: '16',
-                distractors: { L1: '15', L2: '17', L3: '6' }
-              }
-            ];
-          }
-
-          // Set the sample questions on the stitch
-          stitch.questions = sampleQuestions;
-          console.log(`Using ${sampleQuestions.length} tube-specific sample questions for user (stitch ${stitch.id})`);
-        } else {
-          // For authenticated users, show the error message
-          const errorQuestions = [
-            {
-              id: `${stitch.id}-error-1`,
-              text: 'Content missing. Please contact support.',
-              correctAnswer: 'Contact support',
-              distractors: {
-                L1: 'Try again later',
-                L2: 'Refresh page',
-                L3: 'Check settings'
-              }
-            }
-          ];
-
-          // Set the error questions on the stitch
-          stitch.questions = errorQuestions;
-          console.log(`Using error placeholder question for stitch ${stitch.id}`);
-        }
-      } else {
-        console.log(`Using ${validQuestions.length} valid existing questions from database for stitch ${stitch.id}`);
-        stitch.questions = validQuestions;
-      }
+    // Make sure the stitch has questions
+    if (!stitch.questions || stitch.questions.length === 0) {
+      console.error(`Stitch ${stitch.id} has no questions`);
+      return;
     }
 
     // Clone the questions array to avoid mutation issues
-    let allQuestions = [...stitch.questions];
-
-    // Double-check we have questions
-    if (allQuestions.length === 0) {
-      console.warn("Still no questions available after attempted initialization");
-
-      // Generate absolute fallback questions as a last resort
-      // This ensures we ALWAYS have some questions to show
-      // Generate questions based on tube number for a consistent user experience
-      const isAnonymousUser = !userId || userId.startsWith('anon-');
-      const tubeMatch = stitch.id.match(/stitch-T(\d+)-/i);
-      const tubeNumber = tubeMatch ? parseInt(tubeMatch[1]) : 1;
-
-      // Last resort emergency questions based on tube type
-      if (isAnonymousUser) {
-        console.log(`EMERGENCY FALLBACK: Generating last-resort questions for anonymous user`);
-
-        // Generate emergency questions based on tube
-        let emergencyQuestions = [];
-
-        if (tubeNumber === 1) {
-          // Tube 1: Number Facts - counting, comparison, sequences
-          emergencyQuestions = [
-            {
-              id: `${stitch.id}-emergency-1`,
-              text: 'What number comes after 3?',
-              correctAnswer: '4',
-              distractors: { L1: '5', L2: '2', L3: '3' }
-            },
-            {
-              id: `${stitch.id}-emergency-2`,
-              text: 'Which is the largest: 2, 5, or 3?',
-              correctAnswer: '5',
-              distractors: { L1: '2', L2: '3', L3: '0' }
-            }
-          ];
-        } else if (tubeNumber === 2) {
-          // Tube 2: Basic Operations
-          emergencyQuestions = [
-            {
-              id: `${stitch.id}-emergency-1`,
-              text: '2 + 2',
-              correctAnswer: '4',
-              distractors: { L1: '3', L2: '5', L3: '2' }
-            },
-            {
-              id: `${stitch.id}-emergency-2`,
-              text: '5 - 2',
-              correctAnswer: '3',
-              distractors: { L1: '2', L2: '4', L3: '7' }
-            }
-          ];
-        } else {
-          // Tube 3 or default
-          emergencyQuestions = [
-            {
-              id: `${stitch.id}-emergency-1`,
-              text: 'I have 3 apples and get 2 more. How many do I have?',
-              correctAnswer: '5',
-              distractors: { L1: '4', L2: '6', L3: '1' }
-            },
-            {
-              id: `${stitch.id}-emergency-2`,
-              text: 'There are 4 birds on a tree. 1 flies away. How many are left?',
-              correctAnswer: '3',
-              distractors: { L1: '2', L2: '4', L3: '5' }
-            }
-          ];
-        }
-
-        // Set emergency questions and continue
-        allQuestions = emergencyQuestions;
-        stitch.questions = emergencyQuestions;
-        console.log(`Using ${emergencyQuestions.length} emergency questions for anonymous user`);
-      } else {
-        // For authenticated users, show a simple error without stopping the session
-        const errorQuestion = {
-          id: `${stitch.id}-critical-error`,
-          text: 'Content unavailable. Please try again.',
-          correctAnswer: 'Continue',
-          distractors: { L1: 'Refresh', L2: 'Try again', L3: 'Help' }
-        };
-
-        allQuestions = [errorQuestion];
-        stitch.questions = [errorQuestion];
-        console.log(`Using error question for authenticated user as last resort`);
-      }
-
-      // Additional debug info to identify the issue
-      console.error(`CRITICAL ERROR: No questions initially found for stitch ${stitch.id}`);
-      console.error(`- Stitch exists in BUNDLED_FULL_CONTENT: ${BUNDLED_FULL_CONTENT.hasOwnProperty(stitch.id)}`);
-      if (BUNDLED_FULL_CONTENT.hasOwnProperty(stitch.id)) {
-        console.error(`- Bundled stitch has questions: ${!!(BUNDLED_FULL_CONTENT[stitch.id].questions)}`);
-        console.error(`- Bundled stitch question count: ${BUNDLED_FULL_CONTENT[stitch.id].questions?.length || 0}`);
-      }
-
-      // Instead of exiting early with no content, we continue with our emergency questions
-      // This ensures users always see something instead of the "no questions" error
-      console.log(`Continuing with fallback questions after critical error`);
-    }
+    const allQuestions = [...stitch.questions];
+    console.log(`Stitch ${stitch.id} has ${allQuestions.length} questions`);
 
     // Shuffle all questions using URN randomness
-    allQuestions = shuffleArray(allQuestions);
+    const shuffledQuestions = shuffleArray(allQuestions);
 
     // Take only the number we need for this session
-    const sessionQs = allQuestions.slice(0, Math.min(questionsPerSession, allQuestions.length));
+    const sessionQs = shuffledQuestions.slice(0, Math.min(questionsPerSession, shuffledQuestions.length));
     console.log(`Using ${sessionQs.length} questions for session`);
     setSessionQuestions(sessionQs);
 
@@ -644,7 +154,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     } else {
       console.error("No questions available for this session!");
     }
-  }, [thread, questionsPerSession, userId, sessionTotalPoints]);
+  }, [stitch, stitchLoading, questionsPerSession, timerAnimation]);
 
   // Track if timer initialization has been done for the current question
   const timerInitializedRef = useRef(false);
@@ -704,7 +214,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       setIsCorrect(null);
       
       // Create options array with correct answer and distractor
-      const options = [question.correctAnswer, question.distractors.L1];
+      const options = [question.correctAnswer, question.distractors?.L1 || question.distractors?.[1] || "Error"];
       
       // Shuffle options
       setOptions(shuffleArray(options));
@@ -849,13 +359,16 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       }, 500);
     }
     
-    // Update points in real-time (but no bonuses)
-    // First time correct gets 3 points, replay gets 1 point
+    // Update points in real-time using Zustand store
     if (correct) {
       const pointsToAdd = !isReplayQuestion ? 3 : 1;
       setPoints(prev => prev + pointsToAdd);
-      
-      // Skip updating points in context as it's not available
+      incrementPoints(pointsToAdd);
+    }
+    
+    // Update stitch interaction in Zustand store
+    if (stitchId && tubeNumber) {
+      recordStitchInteraction(stitchId, correct, !isReplayQuestion && correct);
     }
     
     // Create result object
@@ -868,8 +381,6 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     
     // Update session results locally
     setSessionResults(prev => [...prev, result]);
-    
-    // Skip recording in session context as it's not available
     
     // Keep the selection state visible, but not too long
     // After a delay, either move to next question or replay current
@@ -893,6 +404,10 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     loadQuestion, 
     timerAnimation, 
     isTimingOut,
+    incrementPoints,
+    recordStitchInteraction,
+    stitchId,
+    tubeNumber
   ]);
 
   // Move to next question or complete session
@@ -917,7 +432,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
 
   // Complete the session and report results
   const completeSession = useCallback(() => {
-    console.log('🏁 Completing session in MinimalDistinctionPlayer');
+    console.log('🏁 Completing session in ZustandDistinctionPlayer');
     
     // Clean up any outstanding timers or animations
     if (timerAnimation) {
@@ -943,9 +458,6 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     
     console.log(`FINAL STATS: Total questions=${totalQuestions}, Correct answers=${correctAnswers}, First time correct=${firstTimeCorrect}`);
     
-    // We count actual questions answered and don't force to match the stitch length
-    // Important: A session can end mid-stitch, so use the real question count
-    
     // Calculate average time for correctly answered questions
     const totalCorrectTime = correctResults.reduce((sum, r) => sum + r.timeToAnswer, 0);
     const averageTime = correctAnswers > 0 ? totalCorrectTime / correctAnswers : 0;
@@ -955,22 +467,10 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       sessionResults.reduce((sum, r) => sum + r.timeToAnswer, 0) / 1000
     );
     
-    // Save anonymous session data if applicable
-    if (!userId || userId.startsWith('anon-')) {
-      // Calculate average time for blink speed
-      const correctTimes = correctResults.map(r => r.timeToAnswer);
-      const avgTime = correctTimes.length > 0 ? 
-        correctTimes.reduce((sum, time) => sum + time, 0) / correctTimes.length : 
-        2500; // Default to 2.5 seconds
-        
-      saveAnonymousSessionData(points, avgTime / 1000, sessionResults); // Use accumulated points
-    }
-    
     // Format results for API
     const apiResults = {
       sessionId: `session-${Date.now()}`,
-      threadId: thread.id,
-      stitchId: thread.stitches[0].id,
+      stitchId: stitchId,
       totalQuestions,
       totalAttempts: sessionResults.length,
       correctAnswers,
@@ -985,71 +485,13 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       goDashboard: true // Set goDashboard flag to true for proper redirection
     };
     
-    // Also try to record session metrics for dashboard via API - only for authenticated users
-    if (userId && !userId.startsWith('anon-')) {
-      try {
-        console.log('Recording session metrics to dashboard via API (completeSession)');
-        const sessionRecordingPromise = fetch('/api/record-session', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({
-            threadId: thread.id,
-            stitchId: thread.stitches[0].id,
-            questionResults: sessionResults.length > 0 ? sessionResults.map(r => ({
-              questionId: r.id,
-              correct: r.correct,
-              timeToAnswer: r.timeToAnswer,
-              firstTimeCorrect: r.firstTimeCorrect
-            })) : [
-              // Provide at least one default question result if empty
-              {
-                questionId: `auto-end-${Date.now()}`,
-                correct: false,
-                timeToAnswer: 1000,
-                firstTimeCorrect: false
-              }
-            ],
-            sessionDuration,
-            autoComplete: true // Flag to indicate this was an automatic completion
-          }),
-          credentials: 'include' // Important! Include cookies for auth
-        });
-        
-        // Process response
-        sessionRecordingPromise.then(response => {
-          if (!response.ok) {
-            console.error('Failed to record session metrics:', response.status);
-            return response.text().then(text => {
-              console.error('Error details:', text);
-            });
-          } else {
-            console.log('✅ Successfully recorded session metrics for dashboard (completeSession)');
-            return response.json();
-          }
-        }).then(data => {
-          if (data) {
-            console.log('Dashboard metrics response:', data);
-          }
-        }).catch(error => {
-          console.error('Error recording session metrics:', error);
-        });
-      } catch (error) {
-        console.error('Error sending session metrics:', error);
-      }
-    } else {
-      console.log('Skipping API calls for anonymous user in completeSession - using localStorage only');
-    }
-    
     // Add a short delay before triggering completion to ensure smooth transitions
     // This prevents the flash of new content before navigation
     setTimeout(() => {
       onComplete(apiResults);
     }, 50);
     
-  }, [sessionResults, points, thread, onComplete, timerAnimation, userId]);
+  }, [sessionResults, points, stitchId, onComplete, timerAnimation]);
 
   // State for session summary
   const [showSessionSummary, setShowSessionSummary] = useState(false);
@@ -1083,7 +525,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
 
   // Handle ending session early
   const handleEndSession = async () => {
-    console.log('📱 User clicked Finish button in MinimalDistinctionPlayer');
+    console.log('📱 User clicked Finish button in ZustandDistinctionPlayer');
     
     // Clean up any outstanding timers or animations
     if (timerAnimation) {
@@ -1094,9 +536,6 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       timerTimeoutRef.current = null;
     }
 
-    // Check if this is an anonymous user
-    const isAnonymous = !userId || userId.startsWith('anon-');
-    
     // Get current session stats before making async calls
     const correctResults = sessionResults.filter(r => r.correct);
     const currentSessionCorrectAnswers = correctResults.length;
@@ -1128,14 +567,8 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     // Calculate base points for this session only
     const basePoints = calculateBasePoints(currentSessionFirstTimeCorrect, eventuallyCorrect);
     
-    // Prepare stitchPositions data for context API
-    const stitchPositions = [{
-      threadId: thread.id,
-      stitchId: thread.stitches[0].id,
-      orderNumber: 0, // Default order number
-      skipNumber: 1,  // Default skip number
-      distractorLevel: 'L1' // Default distractor level
-    }];
+    // Check if user is anonymous
+    const isAnonymous = !userId || userId.startsWith('anon-');
     
     // Prepare session data for bonus calculation
     const sessionData = {
@@ -1145,22 +578,17 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       firstTimeCorrect: currentSessionFirstTimeCorrect,
       averageTimeToAnswer: avgTime,
       sessionDuration,
-      threadId: thread.id,
-      stitchId: thread.stitches[0].id
+      stitchId
     };
     
     // Calculate bonuses using the original logic for UI consistency
     const bonuses = calculateBonuses(sessionData, sessionResults, isAnonymous);
     const { totalPoints, multiplier } = calculateTotalPoints(basePoints, bonuses);
     
-    // For anonymous users, also use the original saveAnonymousSessionData for backwards compatibility
-    if (isAnonymous) {
-      console.log(`HandleEndSession: Saving ${basePoints} points (SINGLE SOURCE OF TRUTH)`);
-      saveAnonymousSessionData(basePoints, avgTime / 1000, sessionResults);
+    // Use Zustand store to update points
+    if (basePoints > 0) {
+      incrementPoints(basePoints);
     }
-    
-    // Skip context operations since SessionContext is not available
-    console.log('SessionContext not available, using local calculations only');
     
     // Use local calculations for evolution
     let evolutionLevel = Math.floor(totalPoints / 1000) + 1;
@@ -1185,11 +613,9 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     setSessionSummaryStep('base');
     
     // For backward compatibility, we still prepare the session stats object
-    // But no longer store it in the window object - will use context instead
     const stats = {
       sessionId: `session-${Date.now()}`,
-      threadId: thread.id,
-      stitchId: thread.stitches[0].id,
+      stitchId,
       totalQuestions: currentSessionQuestions,
       totalAttempts: sessionResults.length,
       correctAnswers: currentSessionCorrectAnswers,
@@ -1213,32 +639,6 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     if (typeof window !== 'undefined') {
       window.__SESSION_STATS__ = stats;
     }
-    
-    // Legacy API calls - gradually phasing these out as we move to the context
-    // Keep them for backward compatibility during transition
-    if (!isAnonymous) {
-      console.log('Making legacy API calls for backward compatibility...');
-      // Making these calls in the background but not waiting for them
-      // They're for backward compatibility only
-      
-      fetch('/api/record-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          threadId: thread.id,
-          stitchId: thread.stitches[0].id,
-          questionResults: stats.questionResults,
-          sessionDuration,
-          userId: userId
-        }),
-        credentials: 'include'
-      }).catch(error => {
-        console.error('Error in legacy record-session API call:', error);
-      });
-    }
   };
   
   // Called after showing summary or if there's an error
@@ -1250,9 +650,6 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       // Add navigation flag to ensure dashboard redirect
       stats.goDashboard = true;
       
-      // Skip context completion as it's not available
-      console.log('SessionContext not available, skipping final completion check');
-      
       // Handle anonymous users
       if (typeof window !== 'undefined') {
         try {
@@ -1260,27 +657,10 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
           const isAnonymous = !userId || userId.startsWith('anon-');
           
           if (isAnonymous) {
-            // Get anonymous ID from localStorage
-            const anonymousId = localStorage.getItem('anonymousId');
-            
-            if (anonymousId) {
-              console.log('FINISH SESSION: Points already saved in handleEndSession, skipping to avoid double-counting');
-              
-              // Store basic session data but don't update points again
-              const sessionData = {
-                blinkSpeed: stats.blinkSpeed || timeToAnswer / 1000,
-                blinkSpeedTrend: 'steady', 
-                lastSessionDate: new Date().toISOString()
-              };
-              
-              // Save non-point session data to localStorage
-              localStorage.setItem(`sessionData_${anonymousId}`, JSON.stringify(sessionData));
-              
-              // Redirect anonymous users to anon-dashboard
-              setTimeout(() => {
-                router.push('/anon-dashboard');
-              }, 100);
-            }
+            // Redirect anonymous users to anon-dashboard
+            setTimeout(() => {
+              router.push('/anon-dashboard');
+            }, 100);
           } else {
             // For authenticated users, redirect to regular dashboard
             setTimeout(() => {
@@ -1288,7 +668,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
             }, 100);
           }
         } catch (error) {
-          console.error('Error saving anonymous session data:', error);
+          console.error('Error during session finish:', error);
           // Check if this is an anonymous user even if there was an error
           const isAnonymous = !userId || userId.startsWith('anon-');
           // Redirect to the appropriate dashboard based on user type
@@ -1302,9 +682,6 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       onEndSession(stats);
     } else {
       // For automatic completion via context
-      // Skip context-based session completion since context is not available
-      console.log('SessionContext not available, using direct complete method');
-      
       // Call onComplete directly with basic stats
       onComplete({
         ...stats,
@@ -1336,78 +713,64 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     
     return levels[level - 1];
   };
-  
-  // Helper function to save session data to localStorage for anonymous users
-  const saveAnonymousSessionData = (
-    sessionPoints: number, 
-    sessionBlinkSpeed: number,
-    sessionResults: any[]
-  ) => {
-    if (typeof window === 'undefined') return;
-    
-    try {
-      // Check if user is anonymous
-      if (!userId || userId.startsWith('anon-')) {
-        // Get anonymous ID from localStorage
-        const anonymousId = localStorage.getItem('anonymousId');
-        if (!anonymousId) return;
-        
-        console.log('Saving anonymous session data for ID:', anonymousId);
-        
-        // Store session data
-        const sessionData = {
-          totalPoints: sessionPoints,
-          blinkSpeed: sessionBlinkSpeed,
-          blinkSpeedTrend: 'steady',
-          lastSessionDate: new Date().toISOString(),
-          completedQuestions: sessionResults.length
-        };
-        
-        // Save to localStorage
-        localStorage.setItem(`sessionData_${anonymousId}`, JSON.stringify(sessionData));
-        
-        // Get existing progress data or create new if doesn't exist
-        const existingProgressData = localStorage.getItem(`progressData_${anonymousId}`);
-        let progressData = existingProgressData ? JSON.parse(existingProgressData) : {
-          totalPoints: 0,
-          blinkSpeed: 0,
-          blinkSpeedTrend: 'steady',
-          evolution: {
-            currentLevel: 'Mind Spark',
-            levelNumber: 1,
-            progress: 0,
-            nextLevel: 'Thought Weaver'
-          }
-        };
-        
-        // Update progress data
-        progressData.totalPoints = (progressData.totalPoints || 0) + sessionPoints;
-        progressData.blinkSpeed = sessionBlinkSpeed;
-        
-        // Calculate evolution
-        const totalPoints = progressData.totalPoints;
-        const levelNumber = Math.floor(totalPoints / 1000) + 1; // Level up every 1000 points
-        const progress = (totalPoints % 1000) / 10; // 0-100% within level
-        
-        // Update evolution data
-        progressData.evolution = {
-          currentLevel: getLevelName(levelNumber),
-          levelNumber: levelNumber,
-          progress: progress,
-          nextLevel: getLevelName(levelNumber + 1)
-        };
-        
-        // Save updated progress data
-        localStorage.setItem(`progressData_${anonymousId}`, JSON.stringify(progressData));
-        
-        console.log('Anonymous progress data saved successfully:', progressData);
-        return true;
-      }
-    } catch (error) {
-      console.error('Failed to save anonymous session data:', error);
-    }
-    return false;
-  };
+
+  // If we're loading the stitch, show a loading state
+  if (stitchLoading) {
+    return (
+      <div className="min-h-screen player-bg flex items-center justify-center p-4">
+        <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden fixed-player-card">
+          <div className="bg-white bg-opacity-10 p-4 flex justify-between items-center">
+            <div>
+              <p className="text-white text-opacity-70 text-sm">POINTS</p>
+              <p className="text-white text-2xl font-bold">-</p>
+            </div>
+            <div className="timer-container w-24"></div>
+          </div>
+          
+          <div className="p-6 question-container flex items-center justify-center">
+            <div className="flex flex-col items-center">
+              <div className="inline-block animate-spin h-8 w-8 border-4 border-teal-300 border-t-transparent rounded-full mb-3"></div>
+              <p className="text-white text-opacity-70">Loading content...</p>
+            </div>
+          </div>
+          
+          <div className="bg-white bg-opacity-10 p-4"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // If there was an error loading the stitch, show an error state
+  if (stitchError || !stitch) {
+    return (
+      <div className="min-h-screen player-bg flex items-center justify-center p-4">
+        <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden fixed-player-card">
+          <div className="bg-white bg-opacity-10 p-4 flex justify-between items-center">
+            <div>
+              <p className="text-white text-opacity-70 text-sm">ERROR</p>
+              <p className="text-white text-2xl font-bold">!</p>
+            </div>
+            <div className="timer-container w-24"></div>
+          </div>
+          
+          <div className="p-6 question-container flex flex-col items-center justify-center">
+            <div className="text-red-400 text-xl font-bold mb-4">Failed to load content</div>
+            <p className="text-white text-opacity-70 text-center mb-6">
+              {stitchError ? stitchError.message : `Content for stitch ID "${stitchId}" not found`}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-teal-600 hover:bg-teal-500 text-white font-medium py-2 px-6 rounded-lg transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+          
+          <div className="bg-white bg-opacity-10 p-4"></div>
+        </div>
+      </div>
+    );
+  }
 
   // If session is complete, show a minimal loading state with fixed dimensions
   if (isSessionComplete) {
@@ -1439,7 +802,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
   // If no current question, show loading or error with fixed dimensions
   if (!currentQuestion) {
     // Check if we have questions but they're just not loaded yet
-    const hasQuestions = thread?.stitches?.[0]?.questions?.length > 0;
+    const hasQuestions = stitch?.questions?.length > 0;
     
     return (
       <div className="min-h-screen player-bg flex items-center justify-center p-4">
@@ -1464,55 +827,8 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
               <>
                 <div className="text-white text-xl mb-4">No questions available</div>
                 <div className="text-white text-opacity-70 mb-6">
-                  This stitch doesn't have any questions. Please add questions in the admin dashboard.
+                  This stitch doesn't have any questions. Please try another stitch.
                 </div>
-                <button
-                  onClick={() => {
-                    // Create sample questions since none are available
-                    if (!thread || !thread.stitches || thread.stitches.length === 0) return;
-                    
-                    const stitch = thread.stitches[0];
-                    console.log("Creating sample questions for empty stitch");
-                    
-                    const sampleQuestions = [
-                      {
-                        id: `${stitch.id}-q1`,
-                        text: '3 + 5',
-                        correctAnswer: '8',
-                        distractors: { L1: '7', L2: '9', L3: '6' }
-                      },
-                      {
-                        id: `${stitch.id}-q2`,
-                        text: '7 - 2',
-                        correctAnswer: '5',
-                        distractors: { L1: '4', L2: '6', L3: '3' }
-                      },
-                      {
-                        id: `${stitch.id}-q3`,
-                        text: '4 × 3',
-                        correctAnswer: '12',
-                        distractors: { L1: '6', L2: '10', L3: '9' }
-                      }
-                    ];
-                    
-                    // Set the questions on the stitch
-                    stitch.questions = sampleQuestions;
-                    
-                    // Re-initialize with these questions
-                    const allQuestions = [...sampleQuestions];
-                    const sessionQs = allQuestions.slice(0, Math.min(questionsPerSession, allQuestions.length));
-                    setSessionQuestions(sessionQs);
-                    
-                    // Start with the first question
-                    if (sessionQs.length > 0) {
-                      setIsInitialized(true);
-                      loadQuestion(sessionQs[0], false);
-                    }
-                  }}
-                  className="bg-teal-600 hover:bg-teal-500 text-white font-medium py-2 px-6 rounded-lg transition-colors"
-                >
-                  Use Sample Questions
-                </button>
               </>
             )}
           </div>
@@ -1751,8 +1067,6 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
 
                       if (isAnonymous) {
                         console.log('DIRECT NAVIGATION: Anonymous user detected - going to /anon-dashboard');
-                        // No need to save points here - already saved in handleEndSession
-
                         // Navigation to anonymous dashboard using Next.js router
                         router.push('/anon-dashboard');
                       } else {
@@ -1817,7 +1131,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
                 <div className="question-pill text-2xl py-3 px-6">
                   {(() => {
                     // Thoroughly clean the question text
-                    const questionText = currentQuestion.text.trim();
+                    const questionText = currentQuestion.text || currentQuestion.questionText;
                     const answer = currentQuestion.correctAnswer;
                     
                     // Check for various equation patterns
@@ -1840,7 +1154,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
             ) : currentQuestion ? (
               <div className="question-container" style={{ minHeight: '60px' }}>
                 <h2 className="text-white text-3xl font-bold">
-                  {currentQuestion.text}
+                  {currentQuestion.text || currentQuestion.questionText}
                 </h2>
               </div>
             ) : (
@@ -1897,4 +1211,4 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
   );
 };
 
-export default MinimalDistinctionPlayer;
+export default ZustandDistinctionPlayer;

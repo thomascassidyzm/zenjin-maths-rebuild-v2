@@ -2,52 +2,54 @@
 
 ## Project Overview
 
-The Zenjin Maths app is an educational application that uses a Triple Helix learning system with tubes, threads, and stitches to deliver structured content to users. We've implemented an offline-first approach to ensure immediate startup and content availability without network dependency.
+The Zenjin Maths app is an educational application that uses a Triple Helix learning system with tubes, threads, and stitches to deliver structured content to users. We've implemented a server-first approach using Zustand for state management, ensuring consistent content delivery for all users.
 
 ## Key Files Modified/Created
 
-1. `/lib/client/offline-first-content-buffer.ts` - The core implementation that preloads all bundled content for immediate access
-2. `/components/MinimalDistinctionPlayer.tsx` - Modified to properly use bundled content for questions
-3. `/lib/tube-config-integration.js` - Enhanced to use the offline-first content buffer and detect user tiers
-4. `/lib/feature-flags.ts` - Updated to ensure consistent experience for anonymous and free users
-5. `/lib/expanded-bundled-content.ts` - Contains bundled content for 30 stitches (10 per tube)
-6. `/lib/triple-helix/StateMachine.js` - Handles stitch advancement and spaced repetition logic
-7. `/lib/load-bundled-stitches.js` - Ensures proper loading of bundled stitches with correct positions
-8. `/pages/offline-first-test.tsx` - Test page for verifying the implementation
-9. `/pages/simple-offline-test.tsx` - Simplified test page that only uses bundled content
+1. `/lib/store/zenjinStore.ts` - Enhanced with stitch fetching and content management
+2. `/lib/store/stitchActions.ts` - API communication layer for fetching stitch content
+3. `/lib/hooks/useStitchContent.ts` - Custom hooks for consistent content fetching
+4. `/components/ZustandDistinctionPlayer.tsx` - New player component using Zustand for state management
+5. `/components/StitchContentLoader.tsx` - Reusable component for loading stitch content
+6. `/lib/hooks/useZustandStitchPlayer.tsx` - Hook for integrating player with Zustand store
+7. `/pages/test-zustand-stitch.tsx` - Test page for verifying stitch fetching
+8. `/pages/test-zustand-player.tsx` - Test page for the ZustandDistinctionPlayer
+9. `/pages/integrated-player.tsx` - Demo page showing full integration with the app
 
 ## Core Implementation Features
 
-1. **Immediate Startup**: App starts instantly without loading or waiting screens
-2. **Bundled Content**: 10 stitches per tube (30 total) bundled with the application
-3. **Complete Question Sets**: Each stitch has 20 questions with 3 distractor levels (1,800 total variations)
-4. **Offline First**: All content available without network connection
-5. **User Tier Detection**: System detects anonymous/free/premium users and delivers appropriate content
-6. **Feature Flags**: Easy to enable/disable offline-first features
+1. **Server-First Approach**: Fetch all content from the server API
+2. **Unified Experience**: Consistent content loading for all users
+3. **State Management**: Zustand store for centralized state management
+4. **React Hooks**: Custom hooks for simplified component integration
+5. **UI Components**: Standardized loading and error handling
+6. **Efficient Caching**: Content cached in Zustand store for reuse
 
 ## Technical Architecture
 
-- The `offlineFirstContentBuffer` preloads all bundled content at initialization time
-- Stitch retrieval prioritizes cached content over network requests
-- Bundled content is positioned based on user_state (default positions on first load)
-- StateMachine implements spaced repetition algorithm with positions and skip numbers
-- Position 0 always has the current stitch, position 1 has the next stitch
-- When answering 20/20 correctly, stitch's skip number increases (1→3→5→10→25→100)
-- Completed stitches move back in sequence based on their skip number
-- Feature flags enforce consistent experience for anonymous and free users
+- The `zenjinStore` manages all state including content collection
+- `stitchActions` handles API communication for fetching content
+- Custom hooks provide a simplified interface for components
+- `useStitchContent` fetches and caches individual stitches
+- `useBatchStitchContent` fetches multiple stitches efficiently
+- `ZustandDistinctionPlayer` provides the main UI for stitch interaction
+- State is persisted in localStorage for all user types
+- Authenticated users can also sync state to the server
 
-## Stitch Advancement Fix (May 4, 2025)
+## Zustand Content System (May 12, 2025)
 
-We implemented a focused fix for stitch advancement that ensures the app correctly:
-1. Loads all stitches from bundled content with proper positions
-2. Respects user_state for positioning stitches after first session
-3. Always has the next stitch available at position 1
-4. Follows the existing reordering logic to maintain the spaced repetition system
+We implemented a completely new content loading system using Zustand that:
+1. Fetches all stitch content from the server API
+2. Provides a unified experience for all user types
+3. Eliminates dependency on bundled content
+4. Simplifies state management with Zustand
 
 Key changes:
-- Created `load-bundled-stitches.js` utility to ensure all stitches are properly loaded
-- Enhanced StateMachine to handle "No next stitch available" error by loading missing stitches
-- Fixed tube-config-integration.js to use the bundled stitch loader consistently
+- Enhanced `zenjinStore.ts` with stitch fetching capabilities
+- Created `stitchActions.ts` for API communication
+- Developed custom hooks for simplified content fetching
+- Implemented `ZustandDistinctionPlayer` component using the new system
+- Created comprehensive documentation in `/docs/ZUSTAND-CONTENT-SYSTEM.md`
 
 ## Supabase Integration Fixes (May 4, 2025)
 
@@ -115,12 +117,12 @@ The improved implementation:
 
 ## Notes for Future Development
 
-1. The system currently assumes the first 10 stitches per tube as bundled content
-2. The expanded bundled content is stored in `expanded-bundled-content.ts`
-3. The feature flags system can be used to toggle offline-first features as needed
-4. Anonymous and free users always get bundled content for consistency
-5. Premium users can receive personalized content from the API after initial loading
-6. Consider adding a mechanism to periodically update the bundled content
+1. The system fetches all content from the server API for all user types
+2. The content system is fully integrated with Zustand for state management
+3. Hooks provide a simplified interface for components to access content
+4. All content is cached in the Zustand store for efficient access
+5. Consider implementing a prefetching strategy for upcoming content
+6. Future improvements could include offline support via service workers
 
 ## Important Instructions for Claude
 

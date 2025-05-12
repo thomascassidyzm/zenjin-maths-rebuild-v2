@@ -1,10 +1,12 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { 
-  UserInformation, TubeState, LearningProgress, 
+import {
+  UserInformation, TubeState, LearningProgress,
   SessionData, ContentCollection, StitchProgressionConfig,
-  AppConfiguration, SubscriptionDetails
+  AppConfiguration, SubscriptionDetails, Stitch
 } from './types';
+import { fetchStitchBatch, fetchSingleStitch } from './stitchActions';
+import { StitchContent } from '../client/offline-first-content-buffer';
 
 // Define the combined store state
 interface ZenjinStore {
@@ -46,7 +48,10 @@ interface ZenjinStore {
   // Content Collection actions
   setContentCollection: (collection: ContentCollection) => void;
   updateStitchInCollection: (stitchId: string, updates: Partial<import('./types').Stitch>) => void;
-  
+  fetchStitch: (stitchId: string) => Promise<StitchContent | null>;
+  fetchStitchBatch: (stitchIds: string[]) => Promise<Record<string, StitchContent>>;
+  addStitchToCollection: (stitch: StitchContent) => void;
+
   // App Configuration actions
   setAppConfiguration: (config: AppConfiguration) => void;
   toggleSound: () => void;
@@ -369,10 +374,10 @@ export const useZenjinStore = create<ZenjinStore>()(
       
       updateStitchInCollection: (stitchId, updates) => set((state) => {
         if (!state.contentCollection?.stitches) return { lastUpdated: new Date().toISOString() };
-        
+
         const existingStitch = state.contentCollection.stitches[stitchId];
         if (!existingStitch) return { lastUpdated: new Date().toISOString() };
-        
+
         return {
           contentCollection: {
             ...state.contentCollection,
@@ -384,6 +389,85 @@ export const useZenjinStore = create<ZenjinStore>()(
               }
             }
           },
+          lastUpdated: new Date().toISOString()
+        };
+      }),
+
+      // Fetch a single stitch by ID from the API
+      fetchStitch: async (stitchId) => {
+        const state = get();
+
+        // Check if the stitch is already in the collection
+        if (state.contentCollection?.stitches?.[stitchId]) {
+          console.log(`Stitch ${stitchId} already in collection, using cached version`);
+          return state.contentCollection.stitches[stitchId] as unknown as StitchContent;
+        }
+
+        try {
+          console.log(`Fetching stitch ${stitchId} from API`);
+          const stitch = await fetchSingleStitch(stitchId);
+
+          if (stitch) {
+            // Add the stitch to the collection
+            get().addStitchToCollection(stitch);
+            return stitch;
+          }
+
+          console.warn(`Stitch ${stitchId} not found`);
+          return null;
+        } catch (error) {
+          console.error(`Error fetching stitch ${stitchId}:`, error);
+          return null;
+        }
+      },
+
+      // Fetch a batch of stitches from the API
+      fetchStitchBatch: async (stitchIds) => {
+        try {
+          console.log(`Fetching ${stitchIds.length} stitches from API`);
+          const stitches = await fetchStitchBatch(stitchIds);
+
+          // Add all fetched stitches to the collection
+          Object.values(stitches).forEach(stitch => {
+            get().addStitchToCollection(stitch);
+          });
+
+          return stitches;
+        } catch (error) {
+          console.error('Error fetching stitch batch:', error);
+          return {};
+        }
+      },
+
+      // Add a stitch to the collection
+      addStitchToCollection: (stitch) => set((state) => {
+        if (!stitch || !stitch.id) return { lastUpdated: new Date().toISOString() };
+
+        // Create content collection if it doesn't exist
+        const collection = state.contentCollection || { stitches: {}, questions: {} };
+
+        // Add the stitch to the collection
+        const updatedCollection = {
+          ...collection,
+          stitches: {
+            ...collection.stitches,
+            [stitch.id]: {
+              stitchId: stitch.id,
+              title: stitch.title || '',
+              content: stitch.content || '',
+              questions: stitch.questions || [],
+              threadId: stitch.threadId || '',
+              order: stitch.order || 0,
+              skipNumber: 3, // Default skip number
+              distractorLevel: 1, // Default distractor level
+              completionHistory: [],
+              isRetired: false
+            }
+          }
+        };
+
+        return {
+          contentCollection: updatedCollection,
           lastUpdated: new Date().toISOString()
         };
       }),
