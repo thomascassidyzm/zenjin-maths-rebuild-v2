@@ -316,21 +316,58 @@ export default async function handler(
     // Save updated profile
     saveToCache(effectiveUserId, 'user_profile', userProfile);
     
-    // If there was a database success, try to update the profile there too
-    if (dbSuccess) {
-      try {
+    // CRITICAL FIX: Always try to update the profile in the database
+    // regardless of session storage success
+    try {
+      console.log('Updating user profile in database with accumulated points...');
+
+      // First check if profile exists
+      const { data: existingProfile, error: checkError } = await supabaseAdmin
+        .from('profiles')
+        .select('total_points, avg_blink_speed')
+        .eq('id', effectiveUserId)
+        .single();
+
+      if (checkError) {
+        console.log('Profile not found in database, creating new one');
+
+        // Create a new profile
         await supabaseAdmin
           .from('profiles')
           .upsert({
             id: effectiveUserId,
-            total_points: userProfile.total_points,
-            avg_blink_speed: userProfile.avg_blink_speed,
-            last_session_date: userProfile.last_session_date,
-            updated_at: userProfile.updated_at
+            total_points: totalPoints, // Start with points from this session
+            avg_blink_speed: blinkSpeed || userProfile.avg_blink_speed || 2.5,
+            evolution_level: 1,
+            total_sessions: 1,
+            last_session_date: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           }, { onConflict: 'id' });
-      } catch (profileError) {
-        console.log('Profile database update failed, using cache only');
+
+        console.log(`New profile created with ${totalPoints} points`);
+      } else {
+        console.log(`Existing profile found with ${existingProfile.total_points} points`);
+
+        // Calculate accumulated points
+        const updatedTotalPoints = (existingProfile.total_points || 0) + totalPoints;
+
+        // Update profile with accumulated points
+        await supabaseAdmin
+          .from('profiles')
+          .update({
+            total_points: updatedTotalPoints,
+            avg_blink_speed: blinkSpeed || userProfile.avg_blink_speed || existingProfile.avg_blink_speed || 2.5,
+            last_session_date: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', effectiveUserId);
+
+        console.log(`Profile updated to ${updatedTotalPoints} points (added ${totalPoints})`);
       }
+    } catch (profileError) {
+      console.log('Profile database update failed:', profileError);
+      console.log('Using cache only for profile data');
     }
     
     // Return success response with session data

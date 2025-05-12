@@ -203,7 +203,7 @@ export default async function handler(
     if (firstTimeCorrect === totalQuestions && totalQuestions > 0) {
       try {
         console.log('Perfect score achieved! Updating stitch progress...');
-        
+
         // First get current stitch progress to find skip number
         const { data: currentProgress, error: progressError } = await supabaseAdmin
           .from('user_stitch_progress')
@@ -212,12 +212,12 @@ export default async function handler(
           .eq('thread_id', threadId)
           .eq('stitch_id', stitchId)
           .single();
-        
+
         // Default values if we can't find existing progress
         const skipNumber = currentProgress?.skip_number || 3;
         const currentOrder = currentProgress?.order_number || 0;
         const distractorLevel = currentProgress?.distractor_level || 'L1';
-        
+
         // Prepare progress update
         const progressUpdate = {
           user_id: effectiveUserId,
@@ -229,13 +229,13 @@ export default async function handler(
           distractor_level: distractorLevel,
           updated_at: new Date().toISOString()
         };
-        
+
         console.log('Updating user_stitch_progress with:', progressUpdate);
-        
+
         const { error: updateError } = await supabaseAdmin
           .from('user_stitch_progress')
           .upsert(progressUpdate, { onConflict: 'user_id,thread_id,stitch_id' });
-          
+
         if (updateError) {
           console.error('Error updating stitch progress:', updateError);
         } else {
@@ -245,6 +245,76 @@ export default async function handler(
         console.error('Exception updating stitch progress:', error);
         // Don't fail the request if stitch progress update fails
       }
+    }
+
+    // CRITICAL FIX: Update the user's profile with the accumulated points
+    try {
+      console.log('Updating user profile with new points...');
+
+      // First get the current profile to get existing points
+      const { data: userProfile, error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .select('total_points, avg_blink_speed')
+        .eq('id', effectiveUserId)
+        .single();
+
+      if (profileError) {
+        console.log('Profile not found, creating a new one');
+
+        // Create a new profile with the points from this session
+        const { error: createError } = await supabaseAdmin
+          .from('profiles')
+          .upsert({
+            id: effectiveUserId,
+            total_points: totalPoints,
+            avg_blink_speed: blinkSpeed || 2.5,
+            evolution_level: 1,
+            total_sessions: 1,
+            last_session_date: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+
+        if (createError) {
+          console.error('Error creating profile:', createError);
+        } else {
+          console.log(`Successfully created profile with ${totalPoints} points`);
+        }
+      } else {
+        console.log(`Existing profile found with ${userProfile.total_points} points`);
+
+        // Calculate new total points and updated blink speed
+        const updatedTotalPoints = (userProfile.total_points || 0) + totalPoints;
+
+        // Update blink speed as a weighted average if we have a new value
+        let updatedBlinkSpeed = userProfile.avg_blink_speed || 2.5;
+        if (blinkSpeed) {
+          // Weight the new blink speed at 20% of the average
+          updatedBlinkSpeed = (updatedBlinkSpeed * 0.8) + (blinkSpeed * 0.2);
+        }
+
+        console.log(`Updating profile to ${updatedTotalPoints} points (added ${totalPoints})`);
+
+        // Update the profile with accumulated points
+        const { error: updateError } = await supabaseAdmin
+          .from('profiles')
+          .update({
+            total_points: updatedTotalPoints,
+            avg_blink_speed: updatedBlinkSpeed,
+            last_session_date: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', effectiveUserId);
+
+        if (updateError) {
+          console.error('Error updating profile:', updateError);
+        } else {
+          console.log(`Successfully updated profile to ${updatedTotalPoints} points`);
+        }
+      }
+    } catch (error) {
+      console.error('Exception updating user profile:', error);
+      // Don't fail the request if profile update fails
     }
     
     // Return session results
