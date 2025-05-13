@@ -463,64 +463,158 @@ export default function MultiUserPositionTest() {
   const renderGridView = () => {
     // Create a grid of positions from 0-15
     const positions = Array.from({ length: 16 }, (_, i) => i);
-    
+
     return (
-      <div className="overflow-x-auto">
-        <div className="grid grid-cols-16 min-w-[800px]">
-          {/* Header row */}
-          {positions.map(position => (
-            <div key={`header-${position}`} className="p-2 text-center font-semibold border-b border-gray-700">
-              {position}
-            </div>
-          ))}
-          
-          {/* Tube rows */}
-          {[1, 2, 3].map(tube => (
-            <React.Fragment key={`tube-${tube}`}>
-              <div className="contents">
-                {positions.map(position => {
-                  const hasStitch = hasStitchAtPosition(tube as 1 | 2 | 3, position);
-                  const isActiveTube = activeTubeNum === tube;
-                  const positionData = getPositionData(tube as 1 | 2 | 3, position);
-                  
-                  return (
-                    <div
-                      key={`tube-${tube}-pos-${position}`}
-                      className={`
-                        p-2 border border-gray-700 h-20 flex flex-col justify-center items-center text-xs
-                        ${hasStitch ? 'bg-gray-800' : 'bg-gray-900/30'}
-                        ${isActiveTube ? 'ring-2 ring-blue-500' : ''}
-                        ${position === 0 ? 'bg-gradient-to-r from-green-900/50 to-transparent' : ''}
-                        ${position >= 15 ? 'bg-gradient-to-r from-red-900/30 to-transparent' : ''}
-                      `}
-                      onClick={() => {
-                        setActiveTubeNum(tube as 1 | 2 | 3);
-                      }}
-                    >
-                      {hasStitch ? (
-                        <>
-                          <div className="font-mono text-[9px] truncate w-full text-center">
-                            {positionData?.stitchId.replace(/stitch-T\d+-\d+-/, '')}
-                          </div>
-                          <div className="mt-1 flex space-x-1 text-[8px]">
-                            <span className="px-1 bg-purple-900/50 rounded">Skip: {positionData?.skipNumber}</span>
-                            <span className="px-1 bg-blue-900/50 rounded">L{positionData?.distractorLevel}</span>
-                          </div>
-                          {positionData?.perfectCompletions > 0 && (
-                            <div className="mt-1 text-[8px] px-1 bg-green-900/50 rounded">
-                              ✓ {positionData.perfectCompletions}
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <div className="text-gray-500">Empty</div>
-                      )}
+      <div className="space-y-6">
+        {/* Slot machine visualization for active stitches */}
+        <div className="bg-gray-800/60 rounded-xl p-4">
+          <h3 className="text-lg font-semibold mb-3 text-center">Active Stitches (Position 0)</h3>
+          <div className="grid grid-cols-3 gap-4">
+            {[1, 2, 3].map(tube => {
+              const tubeNum = tube as 1 | 2 | 3;
+              const activeStitch = getStitchAtPosition(tubeNum, 0);
+              const isActiveTube = activeTubeNum === tube;
+
+              return (
+                <div
+                  key={`active-tube-${tube}`}
+                  className={`
+                    p-4 rounded-lg border-2
+                    ${isActiveTube ? 'border-blue-500 bg-blue-900/20' : 'border-gray-700 bg-gray-800'}
+                    cursor-pointer transition-all hover:bg-gray-700
+                  `}
+                  onClick={() => setActiveTubeNum(tubeNum)}
+                >
+                  <div className="text-center font-semibold mb-1">Tube {tube}</div>
+
+                  {activeStitch ? (
+                    <div className="p-3 bg-black/30 rounded-lg shadow-inner flex flex-col items-center">
+                      <div className="font-mono text-sm mb-1">{activeStitch.stitchId.split('-').pop()}</div>
+                      <div className="font-mono text-sm text-blue-300 mb-2">
+                        {activeStitch.stitchId}
+                      </div>
+                      <div className="flex space-x-2 mb-1">
+                        <span className="px-2 py-1 bg-purple-900/70 rounded text-xs">
+                          Skip: {activeStitch.skipNumber}
+                        </span>
+                        <span className="px-2 py-1 bg-blue-900/70 rounded text-xs">
+                          L{activeStitch.distractorLevel}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-300">
+                        {activeStitch.perfectCompletions > 0 ? (
+                          <span>Completed {activeStitch.perfectCompletions} times</span>
+                        ) : (
+                          <span>Never completed</span>
+                        )}
+                      </div>
                     </div>
+                  ) : (
+                    <div className="p-4 bg-black/30 rounded-lg shadow-inner text-center text-gray-500">
+                      No active stitch
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Full position grid for all tubes */}
+        <div className="bg-gray-800/60 rounded-xl p-4">
+          <h3 className="text-lg font-semibold mb-3">Position Grid</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr>
+                  <th className="p-2 text-left bg-gray-800 rounded-tl-lg">Tube</th>
+                  {positions.map(position => (
+                    <th
+                      key={`header-${position}`}
+                      className={`
+                        p-2 text-center bg-gray-800
+                        ${position === 0 ? 'bg-green-900/70 font-bold' : ''}
+                        ${position === positions.length - 1 ? 'rounded-tr-lg' : ''}
+                      `}
+                    >
+                      {position}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[1, 2, 3].map(tube => {
+                  const tubeNum = tube as 1 | 2 | 3;
+                  const isActiveTube = activeTubeNum === tube;
+
+                  return (
+                    <tr
+                      key={`tube-${tube}`}
+                      className={`${isActiveTube ? 'bg-blue-900/20' : ''}`}
+                    >
+                      <td
+                        className={`
+                          p-2 font-semibold border border-gray-700
+                          ${isActiveTube ? 'bg-blue-900/40' : 'bg-gray-800'}
+                          cursor-pointer hover:bg-gray-700
+                        `}
+                        onClick={() => setActiveTubeNum(tubeNum)}
+                      >
+                        Tube {tube}
+                      </td>
+
+                      {positions.map(position => {
+                        const hasStitch = hasStitchAtPosition(tubeNum, position);
+                        const positionData = getPositionData(tubeNum, position);
+                        const isActivePosition = position === 0;
+
+                        return (
+                          <td
+                            key={`tube-${tube}-pos-${position}`}
+                            className={`
+                              p-0 border border-gray-700 h-[80px] min-w-[80px] align-top
+                              ${hasStitch ? (
+                                isActivePosition ? 'bg-green-900/40' : 'bg-gray-800/80'
+                              ) : 'bg-gray-900/20'}
+                            `}
+                          >
+                            {hasStitch ? (
+                              <div className="p-2 h-full flex flex-col justify-between">
+                                <div className="font-mono text-xs truncate w-full">
+                                  {positionData?.stitchId.split('-').pop()}
+                                </div>
+
+                                <div className="flex flex-col space-y-1 mt-auto items-start">
+                                  <div className="flex flex-wrap gap-1 mb-1">
+                                    <span className="px-1 bg-purple-900/70 rounded text-[9px]">
+                                      Skip: {positionData?.skipNumber}
+                                    </span>
+                                    <span className="px-1 bg-blue-900/70 rounded text-[9px]">
+                                      L{positionData?.distractorLevel}
+                                    </span>
+                                  </div>
+
+                                  {positionData?.perfectCompletions > 0 && (
+                                    <span className="px-1 bg-green-900/70 rounded text-[9px]">
+                                      ✓ {positionData?.perfectCompletions}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-center h-full text-xs text-gray-500">
+                                -
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
                   );
                 })}
-              </div>
-            </React.Fragment>
-          ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     );
