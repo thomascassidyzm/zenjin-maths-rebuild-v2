@@ -102,24 +102,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method === 'POST') {
       // Handle both { state } and { state, id } formats for compatibility
       const { state, id } = req.body;
-      
+
+      console.log(`API: Received POST request to /api/user-state`);
+      console.log(`API: req.body has keys: ${Object.keys(req.body).join(', ')}`);
+
       if (!state || typeof state !== 'object') {
+        console.error(`API: Invalid state object in request`, state);
         return res.status(400).json({
           success: false,
           error: 'Valid state object is required'
         });
       }
-      
+
       // Check for userId in both places - in the state object and as standalone id field
       const userId = state.userId || id;
-      
+
+      console.log(`API: Extracted userId=${userId} from request (state.userId=${state.userId}, id=${id})`);
+
       if (!userId) {
+        console.error(`API: No userId found in request`);
         return res.status(400).json({
           success: false,
           error: 'State must include userId'
         });
       }
-      
+
       // Add userId to state if missing
       if (!state.userId) {
         console.log(`API: Adding missing userId ${userId} to state`);
@@ -313,6 +320,8 @@ async function getUserState(userId: string, supabase: any, res: NextApiResponse,
  */
 async function updateUserState(state: any, supabase: any, res: NextApiResponse, isDebug: boolean) {
   try {
+    console.log(`API: Starting updateUserState for userId=${state.userId}`);
+
     // Ensure user_state table exists
     try {
       await ensureTableExists(supabase, isDebug);
@@ -320,32 +329,27 @@ async function updateUserState(state: any, supabase: any, res: NextApiResponse, 
       console.error('Error ensuring table exists:', tableError);
       // Continue anyway - we'll try to save
     }
-    
+
     // Ensure last_updated field is present
     if (!state.lastUpdated) {
       state.lastUpdated = new Date().toISOString();
     }
-    
+
     // Ensure the last_updated field is in valid ISO format - fix it if not
     const lastUpdated = state.lastUpdated
       ? new Date(state.lastUpdated).toISOString()
       : new Date().toISOString();
-      
+
     // Always set/update the lastUpdated field to ensure state is current
     state.lastUpdated = lastUpdated;
-    
-    // EMERGENCY FIX: Force extraction of minimal state elements from whatever is received
-    // We need to reduce the payload size regardless of how it came in
-    // Extract the absolute minimum needed data
-    const minimalState = {
+
+    // SIMPLE APPROACH: Just store essential information without complex processing
+    // Only keep the minimum data needed for the position-based model test
+    const simpleState = {
       userId: state.userId,
-      activeTube: state.activeTube || state.activeTubeNumber || 1,
-      activeTubeNumber: state.activeTubeNumber || state.activeTube || 1,
-      lastUpdated: lastUpdated,
-      points: state.points || { session: 0, lifetime: 0 },
-      isCompacted: true,
-      compactedAt: new Date().toISOString(),
-      forcedCompaction: true
+      userInformation: state.userInformation,
+      tubeState: state.tubeState,
+      lastUpdated: lastUpdated
     };
 
     // Extract minimal tube information (only positions, no content)

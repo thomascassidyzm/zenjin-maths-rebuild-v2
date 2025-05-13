@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple Server Persistence Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #1a202c;
+      color: #e2e8f0;
+    }
+    
+    h1 {
+      color: #90cdf4;
+      text-align: center;
+    }
+    
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    
+    .card {
+      background-color: #2d3748;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .input-group {
+      margin-bottom: 15px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 5px;
+      color: #a0aec0;
+    }
+    
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      background-color: #4a5568;
+      border: 1px solid #2d3748;
+      border-radius: 4px;
+      color: #e2e8f0;
+    }
+    
+    button {
+      padding: 10px 15px;
+      background-color: #4299e1;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    
+    button:hover {
+      background-color: #3182ce;
+    }
+    
+    button:disabled {
+      background-color: #718096;
+      cursor: not-allowed;
+    }
+    
+    button.danger {
+      background-color: #f56565;
+    }
+    
+    button.danger:hover {
+      background-color: #e53e3e;
+    }
+    
+    pre {
+      background-color: #1a202c;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    
+    #logBox {
+      height: 300px;
+      overflow-y: auto;
+      background-color: #1a202c;
+      padding: 10px;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <h1>Simple Server Persistence Test</h1>
+  
+  <div class="container">
+    <div class="card">
+      <h2>State Management</h2>
+      
+      <div class="input-group">
+        <label for="userId">User ID</label>
+        <input type="text" id="userId" placeholder="Generate or enter a user ID">
+      </div>
+      
+      <button id="generateBtn">Generate Random User ID</button>
+      <button id="clearStateBtn" class="danger">Clear Local State</button>
+      
+      <h3>State Editor</h3>
+      <div class="input-group">
+        <label for="stateEditor">Edit State (JSON)</label>
+        <textarea id="stateEditor" rows="10"></textarea>
+      </div>
+      
+      <h3>Actions</h3>
+      <button id="initializeStateBtn">Initialize State</button>
+      <button id="saveBtn">Save to Server</button>
+      <button id="loadBtn">Load from Server</button>
+    </div>
+    
+    <div class="card">
+      <h2>Log</h2>
+      <div id="logBox"></div>
+    </div>
+  </div>
+
+  <script>
+    // Elements
+    const userIdInput = document.getElementById('userId');
+    const generateBtn = document.getElementById('generateBtn');
+    const clearStateBtn = document.getElementById('clearStateBtn');
+    const stateEditor = document.getElementById('stateEditor');
+    const initializeStateBtn = document.getElementById('initializeStateBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const loadBtn = document.getElementById('loadBtn');
+    const logBox = document.getElementById('logBox');
+    
+    // Local state
+    let currentState = {};
+    
+    // Helper for logging
+    function log(message, isError = false) {
+      const line = document.createElement('div');
+      line.textContent = `${new Date().toISOString().slice(11, 19)} - ${message}`;
+      if (isError) {
+        line.style.color = '#f56565';
+      }
+      logBox.appendChild(line);
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+    
+    // Generate random user ID
+    generateBtn.addEventListener('click', () => {
+      const newId = `test-user-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      userIdInput.value = newId;
+      log(`Generated new user ID: ${newId}`);
+    });
+    
+    // Clear local state
+    clearStateBtn.addEventListener('click', () => {
+      currentState = {};
+      stateEditor.value = '';
+      log('Cleared local state');
+    });
+    
+    // Initialize test state
+    initializeStateBtn.addEventListener('click', () => {
+      const userId = userIdInput.value.trim();
+      if (!userId) {
+        log('Please enter or generate a user ID first', true);
+        return;
+      }
+      
+      // Create test position-based state
+      const testState = {
+        userInformation: {
+          userId: userId,
+          isAnonymous: false,
+          displayName: `Test User ${userId.substring(0, 6)}`,
+          createdAt: new Date().toISOString(),
+          lastActive: new Date().toISOString()
+        },
+        tubeState: {
+          activeTube: 1,
+          tubes: {
+            1: {
+              threadId: 'thread-T1-001',
+              currentStitchId: 'stitch-T1-001-01',
+              positions: {
+                0: { 
+                  stitchId: 'stitch-T1-001-01', 
+                  skipNumber: 3, 
+                  distractorLevel: 1,
+                  perfectCompletions: 0 
+                },
+                1: { 
+                  stitchId: 'stitch-T1-001-02', 
+                  skipNumber: 3, 
+                  distractorLevel: 1,
+                  perfectCompletions: 0 
+                }
+              },
+              stitchOrder: ['stitch-T1-001-01', 'stitch-T1-001-02']
+            },
+            2: {
+              threadId: 'thread-T2-001',
+              currentStitchId: 'stitch-T2-001-01',
+              positions: {
+                0: { 
+                  stitchId: 'stitch-T2-001-01', 
+                  skipNumber: 3, 
+                  distractorLevel: 1,
+                  perfectCompletions: 0 
+                }
+              },
+              stitchOrder: ['stitch-T2-001-01']
+            },
+            3: {
+              threadId: 'thread-T3-001',
+              currentStitchId: 'stitch-T3-001-01',
+              positions: {
+                0: { 
+                  stitchId: 'stitch-T3-001-01', 
+                  skipNumber: 3, 
+                  distractorLevel: 1,
+                  perfectCompletions: 0 
+                }
+              },
+              stitchOrder: ['stitch-T3-001-01']
+            }
+          }
+        },
+        learningProgress: {
+          userId: userId,
+          totalTimeSpentLearning: 0,
+          evoPoints: 0,
+          evolutionLevel: 1,
+          currentBlinkSpeed: 1,
+          previousSessionBlinkSpeeds: [],
+          completedStitchesCount: 0,
+          perfectScoreStitchesCount: 0
+        },
+        isInitialized: true,
+        lastUpdated: new Date().toISOString()
+      };
+      
+      // Update local state
+      currentState = testState;
+      stateEditor.value = JSON.stringify(testState, null, 2);
+      log('Initialized test state');
+    });
+    
+    // Save to server
+    saveBtn.addEventListener('click', async () => {
+      const userId = userIdInput.value.trim();
+      if (!userId) {
+        log('Please enter or generate a user ID first', true);
+        return;
+      }
+      
+      try {
+        // Parse state from editor (allows manual editing)
+        currentState = JSON.parse(stateEditor.value);
+        
+        // Extract minimal state for API call
+        const minimalState = extractMinimalState(currentState);
+        
+        log(`Saving state to server for user ${userId}...`);
+        log(`Payload size: ${JSON.stringify(minimalState).length} bytes`);
+        
+        // Call the API endpoint to save state
+        const response = await fetch('/api/user-state', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            state: minimalState,
+            id: userId
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+          log(`State saved successfully!`);
+        } else {
+          const errorDetails = result.details || '';
+          log(`Error saving state: ${result.error} ${errorDetails}`, true);
+          
+          // Log the full response for debugging
+          console.error('Server response:', result);
+        }
+      } catch (error) {
+        log(`Error saving state: ${error.message}`, true);
+        console.error('Error:', error);
+      }
+    });
+    
+    // Load from server
+    loadBtn.addEventListener('click', async () => {
+      const userId = userIdInput.value.trim();
+      if (!userId) {
+        log('Please enter or generate a user ID first', true);
+        return;
+      }
+      
+      try {
+        log(`Loading state from server for user ${userId}...`);
+        
+        // Call the API endpoint to load state
+        const response = await fetch(`/api/user-state?userId=${encodeURIComponent(userId)}&debug=true`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+          log(`State loaded successfully! (Source: ${result.source})`);
+          currentState = result.state;
+          stateEditor.value = JSON.stringify(result.state, null, 2);
+        } else {
+          const errorDetails = result.details || '';
+          log(`Error loading state: ${result.error} ${errorDetails}`, true);
+        }
+      } catch (error) {
+        log(`Error loading state: ${error.message}`, true);
+        console.error('Error:', error);
+      }
+    });
+    
+    // Extract minimal state for API call
+    function extractMinimalState(state) {
+      // Extract essential user information
+      const minimalState = {
+        userId: state.userInformation?.userId,
+        activeTube: state.tubeState?.activeTube || 1,
+        tubes: {},
+        lastUpdated: state.lastUpdated || new Date().toISOString()
+      };
+      
+      // Extract essential tube data
+      if (state.tubeState?.tubes) {
+        Object.entries(state.tubeState.tubes).forEach(([tubeKey, tube]) => {
+          minimalState.tubes[tubeKey] = {
+            currentStitchId: tube.currentStitchId,
+            threadId: tube.threadId,
+            positions: tube.positions
+          };
+        });
+      }
+      
+      return minimalState;
+    }
+    
+    // Generate a default user ID on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      log('Simple Server Persistence Test loaded');
+      log('This page directly tests the API without using Zustand or React');
+      log('1. Generate a user ID');
+      log('2. Initialize test state');
+      log('3. Save state to server');
+      log('4. Clear local state');
+      log('5. Load state from server');
+      
+      // Auto-generate a user ID
+      generateBtn.click();
+      
+      // Ensure the disable-api-calls script is loaded
+      const disableApiCallsScript = document.createElement('script');
+      disableApiCallsScript.src = '/disable-api-calls.js';
+      document.body.appendChild(disableApiCallsScript);
+    });
+  </script>
+</body>
+</html>

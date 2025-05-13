@@ -778,20 +778,23 @@ export const useZenjinStore = create<ZenjinStore>()(
         }
 
         try {
-          // Extract minimal state for API call
-          const minimalState = get().extractMinimalState(state);
+          // Use the FULL state - no need to extract a minimal version
+          // The API will handle extracting what it needs
 
-          // Prepare the data for server sync
+          // Prepare the data for server sync - just pass the full state with explicit userId
           const syncData = {
-            state: minimalState
+            state: {
+              ...state,
+              userId: state.userInformation.userId  // Ensure userId is directly in the state object
+            },
+            id: state.userInformation.userId  // Also add as explicit id field
           };
 
-          // Log payload size for debugging
-          const payloadSize = JSON.stringify(syncData).length;
-          console.log(`Syncing minimal state to server (payload: ${payloadSize} bytes)`);
+          // Log debug info
+          console.log(`Syncing FULL state to server for user ${state.userInformation.userId}`);
 
-          // Send to server - using existing user-state API endpoint
-          const response = await fetch('/api/user-state', {
+          // Send to server - using simplified API endpoint
+          const response = await fetch('/api/simple-state', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -825,9 +828,8 @@ export const useZenjinStore = create<ZenjinStore>()(
           const isAnonymous = userId.startsWith('anonymous');
           console.log(`Loading state from server for ${isAnonymous ? 'anonymous' : 'authenticated'} user ${userId}`);
 
-          // Fetch state from server - for both anonymous and authenticated users
-          // The server will return default starting state for anonymous users
-          const response = await fetch(`/api/user-state?userId=${encodeURIComponent(userId)}`, {
+          // Fetch state from server - using simplified API endpoint
+          const response = await fetch(`/api/simple-state?userId=${encodeURIComponent(userId)}`, {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json'
