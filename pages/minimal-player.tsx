@@ -736,12 +736,81 @@ export default function MinimalPlayer() {
         }
       }
 
-      console.log(`Simplified rendering: passing tubeData and tubeNumber directly`);
+      console.log(`Creating thread adapter for the MinimalDistinctionPlayer`);
+
+      // Create a thread object from the tube data that the MinimalDistinctionPlayer can use
+      const createThreadFromTube = (tubeData, tubeNumber) => {
+        const activeTube = tubeData[tubeNumber];
+        if (!activeTube) {
+          console.error(`No data found for tube ${tubeNumber}`);
+          return null;
+        }
+
+        // Get stitches from either positions or stitches array
+        let stitches = [];
+
+        // First check if we have positions (preferred format)
+        if (activeTube.positions && Object.keys(activeTube.positions).length > 0) {
+          console.log(`Converting positions to stitches for tube ${tubeNumber}`);
+
+          // Convert positions to stitches array format
+          stitches = Object.entries(activeTube.positions)
+            .map(([position, data]: [string, any]) => ({
+              id: data.stitchId,
+              position: parseInt(position),
+              skipNumber: data.skipNumber || 3,
+              distractorLevel: data.distractorLevel || 'L1',
+              questions: data.questions || [] // Include questions if available
+            }))
+            .sort((a, b) => a.position - b.position);
+
+          console.log(`Converted ${stitches.length} positions to stitches`);
+        }
+        // Legacy format support (stitches array)
+        else if (activeTube.stitches && activeTube.stitches.length > 0) {
+          console.log(`Using legacy stitches array for tube ${tubeNumber}`);
+          stitches = [...activeTube.stitches];
+        }
+
+        if (stitches.length === 0) {
+          console.error(`No stitches found for tube ${tubeNumber}`);
+          return null;
+        }
+
+        // Create a thread object that matches what the player expects
+        return {
+          id: `thread-T${tubeNumber}-001`, // Generate a thread ID that matches the expected format
+          tubeId: tubeNumber,
+          stitches,
+          currentStitchId: activeTube.currentStitchId || stitches[0].id
+        };
+      };
+
+      // Create a thread object for the player
+      const thread = createThreadFromTube(tubeData, activeTubeNumber);
+
+      if (!thread) {
+        return (
+          <div className="bg-white/20 backdrop-blur-lg p-8 rounded-xl shadow-xl text-center">
+            <div className="text-white text-xl mb-4">Failed to Create Content</div>
+            <div className="text-white text-opacity-70 mb-6">
+              Unable to create thread from tube data for tube {activeTubeNumber}.
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-500 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        );
+      }
+
+      console.log(`Successfully created thread with ${thread.stitches.length} stitches for player`);
 
       return (
         <MinimalDistinctionPlayer
-          tubeNumber={activeTubeNumber}
-          tubeData={tubeData}
+          thread={thread}
           onComplete={(results) => {
             console.log('Session complete, recording results', results);
             // Handle session completion

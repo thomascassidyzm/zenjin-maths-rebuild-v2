@@ -5,8 +5,11 @@ import { calculateBonuses, calculateTotalPoints, calculateBasePoints } from '../
 import { useZenjinStore } from '../lib/store/zenjinStore';
 import '../styles/tube-stitch-player.css';
 
-// SIMPLIFIED: Removed Thread interface dependency and directly use tube-stitch model
-interface MinimalDistinctionPlayerProps {
+/**
+ * TubeStitchPlayer - Simplified player component that works directly with the tube-stitch model
+ * with no thread abstraction or fallbacks
+ */
+interface TubeStitchPlayerProps {
   tubeNumber: number; // Required - which tube to display
   tubeData: any; // Required - contains tube data with positions or stitches
   onComplete: (results: any) => void;
@@ -26,7 +29,7 @@ const shuffleArray = (array: any[]) => {
   return newArray;
 };
 
-const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
+const TubeStitchPlayer: React.FC<TubeStitchPlayerProps> = ({
   tubeNumber,
   tubeData,
   onComplete,
@@ -35,71 +38,12 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
   sessionTotalPoints = 0,
   userId,
 }) => {
-  // Extract stitches directly from the tube data
-  const [stitches, setStitches] = useState<any[]>([]);
-  const [currentStitchId, setCurrentStitchId] = useState<string | null>(null);
-
-  // Get stitches from tube data on component mount or when tube data changes
-  useEffect(() => {
-    if (!tubeData || !tubeNumber) {
-      console.error("Missing required tube data or tube number");
-      return;
-    }
-
-    const activeTube = tubeData[tubeNumber];
-    if (!activeTube) {
-      console.error(`No tube data found for tube ${tubeNumber}`);
-      return;
-    }
-
-    console.log(`Processing tube ${tubeNumber} data`);
-
-    let extractedStitches: any[] = [];
-
-    // SIMPLIFIED: Process tube data directly - support both formats
-
-    // Check for position-based format (preferred)
-    if (activeTube.positions && Object.keys(activeTube.positions).length > 0) {
-      console.log(`Tube ${tubeNumber} has ${Object.keys(activeTube.positions).length} stitches in position-based format`);
-
-      // Convert positions to stitches array
-      const positionStitches = Object.entries(activeTube.positions).map(([position, data]: [string, any]) => ({
-        id: data.stitchId,
-        position: parseInt(position),
-        skipNumber: data.skipNumber || 3,
-        distractorLevel: data.distractorLevel || 'L1'
-      }));
-
-      // Sort by position
-      extractedStitches = positionStitches.sort((a, b) => a.position - b.position);
-    }
-    // Legacy format support (stitches array)
-    else if (activeTube.stitches && activeTube.stitches.length > 0) {
-      console.log(`Tube ${tubeNumber} has ${activeTube.stitches.length} stitches in legacy format`);
-      extractedStitches = [...activeTube.stitches];
-    }
-    else {
-      console.error(`Tube ${tubeNumber} has no valid stitch data (neither positions nor stitches)`);
-      return;
-    }
-
-    // Set the extracted stitches and current stitch ID
-    setStitches(extractedStitches);
-    setCurrentStitchId(activeTube.currentStitchId ||
-      (extractedStitches.length > 0 ? extractedStitches[0].id : null));
-
-    console.log(`Tube ${tubeNumber} processed: ${extractedStitches.length} stitches extracted`);
-  }, [tubeData, tubeNumber]);
   // Initialize Next.js router for client-side navigation
   const router = useRouter();
 
-  // Create explicit fallbacks for all session context functions we might need
-  const dummySessionState = { questionResults: [], points: 0 };
-  const startSession = (params: any) => console.log('Session context not available - startSession', params);
-  const recordQuestionResult = (result: any) => console.log('Session context not available - recordQuestionResult', result);
-  const addPoints = (points: number) => console.log('Session context not available - addPoints', points);
-  const contextEndSession = async () => ({ success: false, error: 'Session context not available' });
-  const contextCompleteSession = async () => ({ success: false, error: 'Session context not available' });
+  // Extract stitches directly from the tube data
+  const [stitches, setStitches] = useState<any[]>([]);
+  const [currentStitchId, setCurrentStitchId] = useState<string | null>(null);
 
   // State for tracking questions and session
   const [sessionQuestions, setSessionQuestions] = useState<Question[]>([]);
@@ -156,6 +100,56 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     };
   }, []);
 
+  // Get stitches from tube data on component mount or when tube data changes
+  useEffect(() => {
+    if (!tubeData || !tubeNumber) {
+      console.error("Missing required tube data or tube number");
+      return;
+    }
+
+    const activeTube = tubeData[tubeNumber];
+    if (!activeTube) {
+      console.error(`No tube data found for tube ${tubeNumber}`);
+      return;
+    }
+
+    console.log(`Processing tube ${tubeNumber} data`);
+
+    let extractedStitches: any[] = [];
+
+    // Check for position-based format (preferred)
+    if (activeTube.positions && Object.keys(activeTube.positions).length > 0) {
+      console.log(`Tube ${tubeNumber} has ${Object.keys(activeTube.positions).length} stitches in position-based format`);
+
+      // Convert positions to stitches array
+      const positionStitches = Object.entries(activeTube.positions).map(([position, data]: [string, any]) => ({
+        id: data.stitchId,
+        position: parseInt(position),
+        skipNumber: data.skipNumber || 3,
+        distractorLevel: data.distractorLevel || 'L1'
+      }));
+
+      // Sort by position
+      extractedStitches = positionStitches.sort((a, b) => a.position - b.position);
+    }
+    // Legacy format support (stitches array)
+    else if (activeTube.stitches && activeTube.stitches.length > 0) {
+      console.log(`Tube ${tubeNumber} has ${activeTube.stitches.length} stitches in legacy format`);
+      extractedStitches = [...activeTube.stitches];
+    }
+    else {
+      console.error(`Tube ${tubeNumber} has no valid stitch data (neither positions nor stitches)`);
+      return;
+    }
+
+    // Set the extracted stitches and current stitch ID
+    setStitches(extractedStitches);
+    setCurrentStitchId(activeTube.currentStitchId ||
+      (extractedStitches.length > 0 ? extractedStitches[0].id : null));
+
+    console.log(`Tube ${tubeNumber} processed: ${extractedStitches.length} stitches extracted`);
+  }, [tubeData, tubeNumber]);
+
   // Keep track of which stitches we've already initialized
   const initializedStitchRef = useRef({});
   const previousTubeRef = useRef<number | null>(null);
@@ -171,7 +165,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
 
     // Guard clause - don't proceed if we don't have stitches
     if (stitches.length === 0) {
-      console.warn('No stitches available for MinimalDistinctionPlayer');
+      console.warn('No stitches available for TubeStitchPlayer');
       return;
     }
 
@@ -303,328 +297,22 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
               loadQuestion(sessionQs[0], false);
             }
           } else {
-            console.warn(`ERROR: Failed to fetch valid questions for stitch ${stitch.id} from Zustand store`);
-            useFallbackQuestions(stitch);
+            console.error(`ERROR: Failed to fetch valid questions for stitch ${stitch.id} from Zustand store`);
+            setError(`No questions available for stitch ${stitch.id}. Please try another tube.`);
           }
         }).catch(error => {
           console.error(`ERROR: Failed to fetch stitch ${stitch.id} from Zustand store:`, error);
-          useFallbackQuestions(stitch);
+          setError(`Error fetching stitch ${stitch.id}: ${error.message}`);
         });
       } catch (error) {
         console.error(`ERROR: Exception while fetching stitch ${stitch.id}:`, error);
-        useFallbackQuestions(stitch);
+        setError(`Exception while fetching stitch: ${error.message}`);
       }
     }
+  }, [stitches, tubeNumber, currentStitchId, questionsPerSession]);
 
-    // Helper function to use fallback questions when needed
-    function useFallbackQuestions() {
-      // Check if the questions array has valid questions
-      // NOTE: This is a safety measure - the questions should already be properly formatted
-      const validQuestions = stitch.questions.filter(q => (
-        q.text && q.correctAnswer && q.distractors &&
-        q.distractors.L1 && q.distractors.L2 && q.distractors.L3
-      ));
-
-      if (validQuestions.length === 0) {
-        console.error(`No valid questions found for stitch ${stitch.id} in tube ${tubeNumber}`);
-
-        // For anonymous users, always provide sample math questions
-        // This ensures consistent experience for all user types
-        const isAnonymousUser = !userId || userId.startsWith('anon-');
-
-        if (isAnonymousUser) {
-          // Use basic math questions for anonymous users to ensure they have a good experience
-          let sampleQuestions = [];
-
-          // Try to determine tube type from stitch ID to provide appropriate questions
-          const tubeMatch = stitch.id.match(/stitch-T(\d+)-/i);
-          const tubeNum = tubeMatch ? parseInt(tubeMatch[1]) : tubeNumber || 1;
-
-          if (tubeNum === 1) {
-            // Tube 1: Number Facts - counting, comparison, sequences
-            sampleQuestions = [
-              {
-                id: `${stitch.id}-sample-1`,
-                text: 'What number comes after 5?',
-                correctAnswer: '6',
-                distractors: { L1: '7', L2: '4', L3: '5' }
-              },
-              {
-                id: `${stitch.id}-sample-2`,
-                text: 'Which is greater: 8 or 4?',
-                correctAnswer: '8',
-                distractors: { L1: '4', L2: 'They are equal', L3: 'Cannot compare' }
-              },
-              {
-                id: `${stitch.id}-sample-3`,
-                text: 'What comes next: 2, 4, 6, ?',
-                correctAnswer: '8',
-                distractors: { L1: '7', L2: '10', L3: '9' }
-              },
-              {
-                id: `${stitch.id}-sample-4`,
-                text: 'Count to 10. What number comes after 7?',
-                correctAnswer: '8',
-                distractors: { L1: '6', L2: '9', L3: '7' }
-              },
-              {
-                id: `${stitch.id}-sample-5`,
-                text: 'What is the smallest number: 3, 7, or 2?',
-                correctAnswer: '2',
-                distractors: { L1: '3', L2: '7', L3: '10' }
-              }
-            ];
-          } else if (tubeNum === 2) {
-            // Tube 2: Basic Operations - addition, subtraction
-            sampleQuestions = [
-              {
-                id: `${stitch.id}-sample-1`,
-                text: '3 + 5',
-                correctAnswer: '8',
-                distractors: { L1: '7', L2: '9', L3: '6' }
-              },
-              {
-                id: `${stitch.id}-sample-2`,
-                text: '7 - 2',
-                correctAnswer: '5',
-                distractors: { L1: '4', L2: '6', L3: '3' }
-              },
-              {
-                id: `${stitch.id}-sample-3`,
-                text: '4 + 6',
-                correctAnswer: '10',
-                distractors: { L1: '8', L2: '12', L3: '9' }
-              },
-              {
-                id: `${stitch.id}-sample-4`,
-                text: '10 - 5',
-                correctAnswer: '5',
-                distractors: { L1: '4', L2: '6', L3: '15' }
-              },
-              {
-                id: `${stitch.id}-sample-5`,
-                text: '9 + 7',
-                correctAnswer: '16',
-                distractors: { L1: '15', L2: '17', L3: '14' }
-              }
-            ];
-          } else if (tubeNum === 3) {
-            // Tube 3: Problem Solving - word problems
-            sampleQuestions = [
-              {
-                id: `${stitch.id}-sample-1`,
-                text: 'Sarah has 5 apples. Tom gives her 3 more. How many apples does Sarah have now?',
-                correctAnswer: '8',
-                distractors: { L1: '7', L2: '2', L3: '15' }
-              },
-              {
-                id: `${stitch.id}-sample-2`,
-                text: 'Jack has 10 stickers. He gives 4 to his friend. How many stickers does Jack have left?',
-                correctAnswer: '6',
-                distractors: { L1: '14', L2: '4', L3: '5' }
-              },
-              {
-                id: `${stitch.id}-sample-3`,
-                text: 'There are 8 birds on a tree. 3 more birds join them. How many birds are there now?',
-                correctAnswer: '11',
-                distractors: { L1: '10', L2: '12', L3: '5' }
-              },
-              {
-                id: `${stitch.id}-sample-4`,
-                text: 'Emma has 9 sweets. She eats 4 sweets. How many sweets does she have left?',
-                correctAnswer: '5',
-                distractors: { L1: '13', L2: '4', L3: '6' }
-              },
-              {
-                id: `${stitch.id}-sample-5`,
-                text: 'There are 7 children on the bus. At the stop, 3 more children get on. How many children are on the bus now?',
-                correctAnswer: '10',
-                distractors: { L1: '4', L2: '9', L3: '11' }
-              }
-            ];
-          } else {
-            // Default mixed questions
-            sampleQuestions = [
-              {
-                id: `${stitch.id}-sample-1`,
-                text: '3 + 5',
-                correctAnswer: '8',
-                distractors: { L1: '7', L2: '9', L3: '6' }
-              },
-              {
-                id: `${stitch.id}-sample-2`,
-                text: '7 - 2',
-                correctAnswer: '5',
-                distractors: { L1: '4', L2: '6', L3: '3' }
-              },
-              {
-                id: `${stitch.id}-sample-3`,
-                text: '4 × 3',
-                correctAnswer: '12',
-                distractors: { L1: '6', L2: '10', L3: '9' }
-              },
-              {
-                id: `${stitch.id}-sample-4`,
-                text: '10 ÷ 2',
-                correctAnswer: '5',
-                distractors: { L1: '4', L2: '6', L3: '2' }
-              },
-              {
-                id: `${stitch.id}-sample-5`,
-                text: '9 + 7',
-                correctAnswer: '16',
-                distractors: { L1: '15', L2: '17', L3: '6' }
-              }
-            ];
-          }
-
-          // Set the sample questions on the stitch
-          stitch.questions = sampleQuestions;
-          console.log(`Using ${sampleQuestions.length} tube-specific sample questions for user (stitch ${stitch.id})`);
-        } else {
-          // For authenticated users, show the error message
-          const errorQuestions = [
-            {
-              id: `${stitch.id}-error-1`,
-              text: 'Content missing. Please contact support.',
-              correctAnswer: 'Contact support',
-              distractors: {
-                L1: 'Try again later',
-                L2: 'Refresh page',
-                L3: 'Check settings'
-              }
-            }
-          ];
-
-          // Set the error questions on the stitch
-          stitch.questions = errorQuestions;
-          console.log(`Using error placeholder question for stitch ${stitch.id}`);
-        }
-      } else {
-        console.log(`Using ${validQuestions.length} valid existing questions from database for stitch ${stitch.id}`);
-        stitch.questions = validQuestions;
-      }
-    }
-
-    // Clone the questions array to avoid mutation issues
-    let allQuestions = [...stitch.questions];
-
-    // Double-check we have questions
-    if (allQuestions.length === 0) {
-      console.warn("Still no questions available after attempted initialization");
-
-      // Generate absolute fallback questions as a last resort
-      // This ensures we ALWAYS have some questions to show
-      // Generate questions based on tube number for a consistent user experience
-      const isAnonymousUser = !userId || userId.startsWith('anon-');
-      const tubeMatch = stitch.id.match(/stitch-T(\d+)-/i);
-      const tubeNumber = tubeMatch ? parseInt(tubeMatch[1]) : 1;
-
-      // Last resort emergency questions based on tube type
-      if (isAnonymousUser) {
-        console.log(`EMERGENCY FALLBACK: Generating last-resort questions for anonymous user`);
-
-        // Generate emergency questions based on tube
-        let emergencyQuestions = [];
-
-        if (tubeNumber === 1) {
-          // Tube 1: Number Facts - counting, comparison, sequences
-          emergencyQuestions = [
-            {
-              id: `${stitch.id}-emergency-1`,
-              text: 'What number comes after 3?',
-              correctAnswer: '4',
-              distractors: { L1: '5', L2: '2', L3: '3' }
-            },
-            {
-              id: `${stitch.id}-emergency-2`,
-              text: 'Which is the largest: 2, 5, or 3?',
-              correctAnswer: '5',
-              distractors: { L1: '2', L2: '3', L3: '0' }
-            }
-          ];
-        } else if (tubeNumber === 2) {
-          // Tube 2: Basic Operations
-          emergencyQuestions = [
-            {
-              id: `${stitch.id}-emergency-1`,
-              text: '2 + 2',
-              correctAnswer: '4',
-              distractors: { L1: '3', L2: '5', L3: '2' }
-            },
-            {
-              id: `${stitch.id}-emergency-2`,
-              text: '5 - 2',
-              correctAnswer: '3',
-              distractors: { L1: '2', L2: '4', L3: '7' }
-            }
-          ];
-        } else {
-          // Tube 3 or default
-          emergencyQuestions = [
-            {
-              id: `${stitch.id}-emergency-1`,
-              text: 'I have 3 apples and get 2 more. How many do I have?',
-              correctAnswer: '5',
-              distractors: { L1: '4', L2: '6', L3: '1' }
-            },
-            {
-              id: `${stitch.id}-emergency-2`,
-              text: 'There are 4 birds on a tree. 1 flies away. How many are left?',
-              correctAnswer: '3',
-              distractors: { L1: '2', L2: '4', L3: '5' }
-            }
-          ];
-        }
-
-        // Set emergency questions and continue
-        allQuestions = emergencyQuestions;
-        stitch.questions = emergencyQuestions;
-        console.log(`Using ${emergencyQuestions.length} emergency questions for anonymous user`);
-      } else {
-        // For authenticated users, show a simple error without stopping the session
-        const errorQuestion = {
-          id: `${stitch.id}-critical-error`,
-          text: 'Content unavailable. Please try again.',
-          correctAnswer: 'Continue',
-          distractors: { L1: 'Refresh', L2: 'Try again', L3: 'Help' }
-        };
-
-        allQuestions = [errorQuestion];
-        stitch.questions = [errorQuestion];
-        console.log(`Using error question for authenticated user as last resort`);
-      }
-
-      // Additional debug info to identify the issue
-      console.error(`CRITICAL ERROR: No questions initially found for stitch ${stitch.id}`);
-      const contentCollection = useZenjinStore.getState().contentCollection;
-      console.error(`- Stitch exists in Zustand store: ${!!(contentCollection?.stitches?.[stitch.id])}`);
-      if (contentCollection?.stitches?.[stitch.id]) {
-        console.error(`- Cached stitch has questions: ${!!(contentCollection.stitches[stitch.id].questions)}`);
-        console.error(`- Cached stitch question count: ${contentCollection.stitches[stitch.id].questions?.length || 0}`);
-      }
-
-      // Instead of exiting early with no content, we continue with our emergency questions
-      // This ensures users always see something instead of the "no questions" error
-      console.log(`Continuing with fallback questions after critical error`);
-    }
-
-    // Shuffle all questions using URN randomness
-    allQuestions = shuffleArray(allQuestions);
-
-    // Take only the number we need for this session
-    const sessionQs = allQuestions.slice(0, Math.min(questionsPerSession, allQuestions.length));
-    console.log(`Using ${sessionQs.length} questions for session`);
-    setSessionQuestions(sessionQs);
-
-    // Start with the first question if we have any
-    if (sessionQs.length > 0) {
-      setIsInitialized(true);
-      loadQuestion(sessionQs[0], false);
-    } else {
-      console.error("No questions available for this session!");
-    }
-  }, [tubeNumber, currentStitchId, questionsPerSession, userId, sessionTotalPoints]);
+  // State for errors
+  const [error, setError] = useState<string | null>(null);
 
   // Track if timer initialization has been done for the current question
   const timerInitializedRef = useRef(false);
@@ -834,8 +522,6 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     if (correct) {
       const pointsToAdd = !isReplayQuestion ? 3 : 1;
       setPoints(prev => prev + pointsToAdd);
-      
-      // Skip updating points in context as it's not available
     }
     
     // Create result object
@@ -848,8 +534,6 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     
     // Update session results locally
     setSessionResults(prev => [...prev, result]);
-    
-    // Skip recording in session context as it's not available
     
     // Keep the selection state visible, but not too long
     // After a delay, either move to next question or replay current
@@ -897,7 +581,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
 
   // Complete the session and report results
   const completeSession = useCallback(() => {
-    console.log('🏁 Completing session in MinimalDistinctionPlayer');
+    console.log('🏁 Completing session in TubeStitchPlayer');
     
     // Clean up any outstanding timers or animations
     if (timerAnimation) {
@@ -922,9 +606,6 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     const accuracy = (correctAnswers / sessionResults.length) * 100;
     
     console.log(`FINAL STATS: Total questions=${totalQuestions}, Correct answers=${correctAnswers}, First time correct=${firstTimeCorrect}`);
-    
-    // We count actual questions answered and don't force to match the stitch length
-    // Important: A session can end mid-stitch, so use the real question count
     
     // Calculate average time for correctly answered questions
     const totalCorrectTime = correctResults.reduce((sum, r) => sum + r.timeToAnswer, 0);
@@ -1029,7 +710,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       onComplete(apiResults);
     }, 50);
     
-  }, [sessionResults, points, tubeNumber, currentStitchId, onComplete, timerAnimation, userId]);
+  }, [sessionResults, points, tubeNumber, currentStitchId, onComplete, timerAnimation, userId, sessionQuestions]);
 
   // State for session summary
   const [showSessionSummary, setShowSessionSummary] = useState(false);
@@ -1063,7 +744,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
 
   // Handle ending session early
   const handleEndSession = async () => {
-    console.log('📱 User clicked Finish button in MinimalDistinctionPlayer');
+    console.log('📱 User clicked Finish button in TubeStitchPlayer');
     
     // Clean up any outstanding timers or animations
     if (timerAnimation) {
@@ -1139,9 +820,6 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       saveAnonymousSessionData(basePoints, avgTime / 1000, sessionResults);
     }
     
-    // Skip context operations since SessionContext is not available
-    console.log('SessionContext not available, using local calculations only');
-    
     // Use local calculations for evolution
     let evolutionLevel = Math.floor(totalPoints / 1000) + 1;
     let evolutionProgress = (totalPoints % 1000) / 10; // 0-100
@@ -1165,7 +843,6 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     setSessionSummaryStep('base');
     
     // For backward compatibility, we still prepare the session stats object
-    // But no longer store it in the window object - will use context instead
     const stats = {
       sessionId: `session-${Date.now()}`,
       tubeId: tubeNumber,
@@ -1230,9 +907,6 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       // Add navigation flag to ensure dashboard redirect
       stats.goDashboard = true;
       
-      // Skip context completion as it's not available
-      console.log('SessionContext not available, skipping final completion check');
-      
       // Handle anonymous users
       if (typeof window !== 'undefined') {
         try {
@@ -1282,9 +956,6 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       onEndSession(stats);
     } else {
       // For automatic completion via context
-      // Skip context-based session completion since context is not available
-      console.log('SessionContext not available, using direct complete method');
-      
       // Call onComplete directly with basic stats
       onComplete({
         ...stats,
@@ -1416,6 +1087,42 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     );
   }
 
+  // Error state with retry button
+  if (error) {
+    return (
+      <div className="min-h-screen player-bg flex items-center justify-center p-4">
+        <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden fixed-player-card">
+          <div className="bg-white bg-opacity-10 p-4 flex justify-between items-center">
+            <div>
+              <p className="text-white text-opacity-70 text-sm">ERROR</p>
+              <p className="text-white text-2xl font-bold">Content Issue</p>
+            </div>
+          </div>
+          
+          <div className="p-6 question-container flex flex-col items-center justify-center">
+            <div className="text-white text-xl mb-4">Unable to Load Content</div>
+            <div className="text-white text-opacity-70 mb-6 text-center">
+              {error}
+            </div>
+            <button
+              onClick={() => {
+                setError(null);
+                window.location.reload(); // Simple refresh to retry
+              }}
+              className="bg-teal-600 hover:bg-teal-500 text-white font-medium py-2 px-6 rounded-lg transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+          
+          <div className="bg-white bg-opacity-10 p-4 flex justify-center items-center">
+            <span className="text-white text-opacity-50 text-xs">Tube {tubeNumber}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // If no current question, show loading or error with fixed dimensions
   if (!currentQuestion) {
     // Check if we have questions but they're just not loaded yet
@@ -1444,54 +1151,15 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
               <>
                 <div className="text-white text-xl mb-4">No questions available</div>
                 <div className="text-white text-opacity-70 mb-6">
-                  This stitch doesn't have any questions. Please add questions in the admin dashboard.
+                  We're having trouble loading questions for this stitch. Please try a different tube.
                 </div>
                 <button
                   onClick={() => {
-                    // Create sample questions since none are available
-                    if (stitches.length === 0) return;
-
-                    const stitch = stitches[0];
-                    console.log("Creating sample questions for empty stitch");
-                    
-                    const sampleQuestions = [
-                      {
-                        id: `${stitch.id}-q1`,
-                        text: '3 + 5',
-                        correctAnswer: '8',
-                        distractors: { L1: '7', L2: '9', L3: '6' }
-                      },
-                      {
-                        id: `${stitch.id}-q2`,
-                        text: '7 - 2',
-                        correctAnswer: '5',
-                        distractors: { L1: '4', L2: '6', L3: '3' }
-                      },
-                      {
-                        id: `${stitch.id}-q3`,
-                        text: '4 × 3',
-                        correctAnswer: '12',
-                        distractors: { L1: '6', L2: '10', L3: '9' }
-                      }
-                    ];
-                    
-                    // Set the questions on the stitch
-                    stitch.questions = sampleQuestions;
-                    
-                    // Re-initialize with these questions
-                    const allQuestions = [...sampleQuestions];
-                    const sessionQs = allQuestions.slice(0, Math.min(questionsPerSession, allQuestions.length));
-                    setSessionQuestions(sessionQs);
-                    
-                    // Start with the first question
-                    if (sessionQs.length > 0) {
-                      setIsInitialized(true);
-                      loadQuestion(sessionQs[0], false);
-                    }
+                    window.location.reload(); // Simple refresh to retry
                   }}
                   className="bg-teal-600 hover:bg-teal-500 text-white font-medium py-2 px-6 rounded-lg transition-colors"
                 >
-                  Use Sample Questions
+                  Try Again
                 </button>
               </>
             )}
@@ -1877,4 +1545,4 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
   );
 };
 
-export default MinimalDistinctionPlayer;
+export default TubeStitchPlayer;
