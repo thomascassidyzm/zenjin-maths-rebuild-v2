@@ -8,7 +8,8 @@ import StitchCelebration from '../components/StitchCelebration';
 import SubscriptionStatusIndicator from '../components/subscription/SubscriptionStatusIndicator';
 import DevTestPane from '../components/DevTestPane';
 import { useAuth } from '../context/AuthContext';
-import { useTripleHelixPlayer } from '../lib/playerUtils';
+// SIMPLIFIED: Remove complex hook and use the store directly
+// import { useTripleHelixPlayer } from '../lib/playerUtils';
 import { useSubscriptionStatus } from '../hooks/useSubscriptionStatus';
 import UserWelcomeButton from '../components/UserWelcomeButton';
 import { useZenjinStore } from '../lib/store/zenjinStore';
@@ -72,13 +73,69 @@ export default function MinimalPlayer() {
     loadAdditionalContent
   } = useTwoPhaseContentLoading();
 
-  // Connect to Zustand store for content buffer
+  // SIMPLIFIED: Directly access relevant state from Zustand store
+  const tubeState = useZenjinStore(state => state.tubeState);
+  const activeTubeNumber = useZenjinStore(state => state.tubeState?.activeTube || 1);
+  const fetchStitch = useZenjinStore(state => state.fetchStitch);
+  const totalPoints = useZenjinStore(state => state.userState?.totalPoints || 0);
+  const completedSessions = useZenjinStore(state => state.userState?.completedSessions || 0);
   const fillInitialContentBuffer = useZenjinStore(state => state.fillInitialContentBuffer);
 
-  // Add state for admin tube debugging
+  // State for loading and errors
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [adminMessage, setAdminMessage] = useState('');
   const [tubeInfo, setTubeInfo] = useState<any>({});
   const [showAdminControls] = useState(admin === 'true');
-  const [adminMessage, setAdminMessage] = useState('');
+  const [sessionPoints, setSessionPoints] = useState(0);
+
+  // Record answer function to handle player session completion
+  const recordAnswer = (results: any) => {
+    console.log('Recording session results:', results);
+    if (results?.totalPoints) {
+      setSessionPoints(prev => prev + results.totalPoints);
+    }
+    // Could add more sophisticated handling here if needed
+  };
+
+  // Function to handle moving to next question
+  const nextQuestion = () => {
+    console.log('Moving to next question');
+    // This is a simplified placeholder for the next question logic
+  };
+
+  // Function to restart in case of errors
+  const restart = () => {
+    setIsLoading(true);
+    setError(null);
+    // Trigger content reload
+    fillInitialContentBuffer();
+    setIsLoading(false);
+  };
+
+  // Create tubeData object from Zustand store's tubeState
+  const tubeData = React.useMemo(() => {
+    if (!tubeState || !tubeState.tubes) {
+      console.error('No tube state available from Zustand store');
+      return null;
+    }
+
+    // Build tube data object from Zustand store
+    const tubes = Object.entries(tubeState.tubes).reduce((acc, [tubeNumStr, tube]: [string, any]) => {
+      const tubeNum = parseInt(tubeNumStr);
+      acc[tubeNum] = {
+        ...tube,
+        // Ensure we have all the properties we need
+        threadId: tube.threadId || `thread-T${tubeNum}-001`,
+        currentStitchId: tube.currentStitchId,
+        positions: tube.positions || {},
+        stitches: tube.stitches || []
+      };
+      return acc;
+    }, {} as Record<number, any>);
+
+    return tubes;
+  }, [tubeState]);
 
   // Simply check if auth is loading - no need for additional state
   if (authLoading) {
@@ -92,39 +149,60 @@ export default function MinimalPlayer() {
       </div>
     );
   }
-  
+
   // Check if we should reset points but maintain stitch progress
   const shouldResetPoints = resetPoints === 'true';
-  
+
   // Check if we should continue from previous state (important for "Continue Playing" button)
   // Get continue flag from both the query parameter and localStorage
   // This ensures we continue from the previous state even if the URL parameter isn't present
-  const continuePreviousState = 
-    shouldContinue === 'true' || 
+  const continuePreviousState =
+    shouldContinue === 'true' ||
     (typeof window !== 'undefined' && localStorage.getItem('zenjin_continue_previous_state') === 'true');
-  
+
   // Add state to track if we're continuing from previous state
   const [isContinuingFromPrevious, setIsContinuingFromPrevious] = useState(false);
-    
+
   // Clear the flag after reading it to prevent persisting the state indefinitely
   useEffect(() => {
     if (typeof window !== 'undefined' && localStorage.getItem('zenjin_continue_previous_state') === 'true') {
       console.log('CRITICAL: Clearing zenjin_continue_previous_state flag after reading');
       localStorage.removeItem('zenjin_continue_previous_state');
-      
+
       // Set the state to show we're continuing from previous state
       setIsContinuingFromPrevious(true);
     }
   }, []);
-  
+
   // Check if dev mode is enabled
   const showDevTools = dev === 'true';
-  
+
   // Determine the correct player mode based solely on auth state - simple and clear
   const playerMode = isAuthenticated && user?.id ? 'authenticated' : 'anonymous';
 
   // Simplified logging - just a single log statement
   console.log(`Auth state: User is ${isAuthenticated ? 'authenticated' : 'anonymous'}, mode: ${playerMode}, ID: ${user?.id || 'anonymous'}`);
+
+  // Initialize content when component mounts
+  useEffect(() => {
+    const initializeContent = async () => {
+      try {
+        setIsLoading(true);
+
+        // Fill initial content buffer from Zustand store
+        await fillInitialContentBuffer();
+
+        // Update loading state
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error initializing content:', error);
+        setError('Error loading content. Please try again.');
+        setIsLoading(false);
+      }
+    };
+
+    initializeContent();
+  }, [fillInitialContentBuffer]);
 
   // Function to manually switch tubes (for debugging)
   const switchTube = (tubeNumber: number) => {
@@ -134,7 +212,10 @@ export default function MinimalPlayer() {
                 user?.id || 'anonymous';
 
     try {
-      // Update main state
+      // Update Zustand store directly
+      useZenjinStore.getState().setActiveTube(tubeNumber);
+
+      // Also update localStorage for persistence
       const stateKey = `zenjin_state_${uid}`;
       const stateJson = localStorage.getItem(stateKey);
 
@@ -144,86 +225,43 @@ export default function MinimalPlayer() {
         state.activeTubeNumber = tubeNumber;
         state.lastUpdated = new Date().toISOString();
         localStorage.setItem(stateKey, JSON.stringify(state));
-
-        // Also update anonymous state if it exists
-        const anonStateJson = localStorage.getItem('zenjin_anonymous_state');
-        if (anonStateJson) {
-          try {
-            const anonState = JSON.parse(anonStateJson);
-            if (anonState.state) {
-              anonState.state.activeTube = tubeNumber;
-              anonState.state.activeTubeNumber = tubeNumber;
-              localStorage.setItem('zenjin_anonymous_state', JSON.stringify(anonState));
-            }
-          } catch (e) {
-            console.error('Error updating anonymous state:', e);
-          }
-        }
-
-        // Also update triple helix state
-        const tripleHelixJson = localStorage.getItem(`triple_helix_state_${uid}`);
-        if (tripleHelixJson) {
-          try {
-            const tripleHelix = JSON.parse(tripleHelixJson);
-            tripleHelix.activeTube = tubeNumber;
-            tripleHelix.activeTubeNumber = tubeNumber;
-            localStorage.setItem(`triple_helix_state_${uid}`, JSON.stringify(tripleHelix));
-          } catch (e) {
-            console.error('Error updating triple helix state:', e);
-          }
-        }
-
-        // Reload to see changes
-        window.location.reload();
-      } else {
-        alert('No state found to update');
       }
+
+      // Reload to see changes
+      window.location.reload();
     } catch (e) {
       console.error('Error switching tube:', e);
       alert(`Error: ${e.message}`);
     }
   };
-  
-  // If the user is anonymous and we have the create flag, ensure we create a proper account
-  if (typeof window !== 'undefined' && !isAuthenticated) {
-    const createAnonymousState = localStorage.getItem('zenjin_create_anonymous_state') === 'true';
-    if (createAnonymousState) {
-      console.log('DEBUGGING: Anonymous account creation flag detected in minimal-player');
-      // Clear the flag after detecting it to prevent repeated creation
-      localStorage.removeItem('zenjin_create_anonymous_state');
-      console.log('DEBUGGING: Cleared anonymous creation flag after handling');
-      // Flag will be handled by _app.tsx and createAnonymousUser in anonymousData.ts
-    } else {
-      console.log('DEBUGGING: No anonymous creation flag found in minimal-player');
+
+  // Show function to get stitch info
+  const getStitchInfo = (tubeNumber: number, stitchId: string) => {
+    if (!tubeData || !tubeData[tubeNumber]) {
+      return null;
     }
-  }
-  
-  // Initialize the triple-helix player - this is now cleaner and decoupled from the UI
-  const { 
-    tubeData, 
-    mode: playerStatus, 
-    isActive, 
-    activeTubeNumber, 
-    recordAnswer, 
-    nextQuestion,
-    celebrateCurrentStitch,
-    switchToNextStitch,
-    isLoading,
-    getStitchInfo,
-    error,
-    completedSessions,
-    totalPoints,
-    sessionPoints,
-    restart, 
-  } = useTripleHelixPlayer({ 
-    mode: playerMode,
-    resetPoints: shouldResetPoints,
-    continuePreviousState,
-    debug: (message) => {
-      console.log(message); 
-      setAdminMessage(message);
+
+    const tube = tubeData[tubeNumber];
+
+    // Check in positions first (preferred)
+    if (tube.positions) {
+      for (const [pos, data] of Object.entries(tube.positions)) {
+        if ((data as any).stitchId === stitchId) {
+          return {
+            position: parseInt(pos),
+            ...data
+          };
+        }
+      }
     }
-  });
+
+    // Fallback to stitches array
+    if (tube.stitches) {
+      return tube.stitches.find((s: any) => s.id === stitchId);
+    }
+
+    return null;
+  };
   
   // Track tube info for admin tools
   useEffect(() => {
@@ -253,19 +291,19 @@ export default function MinimalPlayer() {
       }
     }
   }, [tubeData, activeTubeNumber, showAdminControls, getStitchInfo]);
-  
+
   // Show a special celebration when a stitch is completed
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationPoints, setCelebrationPoints] = useState(0);
   const [celebrationLevel, setCelebrationLevel] = useState(1);
-  
+
   // Handle celebration events
   const onCelebrateStitch = (points: number, level: number = 1) => {
     console.log(`Celebrating stitch completion with ${points} points at level ${level}`);
     setCelebrationPoints(points);
     setCelebrationLevel(level);
     setShowCelebration(true);
-    
+
     // Record the celebration in analytics if available
     try {
       if (typeof window !== 'undefined' && (window as any).gtag) {
@@ -279,7 +317,18 @@ export default function MinimalPlayer() {
       console.error('Error logging analytics:', e);
     }
   };
-  
+
+  // Function to celebrate current stitch (for compatibility with existing API expectations)
+  const celebrateCurrentStitch = (points: number = 60) => {
+    onCelebrateStitch(points, 1);
+  };
+
+  // Function to switch to next stitch (placeholder for API compatibility)
+  const switchToNextStitch = () => {
+    console.log('Switching to next stitch (placeholder)');
+    // In our simplified model, this would be handled by the component itself
+  };
+
   // Loading state
   if (isLoading) {
     return (
@@ -294,7 +343,7 @@ export default function MinimalPlayer() {
       </div>
     );
   }
-  
+
   // Error state
   if (error) {
     return (
@@ -305,7 +354,7 @@ export default function MinimalPlayer() {
           </svg>
           <h2 className="text-xl font-medium text-white">Oops! Something went wrong</h2>
           <p className="text-white/70 mt-2 mb-4">{error}</p>
-          <button 
+          <button
             onClick={restart}
             className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-500 transition-colors"
           >
@@ -315,8 +364,30 @@ export default function MinimalPlayer() {
       </div>
     );
   }
+
+  // Debug logging for tube data
+  if (tubeData && activeTubeNumber) {
+    console.log(`Tube data debug:`, {
+      activeTubeNumber,
+      hasActiveTube: !!tubeData[activeTubeNumber],
+      availableTubes: Object.keys(tubeData),
+    });
+
+    if (tubeData[activeTubeNumber]) {
+      const activeTube = tubeData[activeTubeNumber];
+      console.log(`Active tube data:`, {
+        currentStitchId: activeTube.currentStitchId,
+        hasPositions: !!activeTube.positions,
+        positionCount: activeTube.positions ? Object.keys(activeTube.positions).length : 0,
+        hasStitches: !!activeTube.stitches,
+        stitchCount: activeTube.stitches ? activeTube.stitches.length : 0
+      });
+    }
+  } else {
+    console.error(`Missing tube data or active tube number: tubeData=${!!tubeData}, activeTubeNumber=${activeTubeNumber}`);
+  }
   
-  // Conditionally render different player components based on upgrade flag and player mode
+  // Render player component directly from the Zustand store data
   const renderPlayer = () => {
     // Enhanced diagnostics for tube data validation
     if (!tubeData) {
@@ -522,24 +593,24 @@ export default function MinimalPlayer() {
         }
       }
 
-      // Regular player render - note that we pass the tube object via the thread prop
-      // for backwards compatibility with the MinimalDistinctionPlayer component
+      // SIMPLIFIED: Just pass the raw tubeData and tubeNumber
+      // This eliminates the need for complex tube-to-thread conversion
       return (
         <MinimalDistinctionPlayer
-          thread={tube} // For backwards compatibility
+          tubeNumber={activeTubeNumber}
+          tubeData={tubeData}
           onComplete={(results) => {
             console.log('Session complete, recording results', results);
-            // Handle any tube-specific logic here before passing to general handler
-            if (results && results.goDashboard) {
-              // Navigate or handle completion
+            // Handle session completion
+            if (results?.totalPoints) {
+              setSessionPoints(prev => prev + results.totalPoints);
             }
-            // Pass to original handlers
-            recordAnswer && recordAnswer(results);
-            nextQuestion && nextQuestion();
+            recordAnswer(results);
           }}
           onEndSession={(results) => {
             console.log('Session ended manually', results);
-            // Could add additional tube-specific logic here
+            // Handle manual session ending
+            recordAnswer(results);
           }}
           questionsPerSession={10} // Default to 10 questions per session
           sessionTotalPoints={totalPoints || 0} // Use accumulated points
@@ -618,12 +689,28 @@ export default function MinimalPlayer() {
   
   const DeveloperTools = () => {
     if (!showDevTools) return null;
-    
+
+    // Create a simplified player object that the DevTestPane expects
+    const player = {
+      currentTube: activeTubeNumber,
+      currentStitch: tubeData?.[activeTubeNumber]?.currentStitchId ? {
+        id: tubeData[activeTubeNumber].currentStitchId,
+        threadId: `thread-T${activeTubeNumber}-001` // Use a generic threadId
+      } : null,
+      handleSessionComplete: recordAnswer,
+      handleManualTubeSelect: switchTube,
+      cycleTubes: () => {
+        // Simplified tube cycling: just go to next tube (1->2->3->1)
+        const nextTube = (activeTubeNumber % 3) + 1;
+        switchTube(nextTube);
+      }
+    };
+
     return (
       <div className="absolute bottom-5 left-5 z-50 m-4">
         <DevTestPane
-          tubeData={tubeData}
-          activeTubeNumber={activeTubeNumber}
+          player={player}
+          show={true}
         />
       </div>
     );
