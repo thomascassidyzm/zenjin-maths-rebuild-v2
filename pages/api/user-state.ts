@@ -593,28 +593,47 @@ async function updateUserState(state: any, supabase: any, res: NextApiResponse, 
         console.error(`Admin client save failed, trying direct PostgreSQL insert...`);
 
         try {
-          // Try a more direct approach with SQL
-          // CRITICAL: Use our minimalState instead of formattedState to ensure small payload
-          const { error: sqlError } = await supabaseAdmin.rpc('upsert_user_state', {
-            p_user_id: formattedState.user_id,
-            p_state: JSON.stringify(minimalState), // Use minimal state here too!
-            p_last_updated: formattedState.last_updated
-          });
+          // Try a more direct approach with basic SQL insert
+          // Instead of calling the rpc function, we'll directly run a SQL query
+          const now = new Date().toISOString();
 
-          if (sqlError) {
-            console.error(`Direct SQL insert also failed:`, sqlError);
+          console.log(`Trying direct SQL insert (user_id: ${formattedState.user_id})`);
+
+          // First try to delete existing record for this user (to avoid conflicts)
+          // This is a simple delete + insert approach rather than upsert
+          const { error: deleteError } = await supabaseAdmin
+            .from('user_state')
+            .delete()
+            .eq('user_id', formattedState.user_id);
+
+          if (deleteError) {
+            console.log(`Note: Delete operation had error but we'll continue: ${deleteError.message}`);
+          }
+
+          // Then insert a fresh record
+          const { error: insertError } = await supabaseAdmin
+            .from('user_state')
+            .insert({
+              user_id: formattedState.user_id,
+              state: minimalState, // Use minimal state
+              last_updated: now,
+              created_at: now
+            });
+
+          if (insertError) {
+            console.error(`Direct SQL insert failed:`, insertError);
 
             // Log key information for debugging
             console.log(`API ERROR: State values that failed to save:`, JSON.stringify({
               user_id: formattedState.user_id,
-              state_size: stateSize,
-              last_updated: formattedState.last_updated
+              state_size: JSON.stringify(minimalState).length,
+              last_updated: now
             }));
 
             return res.status(500).json({
               success: false,
               error: 'Error updating state even with fallback methods',
-              details: isDebug ? sqlError.message : undefined
+              details: isDebug ? insertError.message : undefined
             });
           }
 
