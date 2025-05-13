@@ -277,12 +277,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Add a marker to know which save this is
       state._saveTimestamp = now;
 
+      // EMERGENCY FIX: Check if positions data exists before saving it to the database
+      // This is to ensure we don't lose the positions when saving to the database
+      let stateToSave = state;
+
+      if (state.tubeState?.tubes?.[1]?.positions) {
+        console.log(`SIMPLE-STATE API: Detected positions in tubeState.tubes[1]:`,
+          Object.keys(state.tubeState.tubes[1].positions).join(', '));
+
+        // If positions 4 and/or 5 exist, make absolutely sure they're included in what we save
+        if (state.tubeState.tubes[1].positions[4] || state.tubeState.tubes[1].positions[5]) {
+          console.log(`SIMPLE-STATE API: CRITICAL - Found position 4 or 5 that must be preserved`);
+
+          // Create a deep copy to ensure positions are preserved
+          stateToSave = JSON.parse(JSON.stringify(state));
+
+          // Verify our copy contains the positions
+          if (stateToSave.tubeState?.tubes?.[1]?.positions?.[5]) {
+            console.log(`SIMPLE-STATE API: Position 5 successfully preserved in state to save`);
+          }
+        }
+      }
+
       // Insert new state - using columns that we know exist in the table
       const { error: insertError } = await supabaseAdmin
         .from('user_state')
         .insert({
           user_id: userId,
-          state: state
+          state: stateToSave
           // The other columns (last_updated and created_at) have DEFAULT NOW() constraints
         });
       

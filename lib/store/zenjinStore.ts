@@ -1025,7 +1025,25 @@ export const useZenjinStore = create<ZenjinStore>()(
               // Cast to proper type
               const tube = tubeData as any;
 
-              // Create the tube object with proper structure
+              // CRITICAL FIX: PRESERVE POSITIONS BY DIRECTLY COPYING THE TUBE
+              // Don't try to rebuild the tube structure, just copy it directly
+              // This avoids the position rebuilding logic that's causing positions [4,5] to be replaced with [0,1]
+              if (tube.positions && Object.keys(tube.positions).length > 0) {
+                console.log(`CRITICAL FIX: Tube ${tubeKey} has positions:`, Object.keys(tube.positions).join(', '));
+
+                // Deep copy the entire tube to preserve all properties, especially positions
+                tubeState.tubes[tubeKey] = JSON.parse(JSON.stringify(tube));
+
+                // Verify positions were preserved
+                if (tubeState.tubes[tubeKey].positions) {
+                  console.log(`CRITICAL FIX: Preserved positions:`, Object.keys(tubeState.tubes[tubeKey].positions).join(', '));
+                }
+
+                // Skip the rest of the processing for this tube
+                return;
+              }
+
+              // For tubes without positions, create standard structure
               tubeState.tubes[tubeKey] = {
                 currentStitchId: tube.currentStitchId || '',
                 threadId: tube.threadId || '',

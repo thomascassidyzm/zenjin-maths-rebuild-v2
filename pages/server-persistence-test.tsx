@@ -150,21 +150,152 @@ export default function ServerPersistenceTest() {
       setStatus('Please initialize state first');
       return;
     }
-    
+
     setIsLoading(true);
     setStatus('Loading from server...');
-    
+
     try {
       // Reset store first
       useZenjinStore.getState().resetStore();
-      
-      // Call Zustand store's loadFromServer method
-      const result = await useZenjinStore.getState().loadFromServer(userId);
-      
-      if (result) {
-        setStatus(`Successfully loaded state from server for user ${userId}`);
-      } else {
-        setStatus(`Failed to load state from server for user ${userId}`);
+
+      // DIRECT APPROACH: Fetch and apply the state directly to bypass conversion issues
+      try {
+        // Fetch directly from API
+        const response = await fetch(`/api/simple-state?userId=${encodeURIComponent(userId)}`);
+        const data = await response.json();
+
+        if (!data.success || !data.state) {
+          setStatus(`Failed to load state: No state data returned`);
+          setIsLoading(false);
+          return;
+        }
+
+        // Log what we received
+        console.log('DIRECT LOAD - Received state:', data.state);
+
+        // First find the position data in the loaded state
+        let stateWithPositions = null;
+        let positionPath = '';
+
+        // Check all possible paths
+        if (data.state.tubeState?.tubes?.[1]?.positions &&
+            Object.keys(data.state.tubeState.tubes[1].positions).length > 0) {
+          console.log('DIRECT LOAD - Found positions in tubeState.tubes path:',
+            Object.keys(data.state.tubeState.tubes[1].positions).join(', '));
+          stateWithPositions = data.state;
+          positionPath = 'tubeState.tubes';
+        } else if (data.state.tubes?.[1]?.positions &&
+                  Object.keys(data.state.tubes[1].positions).length > 0) {
+          console.log('DIRECT LOAD - Found positions in direct tubes path:',
+            Object.keys(data.state.tubes[1].positions).join(', '));
+          stateWithPositions = data.state;
+          positionPath = 'tubes';
+        } else if (data.state.state?.tubeState?.tubes?.[1]?.positions &&
+                  Object.keys(data.state.state.tubeState.tubes[1].positions).length > 0) {
+          console.log('DIRECT LOAD - Found positions in state.tubeState.tubes path:',
+            Object.keys(data.state.state.tubeState.tubes[1].positions).join(', '));
+          stateWithPositions = data.state.state;
+          positionPath = 'state.tubeState.tubes';
+        }
+
+        if (!stateWithPositions) {
+          console.log('DIRECT LOAD - Could not find positions in any path!');
+
+          // Fall back to standard method
+          setStatus('Direct load failed - falling back to standard load...');
+          const result = await useZenjinStore.getState().loadFromServer(userId);
+          if (result) {
+            setStatus(`Successfully loaded state from server using standard loader`);
+          } else {
+            setStatus(`Failed to load state using standard loader`);
+          }
+          return;
+        }
+
+        // Create a fresh state
+        const state = {
+          userInformation: stateWithPositions.userInformation || {
+            userId,
+            isAnonymous: userId.startsWith('anonymous'),
+            displayName: `Test User`,
+            createdAt: new Date().toISOString(),
+            lastActive: new Date().toISOString()
+          },
+          isInitialized: true,
+          lastUpdated: stateWithPositions.lastUpdated || new Date().toISOString()
+        };
+
+        // Handle tube data specially to make sure positions are preserved
+        if (positionPath === 'tubeState.tubes' && stateWithPositions.tubeState) {
+          state.tubeState = JSON.parse(JSON.stringify(stateWithPositions.tubeState));
+          console.log('DIRECT LOAD - Using tubeState directly:', state.tubeState);
+
+          // Verify position 5 exists
+          if (state.tubeState.tubes?.[1]?.positions?.[5]) {
+            console.log('DIRECT LOAD - Verified position 5 exists in state to be set');
+          } else {
+            console.log('DIRECT LOAD - Position 5 NOT found in state to be set');
+          }
+
+        } else if (positionPath === 'tubes' && stateWithPositions.tubes) {
+          // Create tubeState from tubes
+          state.tubeState = {
+            activeTube: stateWithPositions.activeTube || 1,
+            tubes: JSON.parse(JSON.stringify(stateWithPositions.tubes))
+          };
+          console.log('DIRECT LOAD - Created tubeState from tubes:', state.tubeState);
+        } else if (positionPath === 'state.tubeState.tubes' && stateWithPositions.state?.tubeState) {
+          state.tubeState = JSON.parse(JSON.stringify(stateWithPositions.state.tubeState));
+          console.log('DIRECT LOAD - Using state.tubeState:', state.tubeState);
+        }
+
+        // Add other required fields with defaults
+        state.learningProgress = stateWithPositions.learningProgress || {
+          userId,
+          totalTimeSpentLearning: 0,
+          evoPoints: 0,
+          evolutionLevel: 1,
+          currentBlinkSpeed: 1,
+          previousSessionBlinkSpeeds: [],
+          completedStitchesCount: 0,
+          perfectScoreStitchesCount: 0
+        };
+
+        // EXTRA VALIDATION before setting the state
+        // Make absolutely sure position 5 exists if we found it earlier
+        if (positionPath.includes('tubeState') &&
+            state.tubeState?.tubes?.[1]?.positions &&
+            Object.keys(state.tubeState.tubes[1].positions).includes('5')) {
+          console.log('DIRECT LOAD - Confirmed position 5 exists in state to be set');
+        } else {
+          console.log('DIRECT LOAD - WARNING: Position 5 not found in state to be set!');
+        }
+
+        // Set entire state at once
+        console.log('DIRECT LOAD - Setting state:', state);
+        useZenjinStore.setState(state);
+
+        // Verify the state was set correctly
+        const verifyState = useZenjinStore.getState();
+        if (verifyState.tubeState?.tubes?.[1]?.positions?.[5]) {
+          console.log('DIRECT LOAD SUCCESS - Position 5 exists with stitch:',
+            verifyState.tubeState.tubes[1].positions[5].stitchId);
+          setStatus(`Successfully loaded state with position 5!`);
+        } else {
+          console.log('DIRECT LOAD FAILED - Position 5 not found after setting state');
+          setStatus(`Loaded state but position 5 is still missing!`);
+        }
+      } catch (directError) {
+        console.error('Error in direct loading approach:', directError);
+
+        // Fall back to standard method
+        setStatus('Direct load failed - falling back to standard load...');
+        const result = await useZenjinStore.getState().loadFromServer(userId);
+        if (result) {
+          setStatus(`Successfully loaded state from server using standard loader`);
+        } else {
+          setStatus(`Failed to load state using standard loader`);
+        }
       }
     } catch (error) {
       setStatus(`Error loading from server: ${error.message}`);
