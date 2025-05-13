@@ -187,21 +187,48 @@ export default function ServerPersistenceTest() {
     if (currentState.tubeState?.tubes?.[1]?.positions?.[0]) {
       const stitch = currentState.tubeState.tubes[1].positions[0];
 
-      // Log before making changes
-      console.log('BEFORE CHANGES - Tube 1 positions:',
-        currentState.tubeState.tubes[1].positions ?
-        Object.keys(currentState.tubeState.tubes[1].positions) : 'No positions');
+      // Log before making changes - detailed logging
+      console.log('BEFORE CHANGES - Current State:', {
+        userInfo: !!currentState.userInformation,
+        userId: currentState.userInformation?.userId,
+        hasTubeState: !!currentState.tubeState,
+        hasTubes: currentState.tubeState && !!currentState.tubeState.tubes,
+        activeTube: currentState.tubeState?.activeTube || 'none'
+      });
 
-      // Update the stitch properties
+      if (currentState.tubeState?.tubes?.[1]) {
+        console.log('BEFORE CHANGES - Tube 1 Details:', {
+          threadId: currentState.tubeState.tubes[1].threadId,
+          currentStitchId: currentState.tubeState.tubes[1].currentStitchId,
+          hasPositions: !!currentState.tubeState.tubes[1].positions,
+          positionsList: currentState.tubeState.tubes[1].positions ?
+            Object.keys(currentState.tubeState.tubes[1].positions).join(', ') : 'none'
+        });
+      }
+
+      // For each position, show the stitch ID and skip number
+      if (currentState.tubeState?.tubes?.[1]?.positions) {
+        const positions = currentState.tubeState.tubes[1].positions;
+        Object.entries(positions).forEach(([position, data]) => {
+          console.log(`Position ${position} has stitch ${data.stitchId} with skipNumber ${data.skipNumber}`);
+        });
+      }
+
+      // Update the stitch properties - create a completely new stitch with updated properties
       const updatedStitch = {
-        ...stitch,
-        skipNumber: 5,  // Increase skip number
+        stitchId: stitch.stitchId,
+        skipNumber: 5,  // Explicitly set skip number to 5
+        distractorLevel: stitch.distractorLevel || 1,
         perfectCompletions: (stitch.perfectCompletions || 0) + 1, // Add a perfect completion
-        lastUpdated: new Date().toISOString() // Add timestamp
+        lastCompleted: new Date().toISOString() // Add timestamp
       };
+
+      console.log('MAKING CHANGE: Moving stitch from position 0 to position 5');
 
       // First move the stitch
       useZenjinStore.getState().moveStitch(1, 0, 5);
+
+      console.log('MAKING CHANGE: Updating stitch at position 5 with:', updatedStitch);
 
       // Then update its properties
       useZenjinStore.getState().updateStitchPosition(1, 5, updatedStitch);
@@ -211,11 +238,24 @@ export default function ServerPersistenceTest() {
         lastUpdated: new Date().toISOString()
       });
 
-      // Log after making changes
+      // Log after changes to verify
       const updatedState = useZenjinStore.getState();
-      console.log('AFTER CHANGES - Tube 1 positions:',
+      console.log('AFTER CHANGES - Position list:',
         updatedState.tubeState?.tubes?.[1]?.positions ?
-        Object.keys(updatedState.tubeState.tubes[1].positions) : 'No positions');
+        Object.keys(updatedState.tubeState.tubes[1].positions).join(', ') : 'No positions');
+
+      // Verify position 5 exists with the right properties
+      if (updatedState.tubeState?.tubes?.[1]?.positions?.[5]) {
+        const pos5 = updatedState.tubeState.tubes[1].positions[5];
+        console.log('AFTER CHANGES - Position 5 details:', {
+          stitchId: pos5.stitchId,
+          skipNumber: pos5.skipNumber,
+          distractorLevel: pos5.distractorLevel,
+          perfectCompletions: pos5.perfectCompletions
+        });
+      } else {
+        console.log('AFTER CHANGES - Position 5 does not exist!');
+      }
 
       setStatus(`Made changes: Moved stitch ${stitch.stitchId} from position 0 to 5 in tube 1`);
     } else {
@@ -255,15 +295,32 @@ export default function ServerPersistenceTest() {
 
     // Format positions array for display
     const positions = tube1.positions || {};
+
+    // Add a header with general tube info
+    let output = `Tube 1 - Thread: ${tube1.threadId}\nActive Stitch: ${tube1.currentStitchId}\n`;
+    output += `Positions Available: ${Object.keys(positions).join(', ')}\n\n`;
+
+    // Highlight position 5 if it exists
+    const hasPosition5 = positions[5] !== undefined;
+    output += hasPosition5
+      ? `✅ Position 5 EXISTS - This is what we're testing for\n\n`
+      : `❌ Position 5 MISSING - Server persistence issue\n\n`;
+
+    // Format each position with detailed information
     const positionsText = Object.entries(positions)
-      .map(([pos, data]) => `Pos ${pos}: ${data.stitchId} (Skip: ${data.skipNumber}, Perfect: ${data.perfectCompletions || 0})`)
+      .sort(([a], [b]) => parseInt(a) - parseInt(b))
+      .map(([pos, data]) => {
+        // Highlight position 5 in the list
+        const highlight = pos === '5' ? '★ ' : '';
+        return `${highlight}Pos ${pos}: ${data.stitchId} (Skip: ${data.skipNumber}, Perfect: ${data.perfectCompletions || 0})`;
+      })
       .join('\n');
 
     if (!positionsText) {
       return 'No position data in tube 1';
     }
 
-    return positionsText;
+    return output + positionsText;
   };
   
   // Load script to disable API interception

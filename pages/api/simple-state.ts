@@ -117,16 +117,66 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       console.log(`SIMPLE-STATE API: Returning state keys:`, Object.keys(returnState));
 
+      // Ensure we have the right structure with tubeState.tubes.positions
       if (returnState.tubeState) {
         console.log(`SIMPLE-STATE API: tubeState exists with keys:`, Object.keys(returnState.tubeState));
+
         if (returnState.tubeState.tubes) {
           console.log(`SIMPLE-STATE API: tubes:`, Object.keys(returnState.tubeState.tubes));
+
+          // Check tube 1 specifically
+          if (returnState.tubeState.tubes[1]) {
+            const tube1 = returnState.tubeState.tubes[1];
+            console.log(`SIMPLE-STATE API: tube 1 keys:`, Object.keys(tube1));
+
+            // Check positions specifically
+            if (tube1.positions) {
+              console.log(`SIMPLE-STATE API: tube 1 positions:`, Object.keys(tube1.positions).join(', '));
+
+              // Extra check for position 5
+              if (tube1.positions[5]) {
+                console.log(`SIMPLE-STATE API: Position 5 found with stitchId: ${tube1.positions[5].stitchId}`);
+              } else {
+                console.log(`SIMPLE-STATE API: Position 5 NOT FOUND in return state`);
+              }
+            } else {
+              console.log(`SIMPLE-STATE API: No positions found in tube 1`);
+            }
+          }
         }
+      }
+
+      // For debugging - clean up the state to make ABSOLUTELY sure it has the right structure
+      // This is only for verifying the persistence with positions
+      console.log(`SIMPLE-STATE API: Fixing return state structure to ensure it's properly formatted`);
+
+      // Make a copy to avoid modifying the original
+      const cleanState = {
+        ...returnState,
+        lastUpdated: returnState.lastUpdated || new Date().toISOString(),
+      };
+
+      // Ensure we return properly structured state, particularly for positions
+      if (cleanState.tubeState?.tubes) {
+        console.log(`SIMPLE-STATE API: Verified tubes:`, Object.keys(cleanState.tubeState.tubes).join(', '));
+
+        // For each tube, ensure positions are preserved
+        Object.entries(cleanState.tubeState.tubes).forEach(([tubeKey, tubeData]: [string, any]) => {
+          if (!tubeData) return;
+
+          console.log(`SIMPLE-STATE API: Verifying tube ${tubeKey} structure`);
+
+          // If this tube has positions, preserve them in the response
+          if (tubeData.positions) {
+            console.log(`SIMPLE-STATE API: Verified positions for tube ${tubeKey}:`,
+              Object.keys(tubeData.positions).join(', '));
+          }
+        });
       }
 
       return res.status(200).json({
         success: true,
-        state: returnState,
+        state: cleanState, // Return the verified state
         source: data ? 'database' : 'default'
       });
     }
@@ -191,10 +241,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           // Extra check for position 5 that we're looking for
           if (state.tubeState.tubes[1].positions && state.tubeState.tubes[1].positions[5]) {
             console.log(`SIMPLE-STATE API: Position 5 exists with stitchId: ${state.tubeState.tubes[1].positions[5].stitchId}`);
+
+            // Extra validation to ensure the position data is complete
+            const pos5 = state.tubeState.tubes[1].positions[5];
+            console.log(`SIMPLE-STATE API: Position 5 data:`, {
+              stitchId: pos5.stitchId,
+              skipNumber: pos5.skipNumber,
+              distractorLevel: pos5.distractorLevel,
+              perfectCompletions: pos5.perfectCompletions
+            });
           } else {
             console.log(`SIMPLE-STATE API: Position 5 DOES NOT EXIST in tube 1!`);
+
+            // Log all positions to see what's available
+            if (state.tubeState.tubes[1].positions) {
+              console.log(`SIMPLE-STATE API: Available positions in tube 1:`,
+                Object.keys(state.tubeState.tubes[1].positions).join(', '));
+
+              // Check for any position data
+              Object.entries(state.tubeState.tubes[1].positions).forEach(([pos, data]) => {
+                console.log(`SIMPLE-STATE API: Position ${pos} has stitchId: ${data.stitchId}`);
+              });
+            }
           }
         }
+      }
+
+      // Make extra sure we have all the necessary paths in our state
+      // This ensures that when loaded back, the data will be found
+      if (!state.tubeState) {
+        console.log(`SIMPLE-STATE API: No tubeState found, creating empty structure`);
+        state.tubeState = { tubes: {} };
       }
 
       // Add a marker to know which save this is

@@ -782,19 +782,93 @@ export const useZenjinStore = create<ZenjinStore>()(
           // The API will handle extracting what it needs
 
           // Prepare the data for server sync - just pass the full state with explicit userId
-          // Create a simplified state structure that preserves the key data we need
-          const syncData = {
-            state: {
-              userId: state.userInformation.userId,
-              userInformation: state.userInformation,
-              tubeState: state.tubeState,
-              lastUpdated: new Date().toISOString()
+          // First make extra sure the positions are present in tube 1
+          console.log('SYNC TO SERVER - State check before sync:');
+          console.log('UserID:', state.userInformation.userId);
+          console.log('Has tubeState:', !!state.tubeState);
+          console.log('Has tubes:', state.tubeState && !!state.tubeState.tubes);
+
+          // Check tube 1 specifically
+          if (state.tubeState?.tubes?.[1]) {
+            console.log('Tube 1 exists with properties:', Object.keys(state.tubeState.tubes[1]));
+            console.log('Tube 1 has positions object:', !!state.tubeState.tubes[1].positions);
+
+            // Log detailed position info
+            if (state.tubeState.tubes[1].positions) {
+              const positions = state.tubeState.tubes[1].positions;
+              console.log('TUBES BEFORE SYNC - Tube 1 positions:', Object.keys(positions));
+
+              // Log each position's content
+              Object.entries(positions).forEach(([pos, data]) => {
+                console.log(`Position ${pos} contains stitch: ${data.stitchId} with skipNumber: ${data.skipNumber}`);
+              });
+            }
+          } else {
+            console.log('Tube 1 does not exist in state');
+          }
+
+          // Build a clean object with only the necessary fields
+          // This avoids any potential issues with circular references or getters
+          const stateToSync = {
+            userId: state.userInformation.userId,
+            userInformation: {
+              ...state.userInformation
             },
+            tubeState: state.tubeState ? {
+              activeTube: state.tubeState.activeTube,
+              tubes: {}
+            } : null,
+            lastUpdated: new Date().toISOString()
+          };
+
+          // Manually copy tube data to ensure positions are properly included
+          if (state.tubeState?.tubes) {
+            for (const tubeKey in state.tubeState.tubes) {
+              const tube = state.tubeState.tubes[tubeKey];
+              if (!tube) continue;
+
+              // Create a clean tube object
+              stateToSync.tubeState.tubes[tubeKey] = {
+                threadId: tube.threadId,
+                currentStitchId: tube.currentStitchId,
+                stitchOrder: [...(tube.stitchOrder || [])],
+                positions: {}
+              };
+
+              // Explicitly copy positions to ensure they're included
+              if (tube.positions) {
+                for (const position in tube.positions) {
+                  const pos = tube.positions[position];
+                  stateToSync.tubeState.tubes[tubeKey].positions[position] = {
+                    stitchId: pos.stitchId,
+                    skipNumber: pos.skipNumber,
+                    distractorLevel: pos.distractorLevel,
+                    perfectCompletions: pos.perfectCompletions,
+                    lastCompleted: pos.lastCompleted
+                  };
+                }
+
+                console.log(`Manually copied ${Object.keys(tube.positions).length} positions for tube ${tubeKey}`);
+              }
+            }
+          }
+
+          // Use JSON stringify/parse for a clean deep copy
+          const clonedState = JSON.parse(JSON.stringify(stateToSync));
+
+          // Log tube 1 positions after cloning to verify they were preserved
+          if (clonedState.tubeState?.tubes?.[1]?.positions) {
+            console.log('TUBES AFTER CLONE - Tube 1 positions:', Object.keys(clonedState.tubeState.tubes[1].positions));
+          }
+
+          // Create the sync data with our cloned state
+          const syncData = {
+            state: clonedState,
             id: state.userInformation.userId  // Also add as explicit id field
           };
 
           // Log debug info
-          console.log(`Syncing FULL state to server for user ${state.userInformation.userId}`);
+          console.log(`Syncing state to server for user ${state.userInformation.userId}`);
 
           // Send to server - using simplified API endpoint
           const response = await fetch('/api/simple-state', {
@@ -885,13 +959,63 @@ export const useZenjinStore = create<ZenjinStore>()(
           // Check for different structures that might contain tube data
           console.log('Looking for tube data in:', loadedState);
 
-          // Try multiple possible paths for tube data
-          const tubeDataSource = loadedState.tubes ||
-                               (loadedState.tubeState?.tubes) ||
-                               (loadedState.state?.tubeState?.tubes) ||
-                               {};
+          // Log all possible tube data paths for debugging
+          console.log('Direct tubes path exists:', !!loadedState.tubes);
+          console.log('tubeState.tubes path exists:', !!loadedState.tubeState?.tubes);
+          console.log('state.tubeState.tubes path exists:', !!loadedState.state?.tubeState?.tubes);
 
-          console.log('Found tube data:', tubeDataSource);
+          // Get detailed info about tube 1 from all possible paths
+          if (loadedState.tubes?.[1]) {
+            console.log('DIRECT PATH - Tube 1 positions:',
+              loadedState.tubes[1].positions ? Object.keys(loadedState.tubes[1].positions) : 'No positions');
+          }
+
+          if (loadedState.tubeState?.tubes?.[1]) {
+            console.log('TUBESTATE PATH - Tube 1 positions:',
+              loadedState.tubeState.tubes[1].positions ? Object.keys(loadedState.tubeState.tubes[1].positions) : 'No positions');
+          }
+
+          if (loadedState.state?.tubeState?.tubes?.[1]) {
+            console.log('STATE.TUBESTATE PATH - Tube 1 positions:',
+              loadedState.state.tubeState.tubes[1].positions ? Object.keys(loadedState.state.tubeState.tubes[1].positions) : 'No positions');
+          }
+
+          // Focus on tubeState.tubes since that's where we save the position data
+      // Log more debug info about what we're loading
+      console.log('LOAD SOURCE EXAMINATION:',
+        'tubeState exists:', !!loadedState.tubeState,
+        'tubes path exists:', !!loadedState.tubes,
+        'state.tubeState exists:', !!loadedState.state?.tubeState);
+
+      // Prioritize path with positions data - examine each path to find the one with positions
+      let tubeDataSource = {};
+
+      // Look at all possible paths and prefer the one that has position data for tube 1
+      if (loadedState.tubeState?.tubes?.[1]?.positions &&
+          Object.keys(loadedState.tubeState.tubes[1].positions).length > 0) {
+        console.log('Using tubeState.tubes path with positions:',
+          Object.keys(loadedState.tubeState.tubes[1].positions).join(', '));
+        tubeDataSource = loadedState.tubeState.tubes;
+      } else if (loadedState.tubes?.[1]?.positions &&
+                Object.keys(loadedState.tubes[1].positions).length > 0) {
+        console.log('Using direct tubes path with positions:',
+          Object.keys(loadedState.tubes[1].positions).join(', '));
+        tubeDataSource = loadedState.tubes;
+      } else if (loadedState.state?.tubeState?.tubes?.[1]?.positions &&
+                Object.keys(loadedState.state.tubeState.tubes[1].positions).length > 0) {
+        console.log('Using state.tubeState.tubes path with positions:',
+          Object.keys(loadedState.state.tubeState.tubes[1].positions).join(', '));
+        tubeDataSource = loadedState.state.tubeState.tubes;
+      } else {
+        // Fallback to any path that has tube data
+        console.log('No positions found in any path, falling back to first available tubes data');
+        tubeDataSource = loadedState.tubeState?.tubes ||
+                       loadedState.tubes ||
+                       loadedState.state?.tubeState?.tubes ||
+                       {};
+      }
+
+          console.log('Using tube data source with tubes:', Object.keys(tubeDataSource));
 
           // Process tube data with proper position handling
           if (tubeDataSource) {
@@ -1022,6 +1146,26 @@ export const useZenjinStore = create<ZenjinStore>()(
             perfectScores: 0
           };
 
+          // Do one final verification of tube positions before setting state
+          console.log('FINAL VERIFICATION - Tube state to be loaded:');
+
+          if (tubeState?.tubes?.[1]?.positions) {
+            console.log('FINAL VERIFICATION - Tube 1 positions before setting state:',
+              Object.keys(tubeState.tubes[1].positions).join(', '));
+
+            // Verify position 5 existence and data
+            if (tubeState.tubes[1].positions[5]) {
+              console.log('FINAL VERIFICATION - Position 5 exists with data:', {
+                stitchId: tubeState.tubes[1].positions[5].stitchId,
+                skipNumber: tubeState.tubes[1].positions[5].skipNumber
+              });
+            } else {
+              console.log('FINAL VERIFICATION - Position 5 DOES NOT EXIST in final state');
+            }
+          } else {
+            console.log('FINAL VERIFICATION - No positions found in tube 1');
+          }
+
           // Update the store with the loaded state
           set({
             userInformation,
@@ -1030,6 +1174,25 @@ export const useZenjinStore = create<ZenjinStore>()(
             lastUpdated: loadedState.lastUpdated || new Date().toISOString(),
             isInitialized: true
           });
+
+          // Verify state was set correctly
+          const newState = get();
+
+          console.log('STATE VERIFICATION - After setting state');
+          if (newState.tubeState?.tubes?.[1]?.positions) {
+            console.log('STATE VERIFICATION - Tube 1 positions after setting state:',
+              Object.keys(newState.tubeState.tubes[1].positions).join(', '));
+
+            // Verify position 5 existence and data
+            if (newState.tubeState.tubes[1].positions[5]) {
+              console.log('STATE VERIFICATION - Position 5 exists with data:', {
+                stitchId: newState.tubeState.tubes[1].positions[5].stitchId,
+                skipNumber: newState.tubeState.tubes[1].positions[5].skipNumber
+              });
+            } else {
+              console.log('STATE VERIFICATION - Position 5 DOES NOT EXIST in state after setting');
+            }
+          }
 
           console.log('Successfully loaded state from server');
           return true;
