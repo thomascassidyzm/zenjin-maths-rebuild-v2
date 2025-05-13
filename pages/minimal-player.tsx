@@ -221,41 +221,143 @@ export default function MinimalPlayer() {
   // Simplified logging - just a single log statement
   console.log(`Auth state: User is ${isAuthenticated ? 'authenticated' : 'anonymous'}, mode: ${playerMode}, ID: ${user?.id || 'anonymous'}`);
 
-  // Initialize content when component mounts - with improved handling
+  // Set up a listener for localStorage state changes
   useEffect(() => {
-    // Check if we already have tubeData - if so, we can skip initialization
-    if (tubeData && Object.keys(tubeData).length > 0) {
-      console.log('Content already loaded, skipping initialization');
-      setIsLoading(false);
+    if (!user?.id) return;
+
+    const userId = user.id;
+    console.log(`Setting up tube state listener for user ${userId}`);
+
+    // Function to load state from localStorage directly
+    const loadStateFromLocalStorage = () => {
+      if (tubeData && Object.keys(tubeData).length > 0) {
+        console.log('Already have tube data, skipping localStorage load');
+        return true;
+      }
+
+      try {
+        // Check for state in localStorage - this gets populated by _app.tsx after API calls
+        const stateKey = `zenjin_state_${userId}`;
+        const stateJson = localStorage.getItem(stateKey);
+
+        if (stateJson) {
+          const state = JSON.parse(stateJson);
+          console.log('Found state in localStorage:', state);
+
+          if (state.tubes && Object.keys(state.tubes).length > 0) {
+            console.log('DIRECT APPROACH: Using state from localStorage');
+
+            // Process the tubes directly
+            const tubes = {};
+            Object.entries(state.tubes).forEach(([tubeNumStr, tube]) => {
+              const tubeNum = parseInt(tubeNumStr);
+              tubes[tubeNum] = {
+                ...tube,
+                threadId: tube.threadId || `thread-T${tubeNum}-001`,
+                currentStitchId: tube.currentStitchId || `stitch-T${tubeNum}-001-01`,
+                positions: tube.positions || {},
+                stitches: tube.stitches || []
+              };
+            });
+
+            console.log('Processed tube data from localStorage:', tubes);
+            setTubeData(tubes);
+            setIsLoading(false);
+            return true;
+          }
+        }
+      } catch (error) {
+        console.error('Error loading state from localStorage:', error);
+      }
+
+      return false;
+    };
+
+    // Check localStorage immediately
+    if (loadStateFromLocalStorage()) {
+      console.log('Successfully loaded state from localStorage on first try');
       return;
     }
 
-    const initializeContent = async () => {
-      try {
-        console.log('Initializing content - filling content buffer');
-        setIsLoading(true);
+    // If not found, set up a polling mechanism to check periodically
+    console.log('State not found in localStorage yet, setting up polling');
+    let attempts = 0;
+    const maxAttempts = 10;
+    const pollInterval = 1000; // 1 second
 
-        // Fill initial content buffer from Zustand store
-        await fillInitialContentBuffer();
+    const poll = setInterval(() => {
+      attempts++;
+      console.log(`Polling for state in localStorage (attempt ${attempts}/${maxAttempts})`);
 
-        // Get the updated tube state directly from the store
-        const updatedState = useZenjinStore.getState().tubeState;
-        if (updatedState && updatedState.tubes) {
-          console.log('Successfully loaded tube state after explicit initialization');
-          processTubeState(updatedState);
-        }
-
-        // Update loading state
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Error initializing content:', error);
-        setError('Error loading content. Please try again.');
-        setIsLoading(false);
+      if (loadStateFromLocalStorage()) {
+        console.log('Successfully loaded state from localStorage after polling');
+        clearInterval(poll);
+        return;
       }
-    };
 
-    initializeContent();
-  }, [fillInitialContentBuffer, tubeData]);
+      if (attempts >= maxAttempts) {
+        console.error('Failed to load state from localStorage after maximum attempts');
+        clearInterval(poll);
+
+        // Fallback to the normal initialization process
+        console.log('Falling back to normal initialization process');
+        initializeContentManually();
+      }
+    }, pollInterval);
+
+    return () => clearInterval(poll);
+  }, [user?.id, tubeData]);
+
+  // Manual initialization as fallback
+  const initializeContentManually = async () => {
+    try {
+      console.log('FALLBACK: Manually initializing content');
+      setIsLoading(true);
+
+      // Fill initial content buffer from Zustand store
+      await fillInitialContentBuffer();
+
+      // Get the updated tube state directly from the store
+      const updatedState = useZenjinStore.getState().tubeState;
+      if (updatedState && updatedState.tubes) {
+        console.log('Successfully loaded tube state after manual initialization');
+        processTubeState(updatedState);
+      } else {
+        // Create emergency fallback tube data
+        console.log('No tube state available, creating emergency fallback data');
+        const fallbackTubes = {
+          1: {
+            threadId: 'thread-T1-001',
+            currentStitchId: 'stitch-T1-001-01',
+            positions: {
+              0: { stitchId: 'stitch-T1-001-01', skipNumber: 3, distractorLevel: 'L1' }
+            }
+          },
+          2: {
+            threadId: 'thread-T2-001',
+            currentStitchId: 'stitch-T2-001-01',
+            positions: {
+              0: { stitchId: 'stitch-T2-001-01', skipNumber: 3, distractorLevel: 'L1' }
+            }
+          },
+          3: {
+            threadId: 'thread-T3-001',
+            currentStitchId: 'stitch-T3-001-01',
+            positions: {
+              0: { stitchId: 'stitch-T3-001-01', skipNumber: 3, distractorLevel: 'L1' }
+            }
+          }
+        };
+        setTubeData(fallbackTubes);
+      }
+
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error in manual initialization:', error);
+      setError('Error loading content. Please try again.');
+      setIsLoading(false);
+    }
+  };
 
   // Function to manually switch tubes (for debugging)
   const switchTube = (tubeNumber: number) => {
