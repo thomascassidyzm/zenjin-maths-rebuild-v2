@@ -8,8 +8,6 @@ import StitchCelebration from '../components/StitchCelebration';
 import SubscriptionStatusIndicator from '../components/subscription/SubscriptionStatusIndicator';
 import DevTestPane from '../components/DevTestPane';
 import { useAuth } from '../context/AuthContext';
-// SIMPLIFIED: Remove complex hook and use the store directly
-// import { useTripleHelixPlayer } from '../lib/playerUtils';
 import { useSubscriptionStatus } from '../hooks/useSubscriptionStatus';
 import UserWelcomeButton from '../components/UserWelcomeButton';
 import { useZenjinStore } from '../lib/store/zenjinStore';
@@ -544,65 +542,35 @@ export default function MinimalPlayer() {
   
   // Render player component directly from the Zustand store data
   const renderPlayer = () => {
-    // Enhanced diagnostics for tube data validation
-    if (!tubeData) {
-      console.error('No tube data object found for rendering player');
+    // Check if tubeData and activeTubeNumber are valid
+    if (!tubeData || !tubeData[activeTubeNumber]) {
       return (
         <div className="bg-white/20 backdrop-blur-lg p-8 rounded-xl shadow-xl text-center">
-          <div className="text-white text-xl mb-4">No content available</div>
+          <div className="text-white text-xl mb-4">No Tube Data Available</div>
           <div className="text-white text-opacity-70 mb-6">
-            Unable to load learning content. The tube data is missing. Please try refreshing the page.
+            Unable to find tube data for tube {activeTubeNumber}.
           </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-500 transition-colors"
+          >
+            Try Again
+          </button>
         </div>
       );
     }
-
-    if (!activeTubeNumber) {
-      console.error('No active tube number found for rendering player');
-      return (
-        <div className="bg-white/20 backdrop-blur-lg p-8 rounded-xl shadow-xl text-center">
-          <div className="text-white text-xl mb-4">No active tube selected</div>
-          <div className="text-white text-opacity-70 mb-6">
-            Unable to determine which tube to display. Please try refreshing the page.
-          </div>
-        </div>
-      );
-    }
-
-    if (!tubeData[activeTubeNumber]) {
-      console.error(`Missing tube data for active tube ${activeTubeNumber}`);
-      return (
-        <div className="bg-white/20 backdrop-blur-lg p-8 rounded-xl shadow-xl text-center">
-          <div className="text-white text-xl mb-4">No content available</div>
-          <div className="text-white text-opacity-70 mb-6">
-            Unable to load learning content for tube {activeTubeNumber}. Please try refreshing the page.
-          </div>
-          <div className="text-white text-opacity-50 text-xs mt-4">
-            Available tubes: {Object.keys(tubeData).join(', ')}
-          </div>
-        </div>
-      );
-    }
-
+    
     // Get the active tube data
     const activeTube = tubeData[activeTubeNumber];
+    
+    // Verify the tube has content (either positions or stitches)
+    const hasPositions = activeTube.positions && Object.keys(activeTube.positions).length > 0;
+    const hasStitches = activeTube.stitches && Array.isArray(activeTube.stitches) && activeTube.stitches.length > 0;
+    const stitchCount = hasPositions ? Object.keys(activeTube.positions).length : 
+                        hasStitches ? activeTube.stitches.length : 0;
 
-    // Enhanced logging to diagnose the data structure
-    console.log(`Active tube data structure for tube ${activeTubeNumber}:`, {
-      hasPositions: !!activeTube.positions,
-      positionsType: activeTube.positions ? typeof activeTube.positions : 'undefined',
-      positionsCount: activeTube.positions ? Object.keys(activeTube.positions).length : 0,
-      hasStitches: !!activeTube.stitches,
-      stitchesType: activeTube.stitches ? (Array.isArray(activeTube.stitches) ? 'array' : typeof activeTube.stitches) : 'undefined',
-      stitchesCount: activeTube.stitches && Array.isArray(activeTube.stitches) ? activeTube.stitches.length : 0,
-      currentStitchId: activeTube.currentStitchId || 'undefined',
-      threadId: activeTube.threadId || 'undefined'
-    });
-
-    // Check for empty tube data
-    if ((!activeTube.positions || Object.keys(activeTube.positions).length === 0) &&
-        (!activeTube.stitches || !Array.isArray(activeTube.stitches) || activeTube.stitches.length === 0)) {
-      console.error(`Tube ${activeTubeNumber} has no valid content (empty positions and stitches)`);
+    if (!hasPositions && !hasStitches) {
+      console.error(`Tube ${activeTubeNumber} has no content (neither positions nor stitches)`);
       return (
         <div className="bg-white/20 backdrop-blur-lg p-8 rounded-xl shadow-xl text-center">
           <div className="text-white text-xl mb-4">Empty Tube Content</div>
@@ -616,155 +584,9 @@ export default function MinimalPlayer() {
       );
     }
 
-    // Convert tube data to thread format expected by MinimalDistinctionPlayer
-    // Support both position-based and legacy stitches array formats
-    let stitches = [];
+    console.log(`Using tube ${activeTubeNumber} with ${stitchCount} stitches (${hasPositions ? 'position-based' : 'legacy'} format)`);
 
-    // First check if we have positions (new format)
-    if (activeTube.positions && Object.keys(activeTube.positions).length > 0) {
-      console.log(`Using positions-based data format for tube ${activeTubeNumber} with ${Object.keys(activeTube.positions).length} positions`);
-
-      try {
-        // Log the first few positions for debugging
-        const firstFewPositions = Object.entries(activeTube.positions).slice(0, 3);
-        console.log('Sample positions data:', firstFewPositions);
-
-        // Convert positions to stitches array
-        const positionsArray = Object.entries(activeTube.positions).map(([pos, data]) => {
-          // Add extra validation to handle malformed data
-          if (!data || typeof data !== 'object') {
-            console.error(`Invalid position data at position ${pos}:`, data);
-            return null;
-          }
-
-          // Ensure we have a valid stitchId
-          if (!data.stitchId) {
-            console.error(`Missing stitchId for position ${pos}:`, data);
-            return null;
-          }
-
-          return {
-            id: data.stitchId,
-            position: parseInt(pos),
-            skipNumber: data.skipNumber || 3,
-            distractorLevel: data.distractorLevel || 'L1'
-          };
-        }).filter(Boolean); // Remove null entries from malformed data
-
-        // Sort by position
-        stitches = positionsArray.sort((a, b) => a.position - b.position);
-        console.log(`Successfully converted ${stitches.length} positions to stitches format`);
-
-        // Log the first few stitches for debugging
-        if (stitches.length > 0) {
-          console.log('First few converted stitches:', stitches.slice(0, 3));
-        }
-      } catch (error) {
-        console.error(`Error processing positions data for tube ${activeTubeNumber}:`, error);
-        // Fall back to legacy format if available
-        if (activeTube.stitches && activeTube.stitches.length > 0) {
-          console.log(`Falling back to legacy stitches array after positions error`);
-          stitches = activeTube.stitches;
-        }
-      }
-    }
-    // Fall back to legacy stitches array if available
-    else if (activeTube.stitches && Array.isArray(activeTube.stitches) && activeTube.stitches.length > 0) {
-      console.log(`Using legacy stitches array format for tube ${activeTubeNumber} with ${activeTube.stitches.length} stitches`);
-      stitches = activeTube.stitches;
-
-      // Log the first few stitches for debugging
-      if (stitches.length > 0) {
-        console.log('First few legacy stitches:', stitches.slice(0, 3));
-      }
-    }
-    // No content available
-    else {
-      console.error(`No valid stitch data found for tube ${activeTubeNumber} (neither positions nor stitches)`);
-    }
-
-    // Check if we have any valid stitches to create a thread
-    if (stitches.length === 0) {
-      console.error(`No valid stitches found for tube ${activeTubeNumber} after processing both formats`);
-      return (
-        <div className="bg-white/20 backdrop-blur-lg p-8 rounded-xl shadow-xl text-center">
-          <div className="text-white text-xl mb-4">No Learning Content Available</div>
-          <div className="text-white text-opacity-70 mb-6">
-            We couldn't find any content to display for this tube. Please try refreshing the page or selecting a different tube.
-          </div>
-          <button
-            onClick={restart}
-            className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-500 transition-colors"
-          >
-            Try Again
-          </button>
-        </div>
-      );
-    }
-
-    // SIMPLIFIED: Just check if active tube data exists and pass it to component
     try {
-      const activeTube = tubeData[activeTubeNumber];
-
-      // Verify the tube has content (either positions or stitches)
-      const hasPositions = activeTube.positions && Object.keys(activeTube.positions).length > 0;
-      const hasStitches = activeTube.stitches && Array.isArray(activeTube.stitches) && activeTube.stitches.length > 0;
-
-      if (!hasPositions && !hasStitches) {
-        console.error(`Tube ${activeTubeNumber} has no content (neither positions nor stitches)`);
-      } else {
-        console.log(`Tube ${activeTubeNumber} has content: positions=${hasPositions}, stitches=${hasStitches}`);
-
-        // Log content stats
-        if (hasPositions) {
-          console.log(`Positions count: ${Object.keys(activeTube.positions).length}`);
-        }
-        if (hasStitches) {
-          console.log(`Stitches count: ${activeTube.stitches.length}`);
-        }
-      }
-
-      // Additional debug information for analytics
-      if (typeof window !== 'undefined' && (window as any).gtag) {
-        try {
-          (window as any).gtag('event', 'content_loaded', {
-            'tube_number': activeTubeNumber,
-            'content_type': hasPositions ? 'position-based' : (hasStitches ? 'legacy' : 'empty')
-          });
-        } catch (error) {
-          console.error('Error sending analytics event:', error);
-        }
-      }
-
-      console.log(`Using direct tube-stitch model with MinimalDistinctionPlayer`);
-
-      // Check if tubeData and activeTubeNumber are valid
-      if (!tubeData || !tubeData[activeTubeNumber]) {
-        return (
-          <div className="bg-white/20 backdrop-blur-lg p-8 rounded-xl shadow-xl text-center">
-            <div className="text-white text-xl mb-4">No Tube Data Available</div>
-            <div className="text-white text-opacity-70 mb-6">
-              Unable to find tube data for tube {activeTubeNumber}.
-            </div>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-500 transition-colors"
-            >
-              Try Again
-            </button>
-          </div>
-        );
-      }
-
-      // Log a message about the tube data
-      const activeTube = tubeData[activeTubeNumber];
-      const hasPositions = activeTube.positions && Object.keys(activeTube.positions).length > 0;
-      const hasStitches = activeTube.stitches && activeTube.stitches.length > 0;
-      const stitchCount = hasPositions ? Object.keys(activeTube.positions).length :
-                          hasStitches ? activeTube.stitches.length : 0;
-
-      console.log(`Using tube ${activeTubeNumber} with ${stitchCount} stitches (${hasPositions ? 'position-based' : 'legacy'} format)`);
-
       return (
         <MinimalDistinctionPlayer
           tubeNumber={activeTubeNumber}
@@ -788,8 +610,8 @@ export default function MinimalPlayer() {
         />
       );
     } catch (error) {
-      // Handle any errors during thread creation or rendering
-      console.error('Error creating thread or rendering player:', error);
+      // Handle any errors during rendering
+      console.error('Error rendering player:', error);
       return (
         <div className="bg-white/20 backdrop-blur-lg p-8 rounded-xl shadow-xl text-center">
           <div className="text-white text-xl mb-4">Error Loading Content</div>
