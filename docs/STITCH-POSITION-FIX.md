@@ -1,6 +1,46 @@
-# Stitch Position Conflict Fix
+# Stitch Position Fixes
 
-## Problem Description
+## Position Preservation Fix (May 13, 2025)
+
+We identified and fixed a critical issue with the position-based model in the Triple Helix learning system. When state was saved to the server and retrieved back, positions "4" and "5" were incorrectly transformed into positions "0" and "1".
+
+### Root Cause
+
+The problem was in the state loading process:
+
+1. The database correctly stored the state with position keys "4" and "5"
+2. When loading state from the database, the code attempted to rebuild the tube object structure
+3. During this rebuilding process, the positions were recreated based on array indices (0, 1, 2, etc.) rather than preserving the original position keys
+
+### The Fix
+
+The solution was simple and elegant:
+
+```typescript
+// CRITICAL FIX: PRESERVE POSITIONS BY DIRECTLY COPYING THE TUBE
+// Don't try to rebuild the tube structure, just copy it directly
+if (tube.positions && Object.keys(tube.positions).length > 0) {
+  // Deep copy the entire tube to preserve all properties, especially positions
+  tubeState.tubes[tubeKey] = JSON.parse(JSON.stringify(tube));
+
+  // Skip the rest of the processing for this tube
+  return;
+}
+```
+
+This change preserves the original position structure exactly as it comes from the database, bypassing the problematic transformation logic that was replacing the position keys.
+
+### Files Modified
+
+1. `/lib/store/zenjinStore.ts` - Modified the `loadFromServer` method to preserve position keys
+
+### Testing
+
+The fix was tested using the `/pages/server-persistence-test.tsx` page, which demonstrated that position 5 was correctly preserved when saving and loading from the server.
+
+## Position Conflict Fix (Previous)
+
+### Problem Description
 
 The Triple-Helix learning system occasionally encountered an issue where multiple stitches within the same tube would end up with identical position values. This caused several problems:
 

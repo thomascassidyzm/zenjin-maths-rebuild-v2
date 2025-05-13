@@ -23,6 +23,15 @@ npm run dev
 
 The application has recently received important improvements:
 
+### Position-Based Model (May 13, 2025)
+
+The Triple-Helix system now uses a position-based model for placing stitches in tubes. This allows for more precise control over stitch advancement and ensures proper server persistence. Key improvements:
+
+- Fixed server persistence issues with position keys
+- Ensured positions like "4" and "5" are preserved during save/load cycles
+- Added extensive documentation: see `/docs/POSITION-BASED-MODEL.md` and `/docs/STITCH-POSITION-FIX.md`
+- Created `/pages/server-persistence-test.tsx` for testing position preservation
+
 ### Thread Naming and Ordering
 
 A new thread naming convention has been implemented to ensure proper content loading order:
