@@ -50,20 +50,23 @@ export default function StitchCompletionTest() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [syncResult, setSyncResult] = useState<any>(null);
   
-  // Get existing test user ID from localStorage or create a new one
-  const getOrCreateTestUserId = () => {
-    let persistentTestUserId = localStorage.getItem('zenjin-test-userId');
-
-    if (!persistentTestUserId) {
-      persistentTestUserId = `test-user-${Date.now()}`;
-      localStorage.setItem('zenjin-test-userId', persistentTestUserId);
-    }
-
-    return persistentTestUserId;
-  };
-
   // State to store the persistent test user ID
-  const [testUserId, setTestUserId] = useState<string>(getOrCreateTestUserId());
+  const [testUserId, setTestUserId] = useState<string>('');
+
+  // Get existing test user ID from localStorage or create a new one - only in browser
+  useEffect(() => {
+    // Only run in browser environment
+    if (typeof window !== 'undefined') {
+      let persistentTestUserId = localStorage.getItem('zenjin-test-userId');
+
+      if (!persistentTestUserId) {
+        persistentTestUserId = `test-user-${Date.now()}`;
+        localStorage.setItem('zenjin-test-userId', persistentTestUserId);
+      }
+
+      setTestUserId(persistentTestUserId);
+    }
+  }, []);
 
   // Initialize Zustand store if needed
   useEffect(() => {
@@ -794,7 +797,7 @@ export default function StitchCompletionTest() {
                       )}
                       <button
                         onClick={() => {
-                          if (confirm('Are you sure you want to reset the test user ID? This will create a new test user.')) {
+                          if (typeof window !== 'undefined' && confirm('Are you sure you want to reset the test user ID? This will create a new test user.')) {
                             localStorage.removeItem('zenjin-test-userId');
                             window.location.reload();
                           }
@@ -935,13 +938,16 @@ export default function StitchCompletionTest() {
 
                   <button
                     onClick={() => {
-                      // Get the stored user ID directly from localStorage
-                      const storedUserId = localStorage.getItem('zenjin-test-userId');
-                      if (storedUserId) {
-                        // Just reload the page - it will use the stored user ID
-                        window.location.reload();
-                      } else {
-                        alert('No stored user ID found. Please complete the initialization first.');
+                      // Only run in browser environment
+                      if (typeof window !== 'undefined') {
+                        // Get the stored user ID directly from localStorage
+                        const storedUserId = localStorage.getItem('zenjin-test-userId');
+                        if (storedUserId) {
+                          // Just reload the page - it will use the stored user ID
+                          window.location.reload();
+                        } else {
+                          alert('No stored user ID found. Please complete the initialization first.');
+                        }
                       }
                     }}
                     className="px-4 py-3 font-medium rounded-lg bg-teal-600 hover:bg-teal-500 transition-colors col-span-2 mt-2"
