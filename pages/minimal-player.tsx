@@ -702,54 +702,42 @@ export default function MinimalPlayer() {
       );
     }
 
-    // Create tube-stitch structure with validation
+    // SIMPLIFIED: Just check if active tube data exists and pass it to component
     try {
-      // Note: MinimalDistinctionPlayer still expects a "thread" property for backwards compatibility
-      // But we're focusing on the tube-stitch relationship in our model
-      const tube = {
-        // Use a simple tube identifier - thread is just an implementation detail
-        id: `tube-${activeTubeNumber}`,
-        name: `Tube ${activeTubeNumber}`,
-        description: `Learning content for Tube ${activeTubeNumber}`,
-        // The actual meaningful data - the stitches array
-        stitches: stitches.map(stitch => {
-          // Validate stitch has an id
-          if (!stitch.id) {
-            console.error('Found stitch without id:', stitch);
-            return {
-              id: `generated-stitch-${Math.random().toString(36).substring(2, 9)}`,
-              name: 'Unknown Stitch',
-              description: 'Generated placeholder for invalid stitch',
-              questions: [] // Questions will be loaded from Zustand store via getStitch
-            };
-          }
+      const activeTube = tubeData[activeTubeNumber];
 
-          return {
-            id: stitch.id,
-            name: stitch.id.split('-').pop() || 'Stitch',
-            description: `Stitch ${stitch.id}`,
-            questions: [] // Questions will be loaded from Zustand store via getStitch
-          };
-        })
-      };
+      // Verify the tube has content (either positions or stitches)
+      const hasPositions = activeTube.positions && Object.keys(activeTube.positions).length > 0;
+      const hasStitches = activeTube.stitches && Array.isArray(activeTube.stitches) && activeTube.stitches.length > 0;
 
-      console.log(`Rendering player with tube ${activeTubeNumber}, containing ${tube.stitches.length} stitches`);
+      if (!hasPositions && !hasStitches) {
+        console.error(`Tube ${activeTubeNumber} has no content (neither positions nor stitches)`);
+      } else {
+        console.log(`Tube ${activeTubeNumber} has content: positions=${hasPositions}, stitches=${hasStitches}`);
 
-      // Additional debug information for successful loading
+        // Log content stats
+        if (hasPositions) {
+          console.log(`Positions count: ${Object.keys(activeTube.positions).length}`);
+        }
+        if (hasStitches) {
+          console.log(`Stitches count: ${activeTube.stitches.length}`);
+        }
+      }
+
+      // Additional debug information for analytics
       if (typeof window !== 'undefined' && (window as any).gtag) {
         try {
           (window as any).gtag('event', 'content_loaded', {
             'tube_number': activeTubeNumber,
-            'stitch_count': tube.stitches.length,
-            'format': activeTube.positions ? 'position-based' : 'legacy'
+            'content_type': hasPositions ? 'position-based' : (hasStitches ? 'legacy' : 'empty')
           });
         } catch (error) {
           console.error('Error sending analytics event:', error);
         }
       }
 
-      // SIMPLIFIED: Just pass the raw tubeData and tubeNumber
-      // This eliminates the need for complex tube-to-thread conversion
+      console.log(`Simplified rendering: passing tubeData and tubeNumber directly`);
+
       return (
         <MinimalDistinctionPlayer
           tubeNumber={activeTubeNumber}
