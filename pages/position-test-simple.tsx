@@ -1,19 +1,20 @@
 import React from 'react';
-import dynamic from 'next/dynamic';
+import { useRouter } from 'next/router';
 
-// This is a very simple wrapper component that will load the actual component
-// on the client-side only, avoiding all SSR issues
-const PositionTestPage = () => (
-  <div className="min-h-screen bg-gray-900 text-white p-6">
-    <h1 className="text-2xl font-bold mb-4">Position Test Loading...</h1>
-    <p>This page will load a client-side only component to test the position-based model.</p>
-    <p>If you see this message for more than a few seconds, there may be an issue with your browser or connection.</p>
-  </div>
-);
+// Simple redirect page that forwards to the working server-persistence-test page
+export default function PositionTestSimple() {
+  const router = useRouter();
 
-// The actual component will be loaded only on the client side
-// This avoids issues with SSR and ensures no hydration mismatches
-export default dynamic(() => import('../components/position-test-ui'), {
-  ssr: false,
-  loading: () => <PositionTestPage />
-});
+  // Redirect to the server persistence test page on component mount
+  React.useEffect(() => {
+    router.push('/server-persistence-test');
+  }, [router]);
+
+  return (
+    <div className="min-h-screen bg-gray-900 text-white p-6">
+      <h1 className="text-2xl font-bold mb-4">Redirecting...</h1>
+      <p>Taking you to the server persistence test page.</p>
+      <p>If you are not redirected automatically, <a href="/server-persistence-test" className="text-blue-400 underline">click here</a>.</p>
+    </div>
+  );
+}
