@@ -6,7 +6,8 @@ import {
   AppConfiguration, SubscriptionDetails, Stitch, TubePosition
 } from './types';
 import { fetchStitchBatch, fetchSingleStitch } from './stitchActions';
-import { StitchContent } from '../client/offline-first-content-buffer';
+import { StitchContent } from '../client/content-buffer';
+import { fillInitialBuffer, fillCompleteBuffer } from '../server-content-provider';
 
 // Define the combined store state
 interface ZenjinStore {
@@ -21,6 +22,7 @@ interface ZenjinStore {
   subscriptionDetails: SubscriptionDetails | null;
   lastUpdated: string;
   isInitialized: boolean;
+  contentBufferStatus: ContentBufferStatus;
 
   // User Information actions
   setUserInformation: (userInfo: UserInformation | null) => void;
@@ -58,6 +60,12 @@ interface ZenjinStore {
   fetchStitch: (stitchId: string) => Promise<StitchContent | null>;
   fetchStitchBatch: (stitchIds: string[]) => Promise<Record<string, StitchContent>>;
   addStitchToCollection: (stitch: StitchContent) => void;
+  
+  // Two-phase content buffer loading
+  fillInitialContentBuffer: () => Promise<void>;
+  fillCompleteContentBuffer: () => Promise<void>;
+  getActiveStitch: () => Promise<StitchContent | null>;
+  updateContentBufferStatus: (updates: Partial<ContentBufferStatus>) => void;
 
   // App Configuration actions
   setAppConfiguration: (config: AppConfiguration) => void;
@@ -80,6 +88,21 @@ interface ZenjinStore {
   loadFromLocalStorage: () => boolean;
 }
 
+// Content buffer status tracking
+interface ContentBufferStatus {
+  phase1Loaded: boolean;
+  phase2Loaded: boolean;
+  phase1Loading: boolean;
+  phase2Loading: boolean;
+  activeStitchLoaded: boolean;
+  lastUpdated: string;
+  stats: {
+    totalStitchesLoaded: number;
+    phase1StitchCount: number;
+    phase2StitchCount: number;
+  };
+}
+
 // Default values for required state slices
 const defaultStitchProgressionConfig: StitchProgressionConfig = {
   initialSkipNumber: 3,
@@ -91,6 +114,20 @@ const defaultStitchProgressionConfig: StitchProgressionConfig = {
 
 const defaultAppConfiguration: AppConfiguration = {
   soundEnabled: true
+};
+
+const defaultContentBufferStatus: ContentBufferStatus = {
+  phase1Loaded: false,
+  phase2Loaded: false,
+  phase1Loading: false,
+  phase2Loading: false,
+  activeStitchLoaded: false,
+  lastUpdated: new Date().toISOString(),
+  stats: {
+    totalStitchesLoaded: 0,
+    phase1StitchCount: 0,
+    phase2StitchCount: 0
+  }
 };
 
 // Create the Zustand store with persistence
@@ -108,6 +145,7 @@ export const useZenjinStore = create<ZenjinStore>()(
       subscriptionDetails: null,
       lastUpdated: new Date().toISOString(),
       isInitialized: false,
+      contentBufferStatus: defaultContentBufferStatus,
       
       // User Information actions
       setUserInformation: (userInfo) => set({
@@ -435,7 +473,7 @@ export const useZenjinStore = create<ZenjinStore>()(
         if (!state.learningProgress) return { lastUpdated: new Date().toISOString() };
         
         // Add to history and limit to last 10
-        const previousSpeeds = [...state.learningProgress.previousSessionBlinkSpeeds, newSessionBlinkSpeed];
+        const previousSpeeds = [...(state.learningProgress.previousSessionBlinkSpeeds || []), newSessionBlinkSpeed];
         const limitedSpeeds = previousSpeeds.slice(-10);
         
         // Calculate rolling average
@@ -462,10 +500,10 @@ export const useZenjinStore = create<ZenjinStore>()(
         return {
           learningProgress: {
             ...state.learningProgress,
-            completedStitchesCount: state.learningProgress.completedStitchesCount + 1,
+            completedStitchesCount: (state.learningProgress.completedStitchesCount || 0) + 1,
             perfectScoreStitchesCount: isPerfectScore 
-              ? state.learningProgress.perfectScoreStitchesCount + 1 
-              : state.learningProgress.perfectScoreStitchesCount
+              ? (state.learningProgress.perfectScoreStitchesCount || 0) + 1 
+              : (state.learningProgress.perfectScoreStitchesCount || 0)
           },
           lastUpdated: new Date().toISOString()
         };
@@ -602,6 +640,15 @@ export const useZenjinStore = create<ZenjinStore>()(
           if (stitch) {
             // Add the stitch to the collection
             get().addStitchToCollection(stitch);
+            
+            // Update buffer statistics
+            get().updateContentBufferStatus({
+              stats: {
+                ...state.contentBufferStatus.stats,
+                totalStitchesLoaded: state.contentBufferStatus.stats.totalStitchesLoaded + 1
+              }
+            });
+            
             return stitch;
           }
 
@@ -615,6 +662,8 @@ export const useZenjinStore = create<ZenjinStore>()(
 
       // Fetch a batch of stitches from the API
       fetchStitchBatch: async (stitchIds) => {
+        const state = get();
+        
         try {
           console.log(`Fetching ${stitchIds.length} stitches from API`);
           const stitches = await fetchStitchBatch(stitchIds);
@@ -622,6 +671,14 @@ export const useZenjinStore = create<ZenjinStore>()(
           // Add all fetched stitches to the collection
           Object.values(stitches).forEach(stitch => {
             get().addStitchToCollection(stitch);
+          });
+          
+          // Update buffer statistics
+          get().updateContentBufferStatus({
+            stats: {
+              ...state.contentBufferStatus.stats,
+              totalStitchesLoaded: state.contentBufferStatus.stats.totalStitchesLoaded + stitchIds.length
+            }
           });
 
           return stitches;
@@ -663,6 +720,177 @@ export const useZenjinStore = create<ZenjinStore>()(
           lastUpdated: new Date().toISOString()
         };
       }),
+      
+      // Two-phase content buffer loading
+      fillInitialContentBuffer: async () => {
+        const state = get();
+        
+        // Skip if no tube state or already loading
+        if (!state.tubeState || state.contentBufferStatus.phase1Loading) {
+          return;
+        }
+        
+        // Update loading status
+        get().updateContentBufferStatus({
+          phase1Loading: true
+        });
+        
+        try {
+          // Count stitches before loading
+          const beforeCount = state.contentCollection ? 
+            Object.keys(state.contentCollection.stitches || {}).length : 0;
+          
+          // Fill the initial buffer with 10 stitches per tube
+          await fillInitialBuffer(state.tubeState, get().fetchStitchBatch);
+          
+          // Count stitches after loading
+          const afterCount = state.contentCollection ? 
+            Object.keys(state.contentCollection.stitches || {}).length : 0;
+          
+          // Calculate how many new stitches were loaded
+          const newStitchesLoaded = afterCount - beforeCount;
+          
+          // Update buffer status
+          get().updateContentBufferStatus({
+            phase1Loading: false,
+            phase1Loaded: true,
+            activeStitchLoaded: true,
+            stats: {
+              ...state.contentBufferStatus.stats,
+              phase1StitchCount: newStitchesLoaded
+            }
+          });
+          
+          console.log(`Phase 1 loading complete. Loaded ${newStitchesLoaded} stitches.`);
+        } catch (error) {
+          console.error('Error filling initial content buffer:', error);
+          
+          // Update status to show loading failed
+          get().updateContentBufferStatus({
+            phase1Loading: false
+          });
+        }
+      },
+      
+      fillCompleteContentBuffer: async () => {
+        const state = get();
+        
+        // Skip if no tube state, already loaded, or already loading
+        if (!state.tubeState || state.contentBufferStatus.phase2Loaded || 
+            state.contentBufferStatus.phase2Loading) {
+          return;
+        }
+        
+        // Make sure Phase 1 is loaded first
+        if (!state.contentBufferStatus.phase1Loaded) {
+          await get().fillInitialContentBuffer();
+        }
+        
+        // Update loading status
+        get().updateContentBufferStatus({
+          phase2Loading: true
+        });
+        
+        try {
+          // Count stitches before loading
+          const beforeCount = state.contentCollection ? 
+            Object.keys(state.contentCollection.stitches || {}).length : 0;
+          
+          // Fill the complete buffer with up to 50 stitches per tube
+          await fillCompleteBuffer(state.tubeState, get().fetchStitchBatch);
+          
+          // Count stitches after loading
+          const afterCount = state.contentCollection ? 
+            Object.keys(state.contentCollection.stitches || {}).length : 0;
+          
+          // Calculate how many new stitches were loaded
+          const newStitchesLoaded = afterCount - beforeCount;
+          
+          // Update buffer status
+          get().updateContentBufferStatus({
+            phase2Loading: false,
+            phase2Loaded: true,
+            stats: {
+              ...state.contentBufferStatus.stats,
+              phase2StitchCount: newStitchesLoaded
+            }
+          });
+          
+          console.log(`Phase 2 loading complete. Loaded ${newStitchesLoaded} additional stitches.`);
+        } catch (error) {
+          console.error('Error filling complete content buffer:', error);
+          
+          // Update status to show loading failed
+          get().updateContentBufferStatus({
+            phase2Loading: false
+          });
+        }
+      },
+      
+      // Get the active stitch (the stitch at position 0 in the active tube)
+      getActiveStitch: async () => {
+        const state = get();
+        
+        // Ensure we have tube state
+        if (!state.tubeState) {
+          console.warn('Cannot get active stitch: No tube state available');
+          return null;
+        }
+        
+        // Get the active tube
+        const activeTubeNum = state.tubeState.activeTube;
+        const tube = state.tubeState.tubes[activeTubeNum];
+        
+        if (!tube) {
+          console.warn(`Cannot get active stitch: Active tube ${activeTubeNum} not found`);
+          return null;
+        }
+        
+        // Get the current stitch ID from the active tube
+        const currentStitchId = tube.currentStitchId;
+        
+        if (!currentStitchId) {
+          console.warn(`Cannot get active stitch: No current stitch ID in tube ${activeTubeNum}`);
+          return null;
+        }
+        
+        // Check if we already have this stitch in the collection
+        if (state.contentCollection?.stitches?.[currentStitchId]) {
+          // Mark the active stitch as loaded
+          if (!state.contentBufferStatus.activeStitchLoaded) {
+            get().updateContentBufferStatus({
+              activeStitchLoaded: true
+            });
+          }
+          
+          return state.contentCollection.stitches[currentStitchId] as unknown as StitchContent;
+        }
+        
+        // Fetch the stitch if not in collection
+        console.log(`Fetching active stitch ${currentStitchId} for tube ${activeTubeNum}`);
+        const stitch = await get().fetchStitch(currentStitchId);
+        
+        if (stitch) {
+          // Mark the active stitch as loaded
+          get().updateContentBufferStatus({
+            activeStitchLoaded: true
+          });
+          
+          return stitch;
+        }
+        
+        console.warn(`Failed to fetch active stitch ${currentStitchId}`);
+        return null;
+      },
+      
+      // Update content buffer status
+      updateContentBufferStatus: (updates) => set((state) => ({
+        contentBufferStatus: {
+          ...state.contentBufferStatus,
+          ...updates,
+          lastUpdated: new Date().toISOString()
+        }
+      })),
       
       // App Configuration actions
       setAppConfiguration: (config) => set({
@@ -1190,7 +1418,12 @@ export const useZenjinStore = create<ZenjinStore>()(
             tubeState,
             learningProgress,
             lastUpdated: loadedState.lastUpdated || new Date().toISOString(),
-            isInitialized: true
+            isInitialized: true,
+            // Reset buffer status - we'll need to load content after loading state
+            contentBufferStatus: {
+              ...defaultContentBufferStatus,
+              lastUpdated: new Date().toISOString()
+            }
           });
 
           // Verify state was set correctly
@@ -1212,6 +1445,14 @@ export const useZenjinStore = create<ZenjinStore>()(
             }
           }
 
+          // Immediately load the active stitch after loading state
+          setTimeout(() => {
+            get().getActiveStitch().then(() => {
+              // Once active stitch is loaded, start phase 1 loading
+              get().fillInitialContentBuffer();
+            });
+          }, 0);
+
           console.log('Successfully loaded state from server');
           return true;
         } catch (error) {
@@ -1230,7 +1471,8 @@ export const useZenjinStore = create<ZenjinStore>()(
         appConfiguration: defaultAppConfiguration,
         subscriptionDetails: null,
         lastUpdated: new Date().toISOString(),
-        isInitialized: false
+        isInitialized: false,
+        contentBufferStatus: defaultContentBufferStatus
       }),
       
       // Direct persistence helpers
@@ -1249,7 +1491,8 @@ export const useZenjinStore = create<ZenjinStore>()(
             appConfiguration: state.appConfiguration,
             subscriptionDetails: state.subscriptionDetails,
             lastUpdated: state.lastUpdated,
-            isInitialized: state.isInitialized
+            isInitialized: state.isInitialized,
+            contentBufferStatus: state.contentBufferStatus
           }));
           
           return true;
@@ -1277,6 +1520,11 @@ export const useZenjinStore = create<ZenjinStore>()(
               lastUpdated: new Date().toISOString()
             });
             
+            // Immediately load the active stitch after loading state from localStorage
+            setTimeout(() => {
+              get().getActiveStitch();
+            }, 0);
+            
             return true;
           } catch (parseError) {
             console.error('Error parsing stored state:', parseError);
@@ -1301,7 +1549,8 @@ export const useZenjinStore = create<ZenjinStore>()(
         appConfiguration: state.appConfiguration,
         subscriptionDetails: state.subscriptionDetails,
         lastUpdated: state.lastUpdated,
-        isInitialized: state.isInitialized
+        isInitialized: state.isInitialized,
+        contentBufferStatus: state.contentBufferStatus
       })
     }
   )
@@ -1314,6 +1563,7 @@ export const useLearningProgress = () => useZenjinStore(state => state.learningP
 export const useSessionData = () => useZenjinStore(state => state.sessionData);
 export const useAppConfig = () => useZenjinStore(state => state.appConfiguration);
 export const useSubscription = () => useZenjinStore(state => state.subscriptionDetails);
+export const useContentBufferStatus = () => useZenjinStore(state => state.contentBufferStatus);
 
 // Export default for primary usage
 export default useZenjinStore;

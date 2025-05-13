@@ -1,13 +1,12 @@
 /**
  * Content Buffer Manager
  * 
- * Handles efficient loading, caching, and management of stitch content
- * based on the user's state. Maintains a buffer of upcoming stitches
- * to ensure smooth gameplay.
+ * A simplified content buffer system that fetches all content from the server.
+ * This replaces the previous offline-first approach with a server-first approach.
  */
 
 import { UserState } from '../state/types';
-import { BUNDLED_INITIAL_STITCHES, DEFAULT_MANIFEST } from '../bundled-content';
+import { createEmergencyStitch } from '../server-content-provider';
 
 // Types
 export interface StitchReference {
@@ -36,7 +35,6 @@ export interface ContentManifest {
   };
 }
 
-// Override UserState from types with position-based format for the content buffer
 export interface ContentBufferUserState {
   userId: string;
   tubes: Record<string, {
@@ -63,355 +61,307 @@ export interface StitchContent {
   questions: any[];
 }
 
-// Buffer size - how many stitches to keep loaded per tube
-const BUFFER_SIZE = 5;
+// Buffer sizes for two-phase loading
+const INITIAL_BUFFER_SIZE = 10;  // First phase: 10 stitches per tube
+const COMPLETE_BUFFER_SIZE = 50; // Second phase: Up to 50 stitches per tube
 
 /**
  * Content Buffer Manager
  * 
- * Handles efficient loading and caching of stitch content
+ * Server-first approach to content loading with two phases:
+ * 1. Immediate loading of the active stitch
+ * 2. Phase 1: Load 10 stitches per tube for basic interaction
+ * 3. Phase 2: Load up to 50 stitches per tube for comprehensive buffering
  */
 export class ContentBufferManager {
-  private manifest: ContentManifest | null = null;
   private cachedStitches: Record<string, StitchContent> = {};
-  private isLoadingManifest = false;
   private isInitialized = false;
+  private activeStitchLoaded = false;
+  private phase1Loaded = false;
+  private phase2Loaded = false;
+  private apiEndpoint = '/api/content/batch';
+  
+  constructor() {
+    // Empty constructor - no initialization needed
+  }
   
   /**
    * Initialize the content buffer
-   * @param isNewUser Optional flag to indicate this is a brand new user or anonymous user
+   * Simplified process that checks API endpoint and prepares for fetch
    */
-  async initialize(isNewUser: boolean = false): Promise<boolean> {
-    if (this.isInitialized) return true;
-    
-    try {
-      await this.loadManifest(isNewUser);
-      this.isInitialized = true;
+  async initialize(isNewUser: boolean = false, user: any = null): Promise<boolean> {
+    if (this.isInitialized) {
       return true;
-    } catch (error) {
-      console.error('Failed to initialize content buffer:', error);
-      return false;
     }
-  }
-  
-  /**
-   * Load the content manifest from the server
-   * Falls back to bundled default manifest if server request fails
-   * 
-   * @param isNewUser Optional flag to indicate this is a brand new user (anonymous or just signed up)
-   */
-  async loadManifest(isNewUser: boolean = false): Promise<ContentManifest> {
-    if (this.isLoadingManifest) {
-      // Wait for existing load to complete
-      await new Promise(resolve => setTimeout(resolve, 100));
-      if (this.manifest) return this.manifest;
-    }
-    
-    this.isLoadingManifest = true;
     
     try {
-      // For new users and anonymous users, we can start with the bundled manifest
-      // This provides immediate content while we try to load from the server
-      if (isNewUser) {
-        this.manifest = DEFAULT_MANIFEST;
-        
-        // Initialize bundled stitches in the cache
-        Object.entries(BUNDLED_INITIAL_STITCHES).forEach(([id, stitch]) => {
-          this.cachedStitches[id] = stitch;
-        });
-        
-        console.log(`Using bundled manifest for new/anonymous user with ${this.manifest.stats.stitchCount} stitches`);
-      }
-      
-      // Always attempt to load from API - for returning users this is critical
-      // as it contains their specific progress state
-      try {
-        // Load manifest from API
-        const response = await fetch('/api/content/manifest');
-        
-        if (!response.ok) {
-          throw new Error(`Failed to load manifest: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (!data.success || !data.manifest) {
-          throw new Error(data.error || 'Failed to load content manifest');
-        }
-        
-        // Replace any existing manifest with the server version
-        // For returning users, this contains their specific progress
-        this.manifest = data.manifest;
-        console.log(`API manifest loaded with ${this.manifest.stats.stitchCount} stitches`);
-      } catch (apiError) {
-        // Critical error for returning users who need their state
-        // Non-critical only for new users who can use the bundled content
-        if (!isNewUser || !this.manifest) {
-          console.error('Critical API error for returning user:', apiError);
-          
-          // If we have no manifest at all (not even bundled), create a minimal default
-          if (!this.manifest) {
-            console.warn('Falling back to bundled manifest due to API failure');
-            this.manifest = DEFAULT_MANIFEST;
-            
-            // Initialize bundled stitches as a last resort
-            Object.entries(BUNDLED_INITIAL_STITCHES).forEach(([id, stitch]) => {
-              this.cachedStitches[id] = stitch;
-            });
-          }
-        } else {
-          // For new users, we already have the bundled manifest, so this is non-critical
-          console.warn('Using bundled manifest for new user due to API error:', apiError);
-        }
-      }
-      
-      this.isLoadingManifest = false;
-      return this.manifest;
-    } catch (error) {
-      this.isLoadingManifest = false;
-      console.error('Error in loadManifest:', error);
-      throw error;
-    }
-  }
-  
-  /**
-   * Determine which stitches need to be loaded based on user state
-   */
-  getStitchesToBuffer(userState: UserState): string[] {
-    if (!this.manifest) {
-      console.warn('Cannot determine stitches to buffer: manifest not loaded');
-      return [];
-    }
-    
-    const stitchesToLoad: string[] = [];
-    
-    // First, ensure we have the active stitch for each tube
-    Object.entries(userState.tubes).forEach(([tubeNumber, tubeState]) => {
-      // Convert from standard UserState to ContentBufferUserState format
-      // In the standard format, currentStitchId is the active stitch
-      const currentStitchId = tubeState.currentStitchId;
-      
-      // Always include the current stitch ID
-      if (currentStitchId && !this.cachedStitches[currentStitchId]) {
-        stitchesToLoad.push(currentStitchId);
-      }
-      
-      // Get the next upcoming stitches for this tube from the manifest
-      // Since we don't have position info in standard state, use manifest for ordering
-      const upcomingStitches = this.getUpcomingStitchesFromManifest(
-        parseInt(tubeNumber, 10), 
-        tubeState.threadId, 
-        currentStitchId
-      );
-      
-      // Add any uncached stitches to the loading list
-      upcomingStitches.forEach(stitchId => {
-        if (!this.cachedStitches[stitchId] && !stitchesToLoad.includes(stitchId)) {
-          stitchesToLoad.push(stitchId);
-        }
-      });
-    });
-    
-    return stitchesToLoad;
-  }
-  
-  /**
-   * Get the upcoming stitches for a specific tube based on manifest order
-   */
-  getUpcomingStitchesFromManifest(tubeNumber: number, threadId: string, currentStitchId: string): string[] {
-    if (!this.manifest) return [];
-    
-    // Get the tube manifest
-    const tubeManifest = this.manifest.tubes[tubeNumber];
-    if (!tubeManifest) return [];
-    
-    // Get the thread manifest
-    const threadManifest = tubeManifest.threads[threadId];
-    if (!threadManifest) return [];
-    
-    // Find the current stitch in the ordered list
-    const stitches = threadManifest.stitches;
-    const currentIndex = stitches.findIndex(s => s.id === currentStitchId);
-    
-    if (currentIndex === -1) return [];
-    
-    // Get the next BUFFER_SIZE stitches after the current one
-    return stitches
-      .slice(currentIndex + 1, currentIndex + 1 + BUFFER_SIZE)
-      .map(s => s.id);
-  }
-  
-  /**
-   * Get the upcoming stitches for a specific tube based on position-based state
-   * For compatibility with the position-based model when it's available
-   */
-  getUpcomingStitches(userState: ContentBufferUserState, tubeNumber: number): string[] {
-    const tubeState = userState.tubes[tubeNumber];
-    if (!tubeState) return [];
-    
-    // Get stitches sorted by position (lowest first)
-    const sortedStitches = [...tubeState.stitches]
-      .sort((a, b) => a.position - b.position);
-    
-    // Find the current position (should be 0)
-    const currentIndex = sortedStitches.findIndex(s => s.id === tubeState.currentStitchId);
-    
-    if (currentIndex === -1) return [];
-    
-    // Get the next BUFFER_SIZE stitches after the current one
-    return sortedStitches
-      .slice(currentIndex + 1, currentIndex + 1 + BUFFER_SIZE)
-      .map(s => s.id);
-  }
-  
-  /**
-   * Fetch a batch of stitches from the server
-   */
-  async fetchStitches(stitchIds: string[]): Promise<StitchContent[]> {
-    if (stitchIds.length === 0) return [];
-    
-    try {
-      const response = await fetch('/api/content/batch', {
-        method: 'POST',
+      // Simple API check to verify endpoint
+      const response = await fetch(`${this.apiEndpoint}?check=1`, {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ stitchIds })
-      });
+        }
+      }).catch(() => null);
       
-      if (!response.ok) {
-        throw new Error(`Failed to fetch stitches: ${response.status}`);
+      // Note: Even if API check fails, we still mark as initialized
+      // We'll handle fetch errors at fetch time
+      this.isInitialized = true;
+      
+      if (response?.ok) {
+        console.log('Content buffer initialized with working API endpoint');
+      } else {
+        console.warn('Content buffer initialized but API endpoint check failed');
       }
       
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to fetch stitches');
-      }
-      
-      return data.stitches || [];
+      return true;
     } catch (error) {
-      console.error('Error fetching stitches:', error);
-      throw error;
+      console.warn('Error initializing content buffer:', error);
+      
+      // Still mark as initialized so we can proceed with emergency content
+      this.isInitialized = true;
+      return true;
     }
   }
   
   /**
-   * Update the buffer based on current user state
+   * Get the active stitch from the buffer or fetch it if not available
+   * @param userState The current user state
+   * @param fetchStitch Function to fetch a single stitch
    */
-  async updateBuffer(userState: UserState): Promise<void> {
-    // Make sure we have the manifest
-    if (!this.manifest) {
-      await this.loadManifest();
+  async getActiveStitch(
+    userState: UserState,
+    fetchStitch: (stitchId: string) => Promise<StitchContent | null>
+  ): Promise<StitchContent | null> {
+    if (!userState?.tubeState) {
+      console.warn('Cannot get active stitch: No tube state available');
+      return null;
     }
     
-    // Determine which stitches need to be loaded
-    const stitchesToLoad = this.getStitchesToBuffer(userState);
+    // Get the active tube and current stitch ID
+    const activeTubeNum = userState.tubeState.activeTube;
+    const tube = userState.tubeState.tubes[activeTubeNum];
     
-    if (stitchesToLoad.length === 0) {
-      console.log('Buffer is up to date, no new stitches to load');
+    if (!tube || !tube.currentStitchId) {
+      console.warn(`Cannot get active stitch: No current stitch ID in tube ${activeTubeNum}`);
+      return null;
+    }
+    
+    const currentStitchId = tube.currentStitchId;
+    
+    // Check if the stitch is already in the buffer
+    if (this.cachedStitches[currentStitchId]) {
+      this.activeStitchLoaded = true;
+      return this.cachedStitches[currentStitchId];
+    }
+    
+    // Fetch the stitch from the API
+    try {
+      console.log(`Fetching active stitch ${currentStitchId} for tube ${activeTubeNum}`);
+      const stitch = await fetchStitch(currentStitchId);
+      
+      if (stitch) {
+        // Add to cache
+        this.cachedStitches[stitch.id] = stitch;
+        this.activeStitchLoaded = true;
+        return stitch;
+      }
+      
+      // If fetch fails, create emergency content
+      console.warn(`Failed to fetch active stitch ${currentStitchId}, using emergency content`);
+      const emergencyStitch = createEmergencyStitch(currentStitchId);
+      this.cachedStitches[currentStitchId] = emergencyStitch;
+      return emergencyStitch;
+    } catch (error) {
+      console.error(`Error getting active stitch ${currentStitchId}:`, error);
+      
+      // Create emergency content for critical case
+      const emergencyStitch = createEmergencyStitch(currentStitchId);
+      this.cachedStitches[currentStitchId] = emergencyStitch;
+      return emergencyStitch;
+    }
+  }
+  
+  /**
+   * Fill the initial buffer with 10 stitches per tube (Phase 1)
+   * @param userState The current user state
+   * @param fetchStitchBatch Function to fetch multiple stitches
+   */
+  async fillInitialBuffer(
+    userState: UserState,
+    fetchStitchBatch: (stitchIds: string[]) => Promise<Record<string, StitchContent>>
+  ): Promise<void> {
+    if (!userState?.tubeState) {
+      console.warn('Cannot fill initial buffer: No tube state available');
       return;
     }
     
-    console.log(`Loading ${stitchesToLoad.length} stitches to update buffer`);
+    if (this.phase1Loaded) {
+      console.log('Initial buffer already loaded, skipping');
+      return;
+    }
     
-    // Fetch the needed stitches
-    try {
-      const fetchedStitches = await this.fetchStitches(stitchesToLoad);
+    // For each tube (1, 2, 3), collect the first 10 stitches
+    const stitchesToFetch: string[] = [];
+    
+    for (let tubeNum = 1; tubeNum <= 3; tubeNum++) {
+      const tube = userState.tubeState.tubes[tubeNum];
+      if (!tube || !tube.stitchOrder || tube.stitchOrder.length === 0) {
+        continue;
+      }
       
-      // Add them to the cache
-      fetchedStitches.forEach(stitch => {
+      // Active stitch should always be included first
+      if (tube.currentStitchId && !stitchesToFetch.includes(tube.currentStitchId)) {
+        stitchesToFetch.push(tube.currentStitchId);
+      }
+      
+      // Get up to INITIAL_BUFFER_SIZE stitches
+      const initialStitches = tube.stitchOrder.slice(0, INITIAL_BUFFER_SIZE);
+      initialStitches.forEach(stitchId => {
+        if (stitchId && !stitchesToFetch.includes(stitchId) && !this.cachedStitches[stitchId]) {
+          stitchesToFetch.push(stitchId);
+        }
+      });
+    }
+    
+    // If there's nothing to fetch, we're done
+    if (stitchesToFetch.length === 0) {
+      this.phase1Loaded = true;
+      console.log('No stitches needed for initial buffer (Phase 1)');
+      return;
+    }
+    
+    // Fetch the stitches
+    try {
+      console.log(`Phase 1: Fetching initial buffer of ${stitchesToFetch.length} stitches`);
+      const stitches = await fetchStitchBatch(stitchesToFetch);
+      
+      // Add fetched stitches to the cache
+      Object.values(stitches).forEach(stitch => {
         this.cachedStitches[stitch.id] = stitch;
       });
       
-      console.log(`Updated buffer with ${fetchedStitches.length} new stitches`);
+      this.phase1Loaded = true;
+      console.log(`Phase 1: Successfully loaded ${Object.keys(stitches).length} stitches`);
     } catch (error) {
-      console.error('Failed to update buffer:', error);
+      console.error('Error filling initial buffer:', error);
+      
+      // Create emergency content for critical stitches
+      stitchesToFetch.forEach(stitchId => {
+        if (!this.cachedStitches[stitchId]) {
+          this.cachedStitches[stitchId] = createEmergencyStitch(stitchId);
+        }
+      });
     }
   }
   
   /**
-   * Get a stitch from the cache, bundled content, or API
-   * Prioritizes: 1) Cache, 2) Bundled content, 3) API
+   * Fill the complete buffer with up to 50 stitches per tube (Phase 2)
+   * @param userState The current user state
+   * @param fetchStitchBatch Function to fetch multiple stitches
    */
-  async getStitch(stitchId: string): Promise<StitchContent | null> {
-    // 1. Return from cache if available (fastest)
+  async fillCompleteBuffer(
+    userState: UserState,
+    fetchStitchBatch: (stitchIds: string[]) => Promise<Record<string, StitchContent>>
+  ): Promise<void> {
+    if (!userState?.tubeState) {
+      console.warn('Cannot fill complete buffer: No tube state available');
+      return;
+    }
+    
+    if (this.phase2Loaded) {
+      console.log('Complete buffer already loaded, skipping');
+      return;
+    }
+    
+    // Make sure Phase 1 is loaded first
+    if (!this.phase1Loaded) {
+      await this.fillInitialBuffer(userState, fetchStitchBatch);
+    }
+    
+    // For each tube (1, 2, 3), collect stitches beyond the initial buffer
+    const stitchesToFetch: string[] = [];
+    
+    for (let tubeNum = 1; tubeNum <= 3; tubeNum++) {
+      const tube = userState.tubeState.tubes[tubeNum];
+      if (!tube || !tube.stitchOrder || tube.stitchOrder.length <= INITIAL_BUFFER_SIZE) {
+        continue;
+      }
+      
+      // Get stitches from position 10 to 50
+      const additionalStitches = tube.stitchOrder.slice(INITIAL_BUFFER_SIZE, COMPLETE_BUFFER_SIZE);
+      additionalStitches.forEach(stitchId => {
+        if (stitchId && !stitchesToFetch.includes(stitchId) && !this.cachedStitches[stitchId]) {
+          stitchesToFetch.push(stitchId);
+        }
+      });
+    }
+    
+    // If there's nothing to fetch, we're done
+    if (stitchesToFetch.length === 0) {
+      this.phase2Loaded = true;
+      console.log('No additional stitches needed for complete buffer (Phase 2)');
+      return;
+    }
+    
+    // Fetch the stitches
+    try {
+      console.log(`Phase 2: Fetching additional ${stitchesToFetch.length} stitches`);
+      const stitches = await fetchStitchBatch(stitchesToFetch);
+      
+      // Add fetched stitches to the cache
+      Object.values(stitches).forEach(stitch => {
+        this.cachedStitches[stitch.id] = stitch;
+      });
+      
+      this.phase2Loaded = true;
+      console.log(`Phase 2: Successfully loaded ${Object.keys(stitches).length} additional stitches`);
+    } catch (error) {
+      console.error('Error filling complete buffer:', error);
+      
+      // Create emergency content for critical stitches 
+      // (less critical in Phase 2, so we don't create emergency content for all)
+      const criticalStitches = stitchesToFetch.slice(0, 5); // Just create for the first 5
+      criticalStitches.forEach(stitchId => {
+        if (!this.cachedStitches[stitchId]) {
+          this.cachedStitches[stitchId] = createEmergencyStitch(stitchId);
+        }
+      });
+    }
+  }
+  
+  /**
+   * Get a stitch from the buffer or fetch it if not available
+   * @param stitchId The ID of the stitch to get
+   * @param fetchStitch Function to fetch a single stitch
+   */
+  async getStitch(
+    stitchId: string,
+    fetchStitch: (stitchId: string) => Promise<StitchContent | null>
+  ): Promise<StitchContent | null> {
+    if (!stitchId) {
+      return null;
+    }
+    
+    // Check if the stitch is already in the buffer
     if (this.cachedStitches[stitchId]) {
       return this.cachedStitches[stitchId];
     }
     
-    // 2. Check bundled content (almost as fast as cache)
-    if (BUNDLED_INITIAL_STITCHES[stitchId]) {
-      const bundledStitch = BUNDLED_INITIAL_STITCHES[stitchId];
-      this.cachedStitches[stitchId] = bundledStitch;
-      return bundledStitch;
-    }
-    
-    // 3. Finally, try to load from API
+    // Fetch the stitch
     try {
-      const [stitch] = await this.fetchStitches([stitchId]);
+      console.log(`Fetching stitch ${stitchId}`);
+      const stitch = await fetchStitch(stitchId);
       
       if (stitch) {
-        this.cachedStitches[stitchId] = stitch;
+        // Add to cache
+        this.cachedStitches[stitch.id] = stitch;
         return stitch;
       }
       
-      // If we can't get it from API, check if it's one of the first stitches
-      // where we could generate emergency content as a last resort
-      const tubeMatch = stitchId.match(/stitch-T(\d+)-001-01/);
-      if (tubeMatch) {
-        const tubeNumber = tubeMatch[1];
-        console.warn(`Using generated content for first stitch of tube ${tubeNumber}`);
-        
-        // Generate a simple stitch with minimal content
-        const emergencyStitch: StitchContent = {
-          id: stitchId,
-          threadId: `thread-T${tubeNumber}-001`,
-          title: `Basic Content for Tube ${tubeNumber}`,
-          content: `Basic content for learning tube ${tubeNumber}`,
-          order: 1,
-          questions: [
-            {
-              id: `${stitchId}-q01`,
-              text: 'What is 2 + 2?',
-              correctAnswer: '4',
-              distractors: { L1: '3', L2: '5', L3: '6' }
-            }
-          ]
-        };
-        
-        this.cachedStitches[stitchId] = emergencyStitch;
-        return emergencyStitch;
-      }
-      
+      console.warn(`Failed to fetch stitch ${stitchId}`);
       return null;
     } catch (error) {
-      console.error(`Failed to get stitch ${stitchId}:`, error);
-      
-      // Last resort fallback for network errors
-      if (stitchId.includes('-001-01')) {
-        console.warn(`Using fallback content for ${stitchId} due to network error`);
-        // Create a very basic fallback stitch
-        const fallbackStitch: StitchContent = {
-          id: stitchId,
-          threadId: stitchId.replace(/-\d+$/, ''),
-          title: 'Offline Content',
-          content: 'This content is available offline.',
-          order: 1,
-          questions: [
-            {
-              id: `${stitchId}-fallback-q01`,
-              text: 'What is 1 + 1?',
-              correctAnswer: '2',
-              distractors: { L1: '3', L2: '1', L3: '0' }
-            }
-          ]
-        };
-        
-        this.cachedStitches[stitchId] = fallbackStitch;
-        return fallbackStitch;
-      }
-      
+      console.error(`Error fetching stitch ${stitchId}:`, error);
       return null;
     }
   }
@@ -429,14 +379,42 @@ export class ContentBufferManager {
       return null;
     }
     
-    return this.getStitch(activeTube.currentStitchId);
+    // Use getStitch method with a simple wrapper for fetchSingleStitch
+    return this.getStitch(activeTube.currentStitchId, async (stitchId) => {
+      try {
+        // Simple implementation for compatibility - in real usage, the Zustand store's fetchStitch would be used
+        const response = await fetch(`/api/content/stitch/${stitchId}`);
+        if (!response.ok) return null;
+        const data = await response.json();
+        return data.success ? data.stitch : null;
+      } catch (error) {
+        console.error(`Error fetching stitch ${stitchId}:`, error);
+        return null;
+      }
+    });
   }
   
   /**
-   * Clear the stitch cache
+   * Get the buffer status (for diagnostic purposes)
    */
-  clearCache(): void {
+  getBufferStatus() {
+    return {
+      activeStitchLoaded: this.activeStitchLoaded,
+      phase1Loaded: this.phase1Loaded,
+      phase2Loaded: this.phase2Loaded,
+      cachedStitchCount: Object.keys(this.cachedStitches).length,
+      isInitialized: this.isInitialized
+    };
+  }
+  
+  /**
+   * Clear the buffer cache
+   */
+  clearCache() {
     this.cachedStitches = {};
+    this.activeStitchLoaded = false;
+    this.phase1Loaded = false;
+    this.phase2Loaded = false;
     console.log('Content buffer cache cleared');
   }
 }

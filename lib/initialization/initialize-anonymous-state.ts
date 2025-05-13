@@ -2,10 +2,8 @@
  * Anonymous User State Initialization
  * 
  * This module handles initializing an anonymous user's state with default positions.
- * It extracts all bundled content stitches and organizes them by tube and position.
+ * Creates a default state structure with empty tubes that will be filled via API.
  */
-
-import { BUNDLED_FULL_CONTENT } from '../expanded-bundled-content';
 
 interface StitchPosition {
   id: string;
@@ -19,6 +17,16 @@ interface TubeState {
   threadId: string;
   stitches: StitchPosition[];
   currentStitchId: string;
+  positions?: { [position: number]: TubePosition };
+  stitchOrder?: string[];
+}
+
+interface TubePosition {
+  stitchId: string;
+  skipNumber: number;
+  distractorLevel: number | string;
+  perfectCompletions: number;
+  lastCompleted?: string;
 }
 
 interface UserState {
@@ -26,113 +34,91 @@ interface UserState {
   tubes: {
     [tubeNumber: string]: TubeState;
   };
+  activeTube?: number;
   activeTubeNumber: number;
   lastUpdated: string;
 }
 
+// Default initial stitch IDs for each tube
+const DEFAULT_INITIAL_STITCHES = {
+  1: "stitch-T1-001-01",
+  2: "stitch-T2-001-01",
+  3: "stitch-T3-001-01"
+};
+
+// Default thread IDs for each tube
+const DEFAULT_THREAD_IDS = {
+  1: "thread-T1-001",
+  2: "thread-T2-001",
+  3: "thread-T3-001"
+};
+
 /**
- * Initializes complete anonymous user state with all bundled content stitches
- * Properly structured for local storage and StateMachine
+ * Initializes minimal anonymous user state structure
+ * Instead of using bundled content, this creates a skeleton state
+ * that will be populated via API calls
+ * 
  * @param userId The anonymous user ID
- * @returns Prepared user state object
+ * @returns Prepared minimal user state object
  */
 export function initializeAnonymousUserState(userId: string): UserState {
   if (!userId) {
     throw new Error('User ID is required to initialize anonymous state');
   }
 
-  console.log(`Initializing anonymous user state for user ID: ${userId}`);
+  console.log(`Initializing minimal anonymous user state for user ID: ${userId}`);
 
-  // Collect all stitches from bundled content and organize by tube
-  const stitchesByTube: { [tubeNumber: string]: StitchPosition[] } = {
-    1: [],
-    2: [],
-    3: []
-  };
-
-  // Extract all stitch IDs from bundled content
-  const stitchIds = Object.keys(BUNDLED_FULL_CONTENT);
-  console.log(`Found ${stitchIds.length} total stitches in bundled content`);
-
-  // Process each stitch ID and organize by tube
-  for (const stitchId of stitchIds) {
-    // Extract tube number and stitch number from ID format: stitch-T{tube}-{thread}-{number}
-    const match = stitchId.match(/stitch-T(\d+)-(\d+)-(\d+)/);
-    if (!match) {
-      console.warn(`Unrecognized stitch ID format: ${stitchId}`);
-      continue;
-    }
-
-    const tubeNumber = match[1];
-    const threadNumber = match[2];
-    const stitchNumber = match[3];
-    const threadId = `thread-T${tubeNumber}-${threadNumber}`;
-
-    // Skip if tube is not 1, 2, or 3
-    if (!['1', '2', '3'].includes(tubeNumber)) {
-      console.warn(`Skipping stitch ${stitchId} with invalid tube number: ${tubeNumber}`);
-      continue;
-    }
-
-    // Create stitch position object
-    const stitchPosition: StitchPosition = {
-      id: stitchId,
-      threadId,
-      position: parseInt(stitchNumber) - 1, // Convert to 0-based positions
-      skipNumber: 1, // Start with skip number 1
-      distractorLevel: 'L1' // Start with level 1 distractors
-    };
-
-    // Add to the appropriate tube
-    stitchesByTube[tubeNumber].push(stitchPosition);
-  }
-
-  // Sort stitches within each tube by their position
-  for (const tubeNumber in stitchesByTube) {
-    stitchesByTube[tubeNumber].sort((a, b) => a.position - b.position);
-    
-    // Ensure positions are sequential starting from 0
-    stitchesByTube[tubeNumber].forEach((stitch, index) => {
-      stitch.position = index;
-    });
-  }
-
-  // Build the complete user state
+  // Build the user state with empty tubes
   const tubeStates: { [tubeNumber: string]: TubeState } = {};
   
-  for (const tubeNumber in stitchesByTube) {
-    const stitches = stitchesByTube[tubeNumber];
-    if (stitches.length > 0) {
-      // Find the first stitch in this tube
-      const firstStitch = stitches.find(s => s.position === 0) || stitches[0];
-      
-      tubeStates[tubeNumber] = {
-        threadId: firstStitch.threadId,
-        stitches,
-        currentStitchId: firstStitch.id
-      };
-    } else {
-      // Fallback if no stitches found for this tube
-      tubeStates[tubeNumber] = {
-        threadId: `thread-T${tubeNumber}-001`,
-        stitches: [],
-        currentStitchId: ''
-      };
-    }
+  // Create basic structure for each tube (1, 2, 3)
+  for (let tubeNumber = 1; tubeNumber <= 3; tubeNumber++) {
+    const tubeKey = tubeNumber.toString();
+    const initialStitchId = DEFAULT_INITIAL_STITCHES[tubeKey];
+    const threadId = DEFAULT_THREAD_IDS[tubeKey];
+    
+    // Create an initial position for the first stitch
+    const initialPosition: TubePosition = {
+      stitchId: initialStitchId,
+      skipNumber: 3,
+      distractorLevel: 1,
+      perfectCompletions: 0
+    };
+    
+    // Create the tube state with both legacy and new position formats
+    tubeStates[tubeKey] = {
+      threadId,
+      currentStitchId: initialStitchId,
+      // Legacy format: array of stitch positions
+      stitches: [{
+        id: initialStitchId,
+        threadId,
+        position: 0,
+        skipNumber: 3,
+        distractorLevel: 'L1'
+      }],
+      // New format: positions map
+      positions: {
+        0: initialPosition
+      },
+      // Also include stitchOrder for compatibility
+      stitchOrder: [initialStitchId]
+    };
   }
 
   // Create the complete user state
   const userState: UserState = {
     userId,
     tubes: tubeStates,
-    activeTubeNumber: 1, // Start with tube 1
+    activeTube: 1,
+    activeTubeNumber: 1, // Include both formats for compatibility
     lastUpdated: new Date().toISOString()
   };
 
   // Log summary of created state
-  console.log(`Anonymous user state initialized:`);
+  console.log(`Minimal anonymous user state initialized:`);
   for (const tubeNumber in userState.tubes) {
-    console.log(`- Tube ${tubeNumber}: ${userState.tubes[tubeNumber].stitches.length} stitches, current stitch: ${userState.tubes[tubeNumber].currentStitchId}`);
+    console.log(`- Tube ${tubeNumber}: current stitch: ${userState.tubes[tubeNumber].currentStitchId}`);
   }
 
   return userState;

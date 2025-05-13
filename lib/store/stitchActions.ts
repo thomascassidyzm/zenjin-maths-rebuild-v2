@@ -2,10 +2,11 @@
  * Stitch Actions for Zustand Store
  * 
  * This file adds stitch-related actions to the Zustand store,
- * allowing for unified and consistent stitch fetching across the app.
+ * using a server-first approach to fetch content consistently.
  */
 
-import { StitchContent } from '../client/offline-first-content-buffer';
+import { StitchContent } from '../client/content-buffer';
+import { createEmergencyStitch } from '../server-content-provider';
 
 // Types for stitch fetching responses
 interface BatchFetchResponse {
@@ -33,6 +34,8 @@ export const fetchStitchBatch = async (stitchIds: string[]): Promise<Record<stri
     return createMockStitches(stitchIds);
   }
 
+  console.log(`Fetching batch of ${stitchIds.length} stitches from server API`);
+  
   try {
     const response = await fetch('/api/content/batch', {
       method: 'POST',
@@ -68,6 +71,7 @@ export const fetchStitchBatch = async (stitchIds: string[]): Promise<Record<stri
       stitchRecord[stitch.id] = stitch;
     });
 
+    console.log(`Successfully fetched ${Object.keys(stitchRecord).length} stitches from server`);
     return stitchRecord;
   } catch (error) {
     console.error('Error fetching stitches:', error);
@@ -78,7 +82,14 @@ export const fetchStitchBatch = async (stitchIds: string[]): Promise<Record<stri
       return createMockStitches(stitchIds);
     }
 
-    throw error;
+    // For failures in production, create emergency content
+    console.warn('Creating emergency content for failed stitch batch');
+    const emergencyStitches: Record<string, StitchContent> = {};
+    stitchIds.forEach(stitchId => {
+      emergencyStitches[stitchId] = createEmergencyStitch(stitchId);
+    });
+    
+    return emergencyStitches;
   }
 };
 
@@ -121,6 +132,8 @@ const createMockStitches = (stitchIds: string[]): Record<string, StitchContent> 
 export const fetchSingleStitch = async (stitchId: string): Promise<StitchContent | null> => {
   if (!stitchId) return null;
 
+  console.log(`Fetching single stitch: ${stitchId}`);
+  
   try {
     const stitches = await fetchStitchBatch([stitchId]);
     return stitches[stitchId] || null;
@@ -133,6 +146,7 @@ export const fetchSingleStitch = async (stitchId: string): Promise<StitchContent
       return createMockStitches([stitchId])[stitchId] || null;
     }
 
-    return null;
+    // For failures in production, create emergency content
+    return createEmergencyStitch(stitchId);
   }
 };
