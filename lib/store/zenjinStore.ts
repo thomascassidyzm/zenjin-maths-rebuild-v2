@@ -10,6 +10,7 @@ import { fetchStitchBatch, fetchSingleStitch } from './stitchActions';
 import { StitchContent } from '../client/content-buffer';
 import { fillInitialBuffer, fillCompleteBuffer } from '../server-content-provider';
 import { createSessionMetricsSlice } from './sessionMetricsSlice';
+import { saveUserStateToServer, loadUserStateFromServer } from './userStateActions';
 
 // Define the combined store state
 interface ZenjinStore {
@@ -153,8 +154,81 @@ export const useZenjinStore = create<ZenjinStore>()(
       isInitialized: false,
       contentBufferStatus: defaultContentBufferStatus,
       
-      // Add session metrics slice
+      // Add session metrics slice - ensures all API calls go through Zustand
       ...createSessionMetricsSlice(set, get),
+      
+      // Add state sync methods to ensure all API calls go through Zustand
+      // Sync state to server through the Zustand store (single source of truth)
+      syncStateToServer: async () => {
+        const state = get();
+        const userId = state.userInformation?.userId;
+        
+        if (!userId) {
+          console.error('Cannot sync state: No user ID available');
+          return false;
+        }
+        
+        try {
+          console.log('Syncing state to server via Zustand store');
+          
+          // Prepare the state data for persistence
+          const stateData = {
+            tubeState: state.tubeState,
+            learningProgress: state.learningProgress,
+            appConfiguration: state.appConfiguration
+          };
+          
+          // Use the dedicated action to save state
+          const success = await saveUserStateToServer(
+            userId,
+            stateData,
+            state.lastUpdated
+          );
+          
+          if (success) {
+            console.log('State synced to server successfully');
+          } else {
+            console.error('Failed to sync state to server');
+          }
+          
+          return success;
+        } catch (error) {
+          console.error('Error syncing state to server:', error);
+          return false;
+        }
+      },
+      
+      // Load state from server through the Zustand store (single source of truth)
+      loadStateFromServer: async (userId) => {
+        if (!userId) {
+          console.error('Cannot load state: No user ID provided');
+          return false;
+        }
+        
+        try {
+          console.log('Loading state from server via Zustand store');
+          
+          // Use the dedicated action to load state
+          const stateData = await loadUserStateFromServer(userId);
+          
+          if (!stateData) {
+            console.log('No state found on server or failed to load');
+            return false;
+          }
+          
+          // Update the store with loaded state
+          set({
+            ...stateData,
+            lastUpdated: new Date().toISOString()
+          });
+          
+          console.log('State loaded from server successfully');
+          return true;
+        } catch (error) {
+          console.error('Error loading state from server:', error);
+          return false;
+        }
+      },
       
       // User Information actions
       setUserInformation: (userInfo) => set({

@@ -1,6 +1,7 @@
 /* Test Session Metrics Styles */
 
-:root {
+/* Global variables using :global to avoid CSS Module errors */
+:global(:root) {
   --primary-color: #008080; /* Teal color */
   --primary-light: #00a0a0;
   --primary-dark: #006060;
