@@ -21,6 +21,7 @@ This document outlines the unified content loading approach that treats all user
 
 ### Phase 3: Complete Buffer Fill - Offline Support
 
+1. When the user is idle or after Phase 2 completes, fetch up to 50 stitches per tube
 2. This provides comprehensive offline support
 3. Uses lower priority loading to avoid interfering with the user experience
 
