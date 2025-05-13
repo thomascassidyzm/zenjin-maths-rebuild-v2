@@ -1,16 +1,6 @@
 /* Test Session Metrics Styles */
 
-/* Global variables using :global to avoid CSS Module errors */
-:global(:root) {
-  --primary-color: #008080; /* Teal color */
-  --primary-light: #00a0a0;
-  --primary-dark: #006060;
-  --accent-color: #ff6b6b;
-  --background-color: #f5f5f5;
-  --text-color: #333333;
-  --bubble-color: rgba(0, 128, 128, 0.1);
-  --bubble-border: rgba(0, 128, 128, 0.2);
-}
+/* CSS variables moved to test-session-metrics.global.css */
 
 .testPage {
   max-width: 800px;

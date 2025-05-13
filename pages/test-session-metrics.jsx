@@ -9,6 +9,7 @@ import React, { useState, useEffect } from 'react';
 import { useZenjinStore } from '../lib/store';
 import SessionMetricsProvider from '../lib/components/SessionMetricsProvider';
 import styles from '../styles/test-session-metrics.module.css';
+import '../styles/test-session-metrics.global.css';
 
 // Mock player component for testing
 const MockPlayerComponent = (props) => {
