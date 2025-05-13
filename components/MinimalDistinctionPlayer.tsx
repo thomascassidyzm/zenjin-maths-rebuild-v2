@@ -3,7 +3,6 @@ import { useRouter } from 'next/router';
 import { Question } from '../lib/types/distinction-learning';
 import { calculateBonuses, calculateTotalPoints, calculateBasePoints } from '../lib/bonusCalculator';
 import { useZenjinStore } from '../lib/store/zenjinStore';
-import '../styles/tube-stitch-player.css';
 
 // SIMPLIFIED: Removed Thread interface dependency and directly use tube-stitch model
 interface MinimalDistinctionPlayerProps {
