@@ -21,7 +21,8 @@ interface QuestionResult {
 
 interface SessionRequest {
   userId: string;
-  threadId: string;
+  threadId?: string;  // Make threadId optional
+  tubeId?: number;    // Add tubeId as an option
   stitchId: string;
   questionResults: QuestionResult[];
   sessionDuration: number; // in seconds
@@ -166,7 +167,7 @@ export default async function handler(
       }
     }
                    
-    let { threadId, stitchId, questionResults, sessionDuration } = req.body as SessionRequest & { anonymousId?: string };
+    let { threadId, tubeId, stitchId, questionResults, sessionDuration } = req.body as SessionRequest & { anonymousId?: string };
     
     if (!effectiveUserId) {
       console.warn('No user ID found in record-session - generating random anonymous ID');
@@ -176,6 +177,12 @@ export default async function handler(
     
     console.log(`Using effective user ID: ${effectiveUserId}`);
     res.setHeader('X-Zenjin-UserId', effectiveUserId);
+    
+    // Handle tube-stitch model by generating threadId if not provided
+    if (!threadId && tubeId) {
+      threadId = `thread-T${tubeId}-001`;
+      console.log(`Using derived threadId ${threadId} from tubeId ${tubeId}`);
+    }
     
     // Basic validation with enhanced error messaging
     if (!threadId) {

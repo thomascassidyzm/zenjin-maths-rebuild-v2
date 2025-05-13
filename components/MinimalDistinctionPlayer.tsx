@@ -38,6 +38,9 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
   const [stitches, setStitches] = useState<any[]>([]);
   const [currentStitchId, setCurrentStitchId] = useState<string | null>(null);
 
+  // Add state for loading status
+  const [isStitchLoading, setIsStitchLoading] = useState(true);
+
   // Get stitches from tube data on component mount or when tube data changes
   useEffect(() => {
     if (!tubeData || !tubeNumber) {

@@ -3,11 +3,13 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import {
   UserInformation, TubeState, LearningProgress,
   SessionData, ContentCollection, StitchProgressionConfig,
-  AppConfiguration, SubscriptionDetails, Stitch, TubePosition
+  AppConfiguration, SubscriptionDetails, Stitch, TubePosition,
+  SessionMetricsState, SessionMetricsData
 } from './types';
 import { fetchStitchBatch, fetchSingleStitch } from './stitchActions';
 import { StitchContent } from '../client/content-buffer';
 import { fillInitialBuffer, fillCompleteBuffer } from '../server-content-provider';
+import { createSessionMetricsSlice } from './sessionMetricsSlice';
 
 // Define the combined store state
 interface ZenjinStore {
@@ -23,6 +25,10 @@ interface ZenjinStore {
   lastUpdated: string;
   isInitialized: boolean;
   contentBufferStatus: ContentBufferStatus;
+  
+  // Session metrics
+  sessionMetrics: SessionMetricsState;
+  recordSession: (metrics: SessionMetricsData) => Promise<any>;
 
   // User Information actions
   setUserInformation: (userInfo: UserInformation | null) => void;
@@ -146,6 +152,9 @@ export const useZenjinStore = create<ZenjinStore>()(
       lastUpdated: new Date().toISOString(),
       isInitialized: false,
       contentBufferStatus: defaultContentBufferStatus,
+      
+      // Add session metrics slice
+      ...createSessionMetricsSlice(set, get),
       
       // User Information actions
       setUserInformation: (userInfo) => set({
