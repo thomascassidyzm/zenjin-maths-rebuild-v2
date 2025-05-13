@@ -1,5 +1,6 @@
 import '../styles/globals.css';
 import '../styles/player.css';
+import '../styles/tube-stitch-player.css';
 import type { AppProps } from 'next/app';
 import { AuthProvider } from '../context/AuthContext';
 import { useEffect } from 'react';
