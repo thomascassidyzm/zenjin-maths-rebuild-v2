@@ -1,5 +1,10 @@
 # Zenjin Maths Project Guide
 
+## Important Notes for Claude
+- There is no dev server environment
+- All deployments are to Vercel
+- Ensure code changes can be tested directly in production
+
 ## Project Overview
 
 The Zenjin Maths app is an educational application that uses a Triple Helix learning system with tubes, threads, and stitches to deliver structured content to users. We've implemented a server-first approach using Zustand for state management, ensuring consistent content delivery for all users.
@@ -35,6 +40,28 @@ The Zenjin Maths app is an educational application that uses a Triple Helix lear
 - `ZustandDistinctionPlayer` provides the main UI for stitch interaction
 - State is persisted in localStorage for all user types
 - Authenticated users can also sync state to the server
+
+## Position-Based Model Fix (May 13, 2025)
+
+We fixed the position-based model to correctly preserve positions during server persistence:
+
+1. Modified `loadFromServer` in `zenjinStore.ts` to preserve position keys like "4" and "5"
+2. Ensured positions are maintained throughout the save/load cycle
+3. Removed dependency on bundled content, following server-first approach
+4. Created the `/pages/server-persistence-test.tsx` page to test the fix
+5. Added documentation in `/docs/POSITION-BASED-MODEL.md` and `/docs/STITCH-POSITION-FIX.md`
+
+The key solution was elegantly simple:
+```typescript
+// CRITICAL FIX: PRESERVE POSITIONS BY DIRECTLY COPYING THE TUBE
+if (tube.positions && Object.keys(tube.positions).length > 0) {
+  // Deep copy the entire tube to preserve all properties, especially positions
+  tubeState.tubes[tubeKey] = JSON.parse(JSON.stringify(tube));
+
+  // Skip the rest of the processing for this tube
+  return;
+}
+```
 
 ## Zustand Content System (May 12, 2025)
 
