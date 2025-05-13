@@ -1,6 +1,6 @@
 /**
  * Multi-User Position Test Page
- * 
+ *
  * A comprehensive test environment that:
  * - Supports multiple test users with different state progressions
  * - Allows switching between users to test server persistence
@@ -11,6 +11,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Head from 'next/head';
 import { useZenjinStore } from '../lib/store/zenjinStore';
+import dynamic from 'next/dynamic';
+
+// Make this component client-side only with no SSR
+// This prevents build errors related to localStorage and Zustand persistence
+export const config = {
+  unstable_runtimeJS: true
+};
 
 // Interface for a test user
 interface TestUser {
@@ -20,7 +27,8 @@ interface TestUser {
   lastSynced?: string;
 }
 
-export default function MultiUserPositionTest() {
+// Wrap the entire page in dynamic import with SSR disabled
+const MultiUserPositionTestPage = () => {
   // Standard Zustand hooks
   const userInfo = useZenjinStore(state => state.userInformation);
   const tubeState = useZenjinStore(state => state.tubeState);
@@ -1114,4 +1122,9 @@ export default function MultiUserPositionTest() {
       </main>
     </div>
   );
-}
+};
+
+// Export the component with SSR disabled
+export default dynamic(() => Promise.resolve(MultiUserPositionTestPage), {
+  ssr: false,
+});
