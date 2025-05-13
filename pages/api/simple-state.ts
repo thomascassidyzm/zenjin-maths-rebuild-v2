@@ -25,6 +25,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   console.log(`SIMPLE-STATE API: Using Supabase URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL}`);
   console.log(`SIMPLE-STATE API: Using service role key: ${process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 5)}...`);
   
+  // First try to create the table if it doesn't exist
+  try {
+    const { error: tableError } = await supabaseAdmin.rpc('create_user_state_table_if_not_exists');
+    if (tableError) {
+      console.log(`SIMPLE-STATE API: Could not create table via RPC: ${tableError.message}`);
+
+      // Try direct SQL approach
+      const { error: sqlError } = await supabaseAdmin.query(`
+        CREATE TABLE IF NOT EXISTS public.user_state (
+          id SERIAL PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          state JSONB NOT NULL,
+          last_updated TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_user_state_user_id ON user_state(user_id);
+      `);
+
+      if (sqlError) {
+        console.error(`SIMPLE-STATE API: Error creating table:`, sqlError);
+      } else {
+        console.log(`SIMPLE-STATE API: Created user_state table successfully`);
+      }
+    } else {
+      console.log(`SIMPLE-STATE API: Table created via RPC successfully`);
+    }
+  } catch (createTableError) {
+    console.error(`SIMPLE-STATE API: Error setting up table:`, createTableError);
+  }
+
   try {
     // GET - Load state for a user
     if (req.method === 'GET') {
@@ -39,12 +70,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
       }
       
-      // Try to retrieve state from the database
+      // Try to retrieve state from the database - don't sort by last_updated as it may not exist
       const { data, error } = await supabaseAdmin
         .from('user_state')
         .select('state')
         .eq('user_id', userId)
-        .order('last_updated', { ascending: false })
         .limit(1)
         .single();
       
@@ -124,14 +154,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.log(`SIMPLE-STATE API: Delete operation had error but continuing: ${deleteError.message}`);
       }
       
-      // Insert new state
+      // Insert new state - using columns that we know exist in the table
       const { error: insertError } = await supabaseAdmin
         .from('user_state')
         .insert({
           user_id: userId,
-          state: state,
-          last_updated: now,
-          created_at: now
+          state: state
+          // The other columns (last_updated and created_at) have DEFAULT NOW() constraints
         });
       
       if (insertError) {
