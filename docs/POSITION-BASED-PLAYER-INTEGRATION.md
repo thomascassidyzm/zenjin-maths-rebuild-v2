@@ -4,14 +4,23 @@
 
 This document describes how the MinimalDistinctionPlayer component was enhanced to directly support the position-based data model from the Zustand store.
 
-## Background
+## Simplified Content Model
+
+The content structure has been simplified to focus on the core elements:
+
+- **Questions**: The individual learning items shown to users
+- **Stitches**: Collections of related questions
+- **Tubes**: Groups of stitches organized by learning theme
+
+> **Important**: While "threads" are mentioned in some naming conventions and IDs, they are solely an organizational concept used during content creation and have no functional role in gameplay.
+
+## Position-Based Model
 
 The StateMachine and Zustand store use a position-based model to track stitches within tubes:
 
 ```javascript
 tubes: {
   1: {
-    threadId: 'thread-T1-001',
     currentStitchId: 'stitch-T1-001-01',
     positions: {
       0: { stitchId: 'stitch-T1-001-01', skipNumber: 3, distractorLevel: 'L1' },
@@ -27,7 +36,6 @@ Meanwhile, the MinimalDistinctionPlayer component was expecting a different form
 ```javascript
 tubeData: {
   1: {
-    threadId: 'thread-T1-001',
     currentStitchId: 'stitch-T1-001-01',
     stitches: [
       { id: 'stitch-T1-001-01', position: 0 },
@@ -52,11 +60,16 @@ Instead of creating a separate adapter to convert between formats, we enhanced t
 
 1. **MinimalDistinctionPlayer.tsx**:
    - Updated to detect and handle position-based tube data
-   - Made thread prop optional to support position-based rendering
-   - Added logic to convert positions to thread/stitch format internally
+   - Enhanced to work directly with tubeData without requiring thread objects
+   - Added logic to convert positions to the internal format needed by the player
 
-2. **New Integration Test Page**:
-   - Created `integrated-player-test.tsx` that demonstrates how to properly integrate the player with Zustand
+2. **minimal-player.tsx**:
+   - Improved error handling and diagnostics for tube data validation
+   - Enhanced to support both position-based and legacy formats
+   - Added detailed logging for troubleshooting data structure issues
+
+3. **DevTestPane.tsx**:
+   - Updated to properly handle the position-based format when displaying tube information
 
 ## Example Usage
 
@@ -70,7 +83,6 @@ const tubeData = {};
 Object.entries(tubeState.tubes).forEach(([tubeNumStr, tube]) => {
   const tubeNum = parseInt(tubeNumStr);
   tubeData[tubeNum] = {
-    threadId: tube.threadId,
     currentStitchId: tube.currentStitchId,
     positions: tube.positions  // Pass positions directly
   };
@@ -89,16 +101,15 @@ return (
 
 ## Benefits
 
-1. **No Format Conversion**: The player now works directly with the position-based model from the Zustand store
-2. **Backwards Compatibility**: Still works with legacy stitches array format
-3. **Single Source of Truth**: Uses the Zustand store as the source of truth for all content
-4. **Simplified Integration**: No need for complex adapters or transformations
+1. **Direct Tube-Stitch Relationship**: Focuses on the actual content hierarchy (tubes -> stitches -> questions)
+2. **No Format Conversion**: The player now works directly with the position-based model from the Zustand store
+3. **Backwards Compatibility**: Still works with legacy stitches array format
+4. **Single Source of Truth**: Uses the Zustand store as the source of truth for all content
+5. **Simplified Integration**: No need for complex adapters or transformations
+6. **Better Error Handling**: Improved diagnostics when tube data is missing or malformed
 
 ## Testing
 
-You can test this integration with the new test page at `/integrated-player-test`, which:
-1. Initializes the Zustand store with position-based data
-2. Passes the data directly to the MinimalDistinctionPlayer
-3. Demonstrates full integration with the player
+The updated player can be tested on any page that uses the MinimalDistinctionPlayer. With improved error handling and diagnostics, any issues with the tube data will be clearly reported in the console.
 
-This approach should resolve the "Missing required tube data for rendering player" error by enabling the player to work with the position-based model directly.
+This approach resolves the "Missing required tube data for rendering player" error by enabling the player to work with the position-based model directly.

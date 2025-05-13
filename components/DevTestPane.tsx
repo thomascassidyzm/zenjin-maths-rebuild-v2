@@ -280,8 +280,20 @@ const DevTestPane: React.FC<DevTestPaneProps> = ({ player, show = true }) => {
           userId: state.userId || 'Not set',
           isAuthenticated: state.userId && !state.userId.startsWith('anonymous'),
           tubeTotals: Object.entries(state.tubes || {}).reduce((acc, [tubeNum, tube]) => {
+            // Support both position-based and legacy stitches array formats
+            let stitchCount = 0;
+
+            // First check if we have positions (new format)
+            if (tube?.positions && Object.keys(tube.positions).length > 0) {
+              stitchCount = Object.keys(tube.positions).length;
+            }
+            // Fall back to legacy stitches array if available
+            else if (tube?.stitches && tube.stitches.length > 0) {
+              stitchCount = tube.stitches.length;
+            }
+
             // @ts-ignore
-            acc[tubeNum] = (tube?.stitches?.length || 0);
+            acc[tubeNum] = stitchCount;
             return acc;
           }, {1: 0, 2: 0, 3: 0}),
         };

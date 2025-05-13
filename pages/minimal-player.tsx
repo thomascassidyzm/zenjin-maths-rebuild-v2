@@ -233,10 +233,21 @@ export default function MinimalPlayer() {
         // Get stitch info for admin display
         const currentStitchId = activeTube.currentStitchId;
         const stitchInfo = getStitchInfo(activeTubeNumber, currentStitchId);
+
+        // Count total stitches based on available data format
+        let totalStitches = 0;
+        if (activeTube.positions && Object.keys(activeTube.positions).length > 0) {
+          // Position-based format
+          totalStitches = Object.keys(activeTube.positions).length;
+        } else if (activeTube.stitches && activeTube.stitches.length > 0) {
+          // Legacy stitches array format
+          totalStitches = activeTube.stitches.length;
+        }
+
         setTubeInfo({
           activeTubeNumber,
           currentStitchId,
-          totalStitches: activeTube.stitches?.length || 0,
+          totalStitches,
           stitchInfo
         });
       }
@@ -307,14 +318,41 @@ export default function MinimalPlayer() {
   
   // Conditionally render different player components based on upgrade flag and player mode
   const renderPlayer = () => {
-    // Check if we have valid tube data to render the player
-    if (!tubeData || !activeTubeNumber || !tubeData[activeTubeNumber]) {
-      console.error('Missing required tube data for rendering player');
+    // Enhanced diagnostics for tube data validation
+    if (!tubeData) {
+      console.error('No tube data object found for rendering player');
       return (
         <div className="bg-white/20 backdrop-blur-lg p-8 rounded-xl shadow-xl text-center">
           <div className="text-white text-xl mb-4">No content available</div>
           <div className="text-white text-opacity-70 mb-6">
-            Unable to load learning content. Please try refreshing the page.
+            Unable to load learning content. The tube data is missing. Please try refreshing the page.
+          </div>
+        </div>
+      );
+    }
+
+    if (!activeTubeNumber) {
+      console.error('No active tube number found for rendering player');
+      return (
+        <div className="bg-white/20 backdrop-blur-lg p-8 rounded-xl shadow-xl text-center">
+          <div className="text-white text-xl mb-4">No active tube selected</div>
+          <div className="text-white text-opacity-70 mb-6">
+            Unable to determine which tube to display. Please try refreshing the page.
+          </div>
+        </div>
+      );
+    }
+
+    if (!tubeData[activeTubeNumber]) {
+      console.error(`Missing tube data for active tube ${activeTubeNumber}`);
+      return (
+        <div className="bg-white/20 backdrop-blur-lg p-8 rounded-xl shadow-xl text-center">
+          <div className="text-white text-xl mb-4">No content available</div>
+          <div className="text-white text-opacity-70 mb-6">
+            Unable to load learning content for tube {activeTubeNumber}. Please try refreshing the page.
+          </div>
+          <div className="text-white text-opacity-50 text-xs mt-4">
+            Available tubes: {Object.keys(tubeData).join(', ')}
           </div>
         </div>
       );
@@ -323,46 +361,214 @@ export default function MinimalPlayer() {
     // Get the active tube data
     const activeTube = tubeData[activeTubeNumber];
 
+    // Enhanced logging to diagnose the data structure
+    console.log(`Active tube data structure for tube ${activeTubeNumber}:`, {
+      hasPositions: !!activeTube.positions,
+      positionsType: activeTube.positions ? typeof activeTube.positions : 'undefined',
+      positionsCount: activeTube.positions ? Object.keys(activeTube.positions).length : 0,
+      hasStitches: !!activeTube.stitches,
+      stitchesType: activeTube.stitches ? (Array.isArray(activeTube.stitches) ? 'array' : typeof activeTube.stitches) : 'undefined',
+      stitchesCount: activeTube.stitches && Array.isArray(activeTube.stitches) ? activeTube.stitches.length : 0,
+      currentStitchId: activeTube.currentStitchId || 'undefined',
+      threadId: activeTube.threadId || 'undefined'
+    });
+
+    // Check for empty tube data
+    if ((!activeTube.positions || Object.keys(activeTube.positions).length === 0) &&
+        (!activeTube.stitches || !Array.isArray(activeTube.stitches) || activeTube.stitches.length === 0)) {
+      console.error(`Tube ${activeTubeNumber} has no valid content (empty positions and stitches)`);
+      return (
+        <div className="bg-white/20 backdrop-blur-lg p-8 rounded-xl shadow-xl text-center">
+          <div className="text-white text-xl mb-4">Empty Tube Content</div>
+          <div className="text-white text-opacity-70 mb-6">
+            The selected tube appears to be empty. Please try refreshing the page or selecting a different tube.
+          </div>
+          <div className="text-white text-opacity-50 text-xs mt-4">
+            Tube {activeTubeNumber} has no positions or stitches.
+          </div>
+        </div>
+      );
+    }
+
     // Convert tube data to thread format expected by MinimalDistinctionPlayer
-    const thread = {
-      id: activeTube.threadId || `thread-T${activeTubeNumber}-001`,
-      name: `Tube ${activeTubeNumber}`,
-      description: `Learning content for Tube ${activeTubeNumber}`,
-      stitches: activeTube.stitches ? activeTube.stitches.map(stitch => ({
-        id: stitch.id,
-        name: stitch.id.split('-').pop() || 'Stitch',
-        description: `Stitch ${stitch.id}`,
-        questions: [] // Questions will be loaded from Zustand store via getStitch
-      })) : []
-    };
+    // Support both position-based and legacy stitches array formats
+    let stitches = [];
 
-    console.log(`Rendering player with thread ${thread.id}, containing ${thread.stitches.length} stitches`);
+    // First check if we have positions (new format)
+    if (activeTube.positions && Object.keys(activeTube.positions).length > 0) {
+      console.log(`Using positions-based data format for tube ${activeTubeNumber} with ${Object.keys(activeTube.positions).length} positions`);
 
-    // Regular player render
-    return (
-      <MinimalDistinctionPlayer
-        thread={thread}
-        onComplete={(results) => {
-          console.log('Session complete, recording results', results);
-          // Handle any tube-specific logic here before passing to general handler
-          if (results && results.goDashboard) {
-            // Navigate or handle completion
+      try {
+        // Log the first few positions for debugging
+        const firstFewPositions = Object.entries(activeTube.positions).slice(0, 3);
+        console.log('Sample positions data:', firstFewPositions);
+
+        // Convert positions to stitches array
+        const positionsArray = Object.entries(activeTube.positions).map(([pos, data]) => {
+          // Add extra validation to handle malformed data
+          if (!data || typeof data !== 'object') {
+            console.error(`Invalid position data at position ${pos}:`, data);
+            return null;
           }
-          // Pass to original handlers
-          recordAnswer && recordAnswer(results);
-          nextQuestion && nextQuestion();
-        }}
-        onEndSession={(results) => {
-          console.log('Session ended manually', results);
-          // Could add additional tube-specific logic here
-        }}
-        questionsPerSession={10} // Default to 10 questions per session
-        sessionTotalPoints={totalPoints || 0} // Use accumulated points
-        userId={user?.id}
-      />
-    );
+
+          // Ensure we have a valid stitchId
+          if (!data.stitchId) {
+            console.error(`Missing stitchId for position ${pos}:`, data);
+            return null;
+          }
+
+          return {
+            id: data.stitchId,
+            position: parseInt(pos),
+            skipNumber: data.skipNumber || 3,
+            distractorLevel: data.distractorLevel || 'L1'
+          };
+        }).filter(Boolean); // Remove null entries from malformed data
+
+        // Sort by position
+        stitches = positionsArray.sort((a, b) => a.position - b.position);
+        console.log(`Successfully converted ${stitches.length} positions to stitches format`);
+
+        // Log the first few stitches for debugging
+        if (stitches.length > 0) {
+          console.log('First few converted stitches:', stitches.slice(0, 3));
+        }
+      } catch (error) {
+        console.error(`Error processing positions data for tube ${activeTubeNumber}:`, error);
+        // Fall back to legacy format if available
+        if (activeTube.stitches && activeTube.stitches.length > 0) {
+          console.log(`Falling back to legacy stitches array after positions error`);
+          stitches = activeTube.stitches;
+        }
+      }
+    }
+    // Fall back to legacy stitches array if available
+    else if (activeTube.stitches && Array.isArray(activeTube.stitches) && activeTube.stitches.length > 0) {
+      console.log(`Using legacy stitches array format for tube ${activeTubeNumber} with ${activeTube.stitches.length} stitches`);
+      stitches = activeTube.stitches;
+
+      // Log the first few stitches for debugging
+      if (stitches.length > 0) {
+        console.log('First few legacy stitches:', stitches.slice(0, 3));
+      }
+    }
+    // No content available
+    else {
+      console.error(`No valid stitch data found for tube ${activeTubeNumber} (neither positions nor stitches)`);
+    }
+
+    // Check if we have any valid stitches to create a thread
+    if (stitches.length === 0) {
+      console.error(`No valid stitches found for tube ${activeTubeNumber} after processing both formats`);
+      return (
+        <div className="bg-white/20 backdrop-blur-lg p-8 rounded-xl shadow-xl text-center">
+          <div className="text-white text-xl mb-4">No Learning Content Available</div>
+          <div className="text-white text-opacity-70 mb-6">
+            We couldn't find any content to display for this tube. Please try refreshing the page or selecting a different tube.
+          </div>
+          <button
+            onClick={restart}
+            className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-500 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      );
+    }
+
+    // Create tube-stitch structure with validation
+    try {
+      // Note: MinimalDistinctionPlayer still expects a "thread" property for backwards compatibility
+      // But we're focusing on the tube-stitch relationship in our model
+      const tube = {
+        // Use a simple tube identifier - thread is just an implementation detail
+        id: `tube-${activeTubeNumber}`,
+        name: `Tube ${activeTubeNumber}`,
+        description: `Learning content for Tube ${activeTubeNumber}`,
+        // The actual meaningful data - the stitches array
+        stitches: stitches.map(stitch => {
+          // Validate stitch has an id
+          if (!stitch.id) {
+            console.error('Found stitch without id:', stitch);
+            return {
+              id: `generated-stitch-${Math.random().toString(36).substring(2, 9)}`,
+              name: 'Unknown Stitch',
+              description: 'Generated placeholder for invalid stitch',
+              questions: [] // Questions will be loaded from Zustand store via getStitch
+            };
+          }
+
+          return {
+            id: stitch.id,
+            name: stitch.id.split('-').pop() || 'Stitch',
+            description: `Stitch ${stitch.id}`,
+            questions: [] // Questions will be loaded from Zustand store via getStitch
+          };
+        })
+      };
+
+      console.log(`Rendering player with tube ${activeTubeNumber}, containing ${tube.stitches.length} stitches`);
+
+      // Additional debug information for successful loading
+      if (typeof window !== 'undefined' && (window as any).gtag) {
+        try {
+          (window as any).gtag('event', 'content_loaded', {
+            'tube_number': activeTubeNumber,
+            'stitch_count': tube.stitches.length,
+            'format': activeTube.positions ? 'position-based' : 'legacy'
+          });
+        } catch (error) {
+          console.error('Error sending analytics event:', error);
+        }
+      }
+
+      // Regular player render - note that we pass the tube object via the thread prop
+      // for backwards compatibility with the MinimalDistinctionPlayer component
+      return (
+        <MinimalDistinctionPlayer
+          thread={tube} // For backwards compatibility
+          onComplete={(results) => {
+            console.log('Session complete, recording results', results);
+            // Handle any tube-specific logic here before passing to general handler
+            if (results && results.goDashboard) {
+              // Navigate or handle completion
+            }
+            // Pass to original handlers
+            recordAnswer && recordAnswer(results);
+            nextQuestion && nextQuestion();
+          }}
+          onEndSession={(results) => {
+            console.log('Session ended manually', results);
+            // Could add additional tube-specific logic here
+          }}
+          questionsPerSession={10} // Default to 10 questions per session
+          sessionTotalPoints={totalPoints || 0} // Use accumulated points
+          userId={user?.id}
+        />
+      );
+    } catch (error) {
+      // Handle any errors during thread creation or rendering
+      console.error('Error creating thread or rendering player:', error);
+      return (
+        <div className="bg-white/20 backdrop-blur-lg p-8 rounded-xl shadow-xl text-center">
+          <div className="text-white text-xl mb-4">Error Loading Content</div>
+          <div className="text-white text-opacity-70 mb-6">
+            An error occurred while preparing the learning content. Please try refreshing the page.
+          </div>
+          <div className="text-white text-opacity-50 text-xs mt-4 mb-4">
+            Error: {error.message || 'Unknown error'}
+          </div>
+          <button
+            onClick={restart}
+            className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-500 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      );
+    }
   };
-  
+
   // Admin tools rendering
   const renderAdminTools = () => {
     if (!showAdminControls) return null;
