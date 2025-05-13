@@ -28,6 +28,12 @@ export default function StitchCompletionTest() {
   const updateStitchOrder = useZenjinStore(state => state.updateStitchOrder);
   const incrementPoints = useZenjinStore(state => state.incrementPoints);
   const incrementStitchesCompleted = useZenjinStore(state => state.incrementStitchesCompleted);
+
+  // Get position-based actions
+  const getStitchPositions = useZenjinStore(state => state.getStitchPositions);
+  const getStitchAtPosition = useZenjinStore(state => state.getStitchAtPosition);
+  const updateStitchPosition = useZenjinStore(state => state.updateStitchPosition);
+  const moveStitch = useZenjinStore(state => state.moveStitch);
   
   // State for completion test
   const [stateHistory, setStateHistory] = useState<Array<{
@@ -35,6 +41,7 @@ export default function StitchCompletionTest() {
     activeTube: number;
     currentStitchIds: Record<string, string>;
     stitchOrders: Record<string, string[]>;
+    positions?: Record<string, any>; // Store position information
     points: number;
     action: string;
   }>>([]);
@@ -43,13 +50,24 @@ export default function StitchCompletionTest() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [syncResult, setSyncResult] = useState<any>(null);
   
+  // State to store the persistent test user ID
+  const [testUserId, setTestUserId] = useState<string>('');
+
   // Initialize Zustand store if needed
   useEffect(() => {
     if (!isInitialized && !userInfo) {
       console.log('Initializing test user in Zustand store');
-      
-      // Create test user ID with timestamp for uniqueness
-      const testUserId = `test-user-${Date.now()}`;
+
+      // Get existing test user ID from localStorage or create a new one
+      let persistentTestUserId = localStorage.getItem('zenjin-test-userId');
+
+      if (!persistentTestUserId) {
+        persistentTestUserId = `test-user-${Date.now()}`;
+        localStorage.setItem('zenjin-test-userId', persistentTestUserId);
+      }
+
+      console.log(`Using persistent test user ID: ${persistentTestUserId}`);
+      setTestUserId(persistentTestUserId);
       
       // Initialize stitches for each tube
       const tube1Stitches = [
@@ -90,17 +108,41 @@ export default function StitchCompletionTest() {
             1: {
               threadId: 'thread-T1-001',
               currentStitchId: tube1Stitches[0],
-              stitchOrder: tube1Stitches
+              stitchOrder: tube1Stitches,
+              // Add explicit positions for the position-based model
+              positions: {
+                0: { stitchId: tube1Stitches[0], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 },
+                1: { stitchId: tube1Stitches[1], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 },
+                2: { stitchId: tube1Stitches[2], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 },
+                3: { stitchId: tube1Stitches[3], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 },
+                4: { stitchId: tube1Stitches[4], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 }
+              }
             },
             2: {
               threadId: 'thread-T2-001',
               currentStitchId: tube2Stitches[0],
-              stitchOrder: tube2Stitches
+              stitchOrder: tube2Stitches,
+              // Add explicit positions for the position-based model
+              positions: {
+                0: { stitchId: tube2Stitches[0], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 },
+                1: { stitchId: tube2Stitches[1], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 },
+                2: { stitchId: tube2Stitches[2], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 },
+                3: { stitchId: tube2Stitches[3], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 },
+                4: { stitchId: tube2Stitches[4], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 }
+              }
             },
             3: {
               threadId: 'thread-T3-001',
               currentStitchId: tube3Stitches[0],
-              stitchOrder: tube3Stitches
+              stitchOrder: tube3Stitches,
+              // Add explicit positions for the position-based model
+              positions: {
+                0: { stitchId: tube3Stitches[0], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 },
+                1: { stitchId: tube3Stitches[1], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 },
+                2: { stitchId: tube3Stitches[2], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 },
+                3: { stitchId: tube3Stitches[3], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 },
+                4: { stitchId: tube3Stitches[4], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 }
+              }
             }
           }
         },
@@ -124,28 +166,33 @@ export default function StitchCompletionTest() {
       // Extract current stitch IDs for each tube
       const currentStitchIds: Record<string, string> = {};
       const stitchOrders: Record<string, string[]> = {};
-      
+      const positions: Record<string, any> = {};
+
       Object.entries(tubeState.tubes).forEach(([tubeNumber, tube]) => {
         currentStitchIds[tubeNumber] = tube.currentStitchId;
         stitchOrders[tubeNumber] = tube.stitchOrder;
+
+        // Get positions for each tube (will create from stitchOrder if needed)
+        const tubeNum = parseInt(tubeNumber) as 1 | 2 | 3;
+        positions[tubeNumber] = getStitchPositions(tubeNum);
       });
-      
+
       // Add current state to history
       setStateHistory(prev => {
         // Avoid duplicating entries when state changes multiple times
         if (prev.length > 0) {
           const lastEntry = prev[prev.length - 1];
-          
+
           // Skip if nothing significant changed
           if (
-            lastEntry.activeTube === tubeState.activeTube && 
+            lastEntry.activeTube === tubeState.activeTube &&
             JSON.stringify(lastEntry.currentStitchIds) === JSON.stringify(currentStitchIds) &&
             lastEntry.points === learningProgress.evoPoints
           ) {
             return prev;
           }
         }
-        
+
         return [
           ...prev,
           {
@@ -153,13 +200,14 @@ export default function StitchCompletionTest() {
             activeTube: tubeState.activeTube,
             currentStitchIds,
             stitchOrders,
+            positions,
             points: learningProgress.evoPoints,
             action: prev.length === 0 ? 'Initial State' : 'State Changed'
           }
         ];
       });
     }
-  }, [tubeState, learningProgress]);
+  }, [tubeState, learningProgress, getStitchPositions]);
   
   // Prefetch all stitches for testing
   useEffect(() => {
@@ -295,17 +343,52 @@ export default function StitchCompletionTest() {
         ];
       }
 
-      // Reposition stitches according to Triple Helix logic
-      // 1. Move current stitch to end of order
-      // 2. Make next stitch the current one
-      const newOrder = [...stitchOrder.slice(1), currentStitchId];
-      
-      // Update stitch order
-      updateStitchOrder(tubeNumber, newOrder);
-      
-      // Set new current stitch
-      if (newOrder.length > 0) {
-        setCurrentStitch(tubeNumber, newOrder[0]);
+      // Get the positions for this tube
+      const positions = getStitchPositions(tubeNumber);
+      if (positions) {
+        // Get the stitch at position 0 (current stitch)
+        const currentStitchPosition = getStitchAtPosition(tubeNumber, 0);
+
+        if (currentStitchPosition) {
+          // Calculate new skip number for the completed stitch
+          const skipNumber = currentStitchPosition.skipNumber || 3;
+          const newSkipNumber = skipNumber >= 25 ? 100 : (skipNumber >= 10 ? 25 : (skipNumber >= 5 ? 10 : (skipNumber >= 3 ? 5 : 3)));
+
+          // Update the completed stitch with new skip number and increment perfect completions
+          const updatedTubePosition = {
+            ...currentStitchPosition,
+            skipNumber: newSkipNumber,
+            perfectCompletions: (currentStitchPosition.perfectCompletions || 0) + 1,
+            lastCompleted: new Date().toISOString()
+          };
+
+          // Get target position based on skip number
+          const targetPosition = newSkipNumber;
+
+          console.log(`Moving stitch ${currentStitchId} from position 0 to position ${targetPosition} with skip number ${newSkipNumber}`);
+
+          // Use the moveStitch method to move the stitch from position 0 to its new position
+          moveStitch(tubeNumber, 0, targetPosition);
+
+          // Update the stitch's properties at its new position
+          updateStitchPosition(tubeNumber, targetPosition, updatedTubePosition);
+        }
+      } else {
+        // Fall back to legacy approach if positions aren't available
+        console.warn("Position-based API not available, falling back to legacy approach");
+
+        // Reposition stitches according to Triple Helix logic
+        // 1. Move current stitch to end of order
+        // 2. Make next stitch the current one
+        const newOrder = [...stitchOrder.slice(1), currentStitchId];
+
+        // Update stitch order
+        updateStitchOrder(tubeNumber, newOrder);
+
+        // Set new current stitch
+        if (newOrder.length > 0) {
+          setCurrentStitch(tubeNumber, newOrder[0]);
+        }
       }
       
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -566,9 +649,22 @@ export default function StitchCompletionTest() {
                   <p className="font-mono text-sm">
                     {userInfo?.userId || 'Not initialized'}
                   </p>
-                  <p className="text-xs text-white/70">
-                    {userInfo?.isAnonymous ? 'Anonymous' : 'Authenticated'} user
-                  </p>
+                  <div className="flex justify-between items-center">
+                    <p className="text-xs text-white/70">
+                      {userInfo?.isAnonymous ? 'Anonymous' : 'Authenticated'} user
+                    </p>
+                    <button
+                      onClick={() => {
+                        if (confirm('Are you sure you want to reset the test user ID? This will create a new test user.')) {
+                          localStorage.removeItem('zenjin-test-userId');
+                          window.location.reload();
+                        }
+                      }}
+                      className="text-xs bg-red-600/30 hover:bg-red-600/50 px-2 py-0.5 rounded text-white/90"
+                    >
+                      Reset
+                    </button>
+                  </div>
                 </div>
               </div>
               
@@ -618,6 +714,21 @@ export default function StitchCompletionTest() {
                           <> (Next: {tube.stitchOrder[1] || 'None'})</>
                         )}
                       </p>
+                      {tube.positions && (
+                        <div className="text-xs text-white/70 mt-1 pt-1 border-t border-white/10">
+                          <details>
+                            <summary className="cursor-pointer">Position data</summary>
+                            <div className="mt-1 ml-2 pl-2 border-l border-white/20 text-[10px] font-mono">
+                              {Object.entries(tube.positions).map(([pos, data]) => (
+                                <div key={pos} className="mb-1">
+                                  <p>Pos {pos}: {(data as any).stitchId}</p>
+                                  <p className="opacity-70">Skip: {(data as any).skipNumber}, Level: {(data as any).distractorLevel}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </details>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -680,6 +791,22 @@ export default function StitchCompletionTest() {
                     } transition-colors`}
                   >
                     Load from Server
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      // Get the stored user ID directly from localStorage
+                      const storedUserId = localStorage.getItem('zenjin-test-userId');
+                      if (storedUserId) {
+                        // Just reload the page - it will use the stored user ID
+                        window.location.reload();
+                      } else {
+                        alert('No stored user ID found. Please complete the initialization first.');
+                      }
+                    }}
+                    className="px-4 py-3 font-medium rounded-lg bg-teal-600 hover:bg-teal-500 transition-colors col-span-2 mt-2"
+                  >
+                    Reload with Saved User
                   </button>
                 </div>
                 
@@ -745,6 +872,29 @@ export default function StitchCompletionTest() {
                         ))}
                       </div>
                     </div>
+
+                    {entry.positions && (
+                      <div className="mt-2 text-xs">
+                        <p className="text-white/70">Position Data:</p>
+                        <details>
+                          <summary className="cursor-pointer text-white/80 mt-1 text-[10px]">Show positions</summary>
+                          <div className="font-mono mt-1 space-y-1 text-[9px] ml-2 border-l border-white/20 pl-2">
+                            {Object.entries(entry.positions).map(([tube, positions]) => (
+                              <div key={tube}>
+                                <p className="font-bold text-white/90">Tube {tube}:</p>
+                                <div className="ml-2">
+                                  {positions && typeof positions === 'object' && Object.entries(positions).map(([pos, data]) => (
+                                    <p key={pos} className="whitespace-nowrap overflow-hidden text-ellipsis">
+                                      Pos {pos}: {(data as any).stitchId?.substring(0, 16)}...
+                                    </p>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
