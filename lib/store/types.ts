@@ -152,3 +152,71 @@ export interface SubscriptionDetails {
   startDate?: string; // ISO 8601 - When this current tier/subscription period started
   endDate?: string;   // ISO 8601 - When this current tier/subscription period is scheduled to end
 }
+
+// 10. Session Metrics (For tube-stitch model)
+export interface SessionQuestionResult {
+  questionId: string;
+  correct: boolean;
+  timeToAnswer: number; // in milliseconds
+  firstTimeCorrect: boolean;
+}
+
+export interface SessionMetricsData {
+  userId?: string;
+  tubeId: number;
+  stitchId: string;
+  threadId?: string; // Optional for backward compatibility
+  questionResults: SessionQuestionResult[];
+  sessionDuration: number; // in seconds
+}
+
+export interface SessionMetricsState {
+  isRecording: boolean;
+  lastSession: SessionMetricsData | null;
+  error: string | null;
+}
+
+// 11. Zustand Store Interface
+export interface ZenjinStore {
+  // Core state slices
+  userInformation: UserInformation | null;
+  tubeState: TubeState | null;
+  learningProgress: LearningProgress | null;
+  sessionData: SessionData | null;
+  contentCollection: ContentCollection | null;
+  stitchProgressionConfig: StitchProgressionConfig;
+  appConfiguration: AppConfiguration;
+  subscriptionDetails: SubscriptionDetails | null;
+  lastUpdated: string;
+  isInitialized: boolean;
+  contentBufferStatus: {
+    phase1Loaded: boolean;
+    phase2Loaded: boolean;
+    phase1Loading: boolean;
+    phase2Loading: boolean;
+    activeStitchLoaded: boolean;
+    lastUpdated: string;
+    stats: {
+      totalStitchesLoaded: number;
+      phase1StitchCount: number;
+      phase2StitchCount: number;
+    };
+  };
+  
+  // Session metrics
+  sessionMetrics: SessionMetricsState;
+  recordSession: (metrics: SessionMetricsData) => Promise<any>;
+
+  // Server sync methods
+  syncToServer: () => Promise<boolean>;
+  loadFromServer: (userId: string) => Promise<boolean>;
+  
+  // Other methods (partial - add more as needed)
+  setUserInformation: (userInfo: UserInformation | null) => void;
+  resetStore: () => void;
+  initializeState: (partialState: Partial<ZenjinStore>) => void;
+  incrementPoints: (points: number) => void;
+  updateBlinkSpeed: (newSessionBlinkSpeed: number) => void;
+  fetchStitch: (stitchId: string) => Promise<any>;
+  addStitchToCollection: (stitch: any) => void;
+}
