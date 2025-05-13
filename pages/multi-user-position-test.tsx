@@ -268,74 +268,128 @@ export default function MultiUserPositionTest() {
     });
   }, [initializeState]);
   
-  // Sync active user to server
+  // Save active user state to localStorage
   const syncActiveUserToServer = useCallback(async () => {
     if (!activeUserId) {
       setOperationResult('No active user selected');
       return;
     }
-    
+
     setIsProcessing(true);
-    
+
     try {
-      const result = await useZenjinStore.getState().syncToServer();
-      
-      if (result) {
+      // Get current state from Zustand store
+      const currentState = useZenjinStore.getState();
+
+      // Extract the key pieces of state needed for persistence
+      const stateToSave = {
+        userInformation: currentState.userInformation,
+        tubeState: currentState.tubeState,
+        learningProgress: currentState.learningProgress,
+        lastUpdated: new Date().toISOString()
+      };
+
+      // Save directly to localStorage under a key specific to this user
+      if (typeof window !== 'undefined') {
+        // User-specific store key
+        const storeKey = `multi-user-test-state-${activeUserId}`;
+
+        // Save the state
+        localStorage.setItem(storeKey, JSON.stringify(stateToSave));
+
         // Update the lastSynced timestamp for this user
         const now = new Date().toISOString();
-        const updatedUsers = testUsers.map(user => 
+        const updatedUsers = testUsers.map(user =>
           user.id === activeUserId ? { ...user, lastSynced: now } : user
         );
-        
+
         setTestUsers(updatedUsers);
-        
-        // Save to localStorage
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('multi-user-test-users', JSON.stringify(updatedUsers));
+
+        // Save updated user list to localStorage
+        localStorage.setItem('multi-user-test-users', JSON.stringify(updatedUsers));
+
+        const result = true;
+
+        if (result) {
+          setOperationResult(`Successfully saved state for user ${activeUserId} to localStorage`);
+          addOperationToHistory('Save State', `Saved state for current user to localStorage`);
+        } else {
+          setOperationResult(`Failed to save state for user ${activeUserId}`);
+          addOperationToHistory('Save Error', `Failed to save state`);
         }
-        
-        setOperationResult(`Successfully synced user ${activeUserId} to server`);
-        addOperationToHistory('Sync to Server', `Saved state for current user to server`);
-      } else {
-        setOperationResult(`Failed to sync user ${activeUserId} to server`);
-        addOperationToHistory('Sync Error', `Failed to save state to server`);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      setOperationResult(`Error syncing to server: ${errorMessage}`);
-      addOperationToHistory('Sync Error', errorMessage);
+      setOperationResult(`Error saving state: ${errorMessage}`);
+      addOperationToHistory('Save Error', errorMessage);
     } finally {
       setIsProcessing(false);
     }
   }, [activeUserId, testUsers, addOperationToHistory]);
   
-  // Load active user from server
+  // Load active user state from localStorage
   const loadActiveUserFromServer = useCallback(async () => {
     if (!activeUserId) {
       setOperationResult('No active user selected');
       return;
     }
-    
+
     setIsProcessing(true);
-    
+
     try {
-      const result = await useZenjinStore.getState().loadFromServer(activeUserId);
-      
-      if (result) {
-        setOperationResult(`Successfully loaded state for user ${activeUserId} from server`);
-        addOperationToHistory('Load from Server', `Loaded state for current user from server`);
-      } else {
-        setOperationResult(`Failed to load state for user ${activeUserId} from server`);
-        addOperationToHistory('Load Error', `Failed to load state from server`);
+      if (typeof window !== 'undefined') {
+        // User-specific store key
+        const storeKey = `multi-user-test-state-${activeUserId}`;
+
+        // Try to load the state
+        const savedStateJson = localStorage.getItem(storeKey);
+
+        if (savedStateJson) {
+          try {
+            // Parse the saved state
+            const savedState = JSON.parse(savedStateJson);
+
+            // Reset the store first
+            resetStore();
+
+            // Update the store with the saved state
+            const { userInformation, tubeState, learningProgress } = savedState;
+
+            useZenjinStore.getState().initializeState({
+              userInformation,
+              tubeState,
+              learningProgress,
+              isInitialized: true,
+              lastUpdated: new Date().toISOString()
+            });
+
+            setOperationResult(`Successfully loaded state for user ${activeUserId} from localStorage`);
+            addOperationToHistory('Load State', `Loaded state for current user from localStorage`);
+            return true;
+          } catch (parseError) {
+            const errorMessage = parseError instanceof Error ? parseError.message : String(parseError);
+            setOperationResult(`Error parsing saved state: ${errorMessage}`);
+            addOperationToHistory('Load Error', `Failed to parse saved state: ${errorMessage}`);
+            return false;
+          }
+        } else {
+          // No saved state found, initialize fresh state
+          initializeUserState(activeUserId, testUsers.find(u => u.id === activeUserId)?.name || 'Unknown User');
+          setOperationResult(`No saved state found for user ${activeUserId}. Initialized fresh state.`);
+          addOperationToHistory('Load State', `Initialized fresh state (no saved state found)`);
+          return false;
+        }
       }
+      return false;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      setOperationResult(`Error loading from server: ${errorMessage}`);
+      setOperationResult(`Error loading state: ${errorMessage}`);
       addOperationToHistory('Load Error', errorMessage);
+      return false;
     } finally {
       setIsProcessing(false);
     }
-  }, [activeUserId, addOperationToHistory]);
+  }, [activeUserId, testUsers, addOperationToHistory, resetStore, initializeUserState]);
   
   // Simulate perfect completion of the active stitch
   const simulatePerfectCompletion = useCallback(async () => {
@@ -909,21 +963,21 @@ export default function MultiUserPositionTest() {
             </div>
             
             <div className="bg-gray-800/50 rounded-lg p-3">
-              <div className="text-sm font-medium mb-2">Server Persistence</div>
+              <div className="text-sm font-medium mb-2">State Persistence</div>
               <div className="space-y-2">
                 <button
                   onClick={syncActiveUserToServer}
                   disabled={isProcessing}
                   className="w-full px-3 py-2 text-sm bg-purple-600 hover:bg-purple-500 rounded transition-colors disabled:opacity-50"
                 >
-                  Save User to Server
+                  Save User State
                 </button>
                 <button
                   onClick={loadActiveUserFromServer}
                   disabled={isProcessing}
                   className="w-full px-3 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 rounded transition-colors disabled:opacity-50"
                 >
-                  Load User from Server
+                  Load User State
                 </button>
               </div>
             </div>

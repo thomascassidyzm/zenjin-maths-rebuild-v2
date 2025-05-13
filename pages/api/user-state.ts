@@ -15,19 +15,9 @@ import { getDefaultUserState } from '../../lib/initialization/initialize-user-st
  * should go through the Zustand store only.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // TEMPORARY EMERGENCY FIX: Always return 200 for POST requests to avoid 500 errors
-  // We should be using Zustand for all state persistence
-  if (req.method === 'POST') {
-    console.log('DEPRECATED: Direct API call to /api/user-state detected');
-    console.log('POST calls to /api/user-state are deprecated - use Zustand store instead');
-    console.log('Returning dummy success response to avoid 500 errors');
-
-    return res.status(200).json({
-      success: true,
-      message: 'Legacy API call intercepted - state NOT saved to server',
-      deprecated: true
-    });
-  }
+  // Modified to allow Zustand store server persistence
+  // This code previously blocked POST requests, but has been modified to allow persistence
+  console.log('API: user-state endpoint called. Allowing requests to proceed for testing position-based model.');
 
   // For GET requests, we'll still allow them to work for now
   // Enable debug mode for troubleshooting
