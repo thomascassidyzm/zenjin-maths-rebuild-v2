@@ -105,15 +105,34 @@ export default function ServerPersistenceTest() {
       setStatus('Please initialize state first');
       return;
     }
-    
+
     setIsLoading(true);
     setStatus('Saving to server...');
-    
+
     try {
+      // Log the state we're about to save
+      const currentState = useZenjinStore.getState();
+      console.log('BEFORE SAVE - Current state:', currentState);
+      console.log('BEFORE SAVE - Tube 1 positions:',
+        currentState.tubeState?.tubes?.[1]?.positions ?
+        Object.keys(currentState.tubeState.tubes[1].positions) : 'No positions');
+
+      // Force update timestamp to ensure we're saving the most recent state
+      useZenjinStore.setState({
+        lastUpdated: new Date().toISOString()
+      });
+
       // Call Zustand store's syncToServer method
       const result = await useZenjinStore.getState().syncToServer();
-      
+
       if (result) {
+        // Mark the save in our history for troubleshooting
+        const saveTime = new Date().toISOString();
+        console.log(`SAVE MARKER: User ${userId} state saved at ${saveTime}`);
+        useZenjinStore.setState({
+          lastSaveTimestamp: saveTime
+        });
+
         setStatus(`Successfully saved state to server for user ${userId}`);
       } else {
         setStatus(`Failed to save state to server for user ${userId}`);
@@ -160,27 +179,44 @@ export default function ServerPersistenceTest() {
       setStatus('Please initialize state first');
       return;
     }
-    
+
     // Get the current tube state
     const currentState = useZenjinStore.getState();
-    
+
     // Move a stitch from position 0 to position 5 in tube 1
     if (currentState.tubeState?.tubes?.[1]?.positions?.[0]) {
       const stitch = currentState.tubeState.tubes[1].positions[0];
-      
+
+      // Log before making changes
+      console.log('BEFORE CHANGES - Tube 1 positions:',
+        currentState.tubeState.tubes[1].positions ?
+        Object.keys(currentState.tubeState.tubes[1].positions) : 'No positions');
+
       // Update the stitch properties
       const updatedStitch = {
         ...stitch,
         skipNumber: 5,  // Increase skip number
-        perfectCompletions: (stitch.perfectCompletions || 0) + 1 // Add a perfect completion
+        perfectCompletions: (stitch.perfectCompletions || 0) + 1, // Add a perfect completion
+        lastUpdated: new Date().toISOString() // Add timestamp
       };
-      
+
       // First move the stitch
       useZenjinStore.getState().moveStitch(1, 0, 5);
-      
+
       // Then update its properties
       useZenjinStore.getState().updateStitchPosition(1, 5, updatedStitch);
-      
+
+      // Force update the lastUpdated timestamp of the entire state
+      useZenjinStore.setState({
+        lastUpdated: new Date().toISOString()
+      });
+
+      // Log after making changes
+      const updatedState = useZenjinStore.getState();
+      console.log('AFTER CHANGES - Tube 1 positions:',
+        updatedState.tubeState?.tubes?.[1]?.positions ?
+        Object.keys(updatedState.tubeState.tubes[1].positions) : 'No positions');
+
       setStatus(`Made changes: Moved stitch ${stitch.stitchId} from position 0 to 5 in tube 1`);
     } else {
       setStatus('No stitch found at position 0 in tube 1');

@@ -70,13 +70,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
       }
       
-      // Try to retrieve state from the database - don't sort by last_updated as it may not exist
+      // Try to retrieve ONLY the LATEST state from the database
+      // Since we're doing DELETE and INSERT, there should only be one record, but let's be sure
+      // We'll order by created_at DESC to get the newest record
+      console.log(`SIMPLE-STATE API: Retrieving latest state for user ${userId}`);
       const { data, error } = await supabaseAdmin
         .from('user_state')
-        .select('state')
+        .select('state, created_at')
         .eq('user_id', userId)
+        .order('created_at', { ascending: false })
         .limit(1)
         .single();
+
+      if (data) {
+        console.log(`SIMPLE-STATE API: Retrieved state created at ${data.created_at}`);
+      }
       
       if (error) {
         console.error(`SIMPLE-STATE API: Error retrieving state:`, error);
@@ -167,6 +175,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.log(`SIMPLE-STATE API: Delete operation had error but continuing: ${deleteError.message}`);
       }
       
+      // Log details about the state we're about to store
+      console.log(`SIMPLE-STATE API: About to save state for user ${userId}`);
+
+      // Check if the state includes tubeState
+      if (state.tubeState && state.tubeState.tubes) {
+        console.log(`SIMPLE-STATE API: State includes tubes: ${Object.keys(state.tubeState.tubes).join(', ')}`);
+
+        // Check tube 1 specifically
+        if (state.tubeState.tubes[1]) {
+          console.log(`SIMPLE-STATE API: Tube 1 has positions:`,
+            state.tubeState.tubes[1].positions ?
+            Object.keys(state.tubeState.tubes[1].positions) : 'No positions');
+
+          // Extra check for position 5 that we're looking for
+          if (state.tubeState.tubes[1].positions && state.tubeState.tubes[1].positions[5]) {
+            console.log(`SIMPLE-STATE API: Position 5 exists with stitchId: ${state.tubeState.tubes[1].positions[5].stitchId}`);
+          } else {
+            console.log(`SIMPLE-STATE API: Position 5 DOES NOT EXIST in tube 1!`);
+          }
+        }
+      }
+
+      // Add a marker to know which save this is
+      state._saveTimestamp = now;
+
       // Insert new state - using columns that we know exist in the table
       const { error: insertError } = await supabaseAdmin
         .from('user_state')
