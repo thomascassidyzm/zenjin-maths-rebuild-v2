@@ -114,14 +114,51 @@ export default function MinimalPlayer() {
   };
 
   // Create tubeData object from Zustand store's tubeState
-  const tubeData = React.useMemo(() => {
+  const [tubeData, setTubeData] = useState<Record<number, any> | null>(null);
+
+  // Effect to handle waiting for tube data to be available
+  useEffect(() => {
     if (!tubeState || !tubeState.tubes) {
-      console.error('No tube state available from Zustand store');
-      return null;
+      console.log('Waiting for tube state to load from Zustand store...');
+
+      // If the tube state isn't available yet, let's load it
+      const loadTubeState = async () => {
+        try {
+          console.log('Attempting to fill initial content buffer...');
+          await fillInitialContentBuffer();
+
+          // Get the updated state
+          const updatedState = useZenjinStore.getState().tubeState;
+          if (updatedState && updatedState.tubes) {
+            console.log('Successfully loaded tube state after initialization');
+            processTubeState(updatedState);
+          } else {
+            console.error('Still no tube state available after initialization');
+          }
+        } catch (error) {
+          console.error('Error loading tube state:', error);
+        }
+      };
+
+      loadTubeState();
+      return;
+    }
+
+    // Process tube state when available
+    processTubeState(tubeState);
+  }, [tubeState, fillInitialContentBuffer]);
+
+  // Function to process tube state into tubeData
+  const processTubeState = (state: any) => {
+    console.log('Processing tube state to tubeData:', state);
+
+    if (!state.tubes) {
+      console.error('No tubes in tube state');
+      return;
     }
 
     // Build tube data object from Zustand store
-    const tubes = Object.entries(tubeState.tubes).reduce((acc, [tubeNumStr, tube]: [string, any]) => {
+    const tubes = Object.entries(state.tubes).reduce((acc, [tubeNumStr, tube]: [string, any]) => {
       const tubeNum = parseInt(tubeNumStr);
       acc[tubeNum] = {
         ...tube,
@@ -134,8 +171,9 @@ export default function MinimalPlayer() {
       return acc;
     }, {} as Record<number, any>);
 
-    return tubes;
-  }, [tubeState]);
+    console.log('Tube data processed:', tubes);
+    setTubeData(tubes);
+  };
 
   // Simply check if auth is loading - no need for additional state
   if (authLoading) {
@@ -183,14 +221,29 @@ export default function MinimalPlayer() {
   // Simplified logging - just a single log statement
   console.log(`Auth state: User is ${isAuthenticated ? 'authenticated' : 'anonymous'}, mode: ${playerMode}, ID: ${user?.id || 'anonymous'}`);
 
-  // Initialize content when component mounts
+  // Initialize content when component mounts - with improved handling
   useEffect(() => {
+    // Check if we already have tubeData - if so, we can skip initialization
+    if (tubeData && Object.keys(tubeData).length > 0) {
+      console.log('Content already loaded, skipping initialization');
+      setIsLoading(false);
+      return;
+    }
+
     const initializeContent = async () => {
       try {
+        console.log('Initializing content - filling content buffer');
         setIsLoading(true);
 
         // Fill initial content buffer from Zustand store
         await fillInitialContentBuffer();
+
+        // Get the updated tube state directly from the store
+        const updatedState = useZenjinStore.getState().tubeState;
+        if (updatedState && updatedState.tubes) {
+          console.log('Successfully loaded tube state after explicit initialization');
+          processTubeState(updatedState);
+        }
 
         // Update loading state
         setIsLoading(false);
@@ -202,7 +255,7 @@ export default function MinimalPlayer() {
     };
 
     initializeContent();
-  }, [fillInitialContentBuffer]);
+  }, [fillInitialContentBuffer, tubeData]);
 
   // Function to manually switch tubes (for debugging)
   const switchTube = (tubeNumber: number) => {
