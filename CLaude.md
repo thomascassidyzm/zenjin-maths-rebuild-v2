@@ -69,7 +69,7 @@ Key changes:
 
 ## Testing
 
-Use two test pages to verify the implementation:
+Use these test pages to verify the implementation:
 
 1. `/offline-first-test` for testing:
    - Different user types (anonymous, free, premium)
@@ -82,6 +82,13 @@ Use two test pages to verify the implementation:
    - View complete content and questions
    - No dependencies on other components
    - Works without network connection
+
+3. `/stitch-completion-test` for testing state persistence:
+   - Complete stitches with perfect scores (20/20)
+   - Cycle through tubes
+   - Track stitch reposition following the Triple Helix pattern
+   - Test syncing state to and loading from the server
+   - Visualize state changes in a detailed history view
 
 ## Anonymous API Call Fix (May 4, 2025)
 

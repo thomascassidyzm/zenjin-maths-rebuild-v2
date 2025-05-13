@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import {
   UserInformation, TubeState, LearningProgress,
   SessionData, ContentCollection, StitchProgressionConfig,
-  AppConfiguration, SubscriptionDetails, Stitch
+  AppConfiguration, SubscriptionDetails, Stitch, TubePosition
 } from './types';
 import { fetchStitchBatch, fetchSingleStitch } from './stitchActions';
 import { StitchContent } from '../client/offline-first-content-buffer';
@@ -31,6 +31,13 @@ interface ZenjinStore {
   setActiveTube: (tubeNum: 1 | 2 | 3) => void;
   setCurrentStitch: (tubeNum: 1 | 2 | 3, stitchId: string) => void;
   updateStitchOrder: (tubeNum: 1 | 2 | 3, stitchOrder: string[]) => void;
+
+  // Position-based tube actions
+  getStitchPositions: (tubeNum: 1 | 2 | 3) => { [position: number]: TubePosition } | null;
+  updateStitchPosition: (tubeNum: 1 | 2 | 3, position: number, tubePosition: TubePosition) => void;
+  moveStitch: (tubeNum: 1 | 2 | 3, fromPosition: number, toPosition: number) => void;
+  getStitchAtPosition: (tubeNum: 1 | 2 | 3, position: number) => TubePosition | null;
+  createPositionsFromStitchOrder: (tubeNum: 1 | 2 | 3) => { [position: number]: TubePosition } | null;
   
   // Learning Progress actions
   setLearningProgress: (progress: LearningProgress) => void;
@@ -151,7 +158,7 @@ export const useZenjinStore = create<ZenjinStore>()(
       
       updateStitchOrder: (tubeNum, stitchOrder) => set((state) => {
         if (!state.tubeState) return { lastUpdated: new Date().toISOString() };
-        
+
         return {
           tubeState: {
             ...state.tubeState,
@@ -166,6 +173,191 @@ export const useZenjinStore = create<ZenjinStore>()(
           lastUpdated: new Date().toISOString()
         };
       }),
+
+      // Position-based tube actions
+      getStitchPositions: (tubeNum) => {
+        const state = get();
+        if (!state.tubeState?.tubes?.[tubeNum]) return null;
+
+        const tube = state.tubeState.tubes[tubeNum];
+
+        // If positions exist, return them
+        if (tube.positions) {
+          return tube.positions;
+        }
+
+        // Otherwise create positions from stitchOrder
+        return get().createPositionsFromStitchOrder(tubeNum);
+      },
+
+      createPositionsFromStitchOrder: (tubeNum) => {
+        const state = get();
+        if (!state.tubeState?.tubes?.[tubeNum]) return null;
+
+        const tube = state.tubeState.tubes[tubeNum];
+
+        // If no stitchOrder, we can't create positions
+        if (!tube.stitchOrder || !tube.stitchOrder.length) return null;
+
+        // Create positions object from stitchOrder
+        const positions: { [position: number]: TubePosition } = {};
+
+        // Map each stitch in stitchOrder to a position (using index as position)
+        tube.stitchOrder.forEach((stitchId, index) => {
+          // Try to get stitch from content collection for its properties
+          const stitch = state.contentCollection?.stitches?.[stitchId];
+
+          positions[index] = {
+            stitchId,
+            // Use values from stitch if available, otherwise use defaults
+            skipNumber: stitch?.skipNumber || state.stitchProgressionConfig.initialSkipNumber,
+            distractorLevel: stitch?.distractorLevel || state.stitchProgressionConfig.initialDistractorLevel,
+            perfectCompletions: (stitch?.completionHistory || []).filter(record => record.isPerfect).length || 0,
+            lastCompleted: stitch?.completionHistory?.length ?
+              stitch.completionHistory[stitch.completionHistory.length - 1].timestamp : undefined
+          };
+        });
+
+        // Update the store with these positions but don't call this function again
+        set((state) => {
+          if (!state.tubeState) return { lastUpdated: new Date().toISOString() };
+
+          return {
+            tubeState: {
+              ...state.tubeState,
+              tubes: {
+                ...state.tubeState.tubes,
+                [tubeNum]: {
+                  ...state.tubeState.tubes[tubeNum],
+                  positions
+                }
+              }
+            },
+            lastUpdated: new Date().toISOString()
+          };
+        });
+
+        return positions;
+      },
+
+      getStitchAtPosition: (tubeNum, position) => {
+        const positions = get().getStitchPositions(tubeNum);
+        if (!positions) return null;
+
+        return positions[position] || null;
+      },
+
+      updateStitchPosition: (tubeNum, position, tubePosition) => set((state) => {
+        if (!state.tubeState?.tubes?.[tubeNum]) return { lastUpdated: new Date().toISOString() };
+
+        const tube = state.tubeState.tubes[tubeNum];
+
+        // Create positions object if it doesn't exist
+        const positions = tube.positions || get().createPositionsFromStitchOrder(tubeNum) || {};
+
+        // Update the position
+        const updatedPositions = {
+          ...positions,
+          [position]: tubePosition
+        };
+
+        // Also update stitchOrder for backward compatibility
+        // Build array of stitchIds in position order
+        const stitchOrder = Object.entries(updatedPositions)
+          .sort(([posA], [posB]) => parseInt(posA) - parseInt(posB))
+          .map(([_, tubPos]) => tubPos.stitchId);
+
+        return {
+          tubeState: {
+            ...state.tubeState,
+            tubes: {
+              ...state.tubeState.tubes,
+              [tubeNum]: {
+                ...state.tubeState.tubes[tubeNum],
+                positions: updatedPositions,
+                stitchOrder,
+                // If position 0 is updated, also update currentStitchId
+                ...(position === 0 && { currentStitchId: tubePosition.stitchId })
+              }
+            }
+          },
+          lastUpdated: new Date().toISOString()
+        };
+      }),
+
+      moveStitch: (tubeNum, fromPosition, toPosition) => {
+        const state = get();
+        if (!state.tubeState?.tubes?.[tubeNum]) return;
+
+        const positions = get().getStitchPositions(tubeNum);
+        if (!positions) return;
+
+        // Get the stitch at fromPosition
+        const stitchToMove = positions[fromPosition];
+        if (!stitchToMove) return;
+
+        // If moving to position 0, we need to update currentStitchId
+        const isMovingToActivePosition = toPosition === 0;
+
+        // First we need to shift all stitches in between
+        // Create an updated positions object
+        const updatedPositions: { [position: number]: TubePosition } = { ...positions };
+
+        // Remove stitch from fromPosition
+        delete updatedPositions[fromPosition];
+
+        // When moving forward (lower position to higher position)
+        if (fromPosition < toPosition) {
+          // Shift all stitches between fromPosition+1 and toPosition one position lower
+          for (let i = fromPosition + 1; i <= toPosition; i++) {
+            if (updatedPositions[i]) {
+              updatedPositions[i - 1] = updatedPositions[i];
+              delete updatedPositions[i];
+            }
+          }
+        }
+        // When moving backward (higher position to lower position)
+        else if (fromPosition > toPosition) {
+          // Shift all stitches between toPosition and fromPosition-1 one position higher
+          for (let i = fromPosition - 1; i >= toPosition; i--) {
+            if (updatedPositions[i]) {
+              updatedPositions[i + 1] = updatedPositions[i];
+              delete updatedPositions[i];
+            }
+          }
+        }
+        // If fromPosition === toPosition, nothing to do
+
+        // Put the stitch in its new position
+        updatedPositions[toPosition] = stitchToMove;
+
+        // Build a new stitchOrder array for backward compatibility
+        const stitchOrder = Object.entries(updatedPositions)
+          .sort(([posA], [posB]) => parseInt(posA) - parseInt(posB))
+          .map(([_, tubPos]) => tubPos.stitchId);
+
+        // Update the store
+        set((state) => {
+          if (!state.tubeState) return { lastUpdated: new Date().toISOString() };
+
+          return {
+            tubeState: {
+              ...state.tubeState,
+              tubes: {
+                ...state.tubeState.tubes,
+                [tubeNum]: {
+                  ...state.tubeState.tubes[tubeNum],
+                  positions: updatedPositions,
+                  stitchOrder,
+                  // If moving to position 0, update currentStitchId
+                  ...(isMovingToActivePosition && { currentStitchId: stitchToMove.stitchId })
+                }
+              }
+            },
+            lastUpdated: new Date().toISOString()
+          };
+        });
+      },
       
       // Learning Progress actions
       setLearningProgress: (progress) => set({
@@ -505,7 +697,7 @@ export const useZenjinStore = create<ZenjinStore>()(
         lastUpdated: new Date().toISOString()
       }),
       
-      // Helper function to extract minimal stitch positions
+      // Helper function to extract minimal stitch positions from the array format
       extractStitchPositions: (stitches = []) => {
         if (!Array.isArray(stitches)) return {};
 
@@ -519,6 +711,19 @@ export const useZenjinStore = create<ZenjinStore>()(
           }
           return acc;
         }, {});
+      },
+
+      // Helper function to convert positions object to legacy stitches array
+      convertPositionsToStitches: (positions = {}) => {
+        if (!positions || typeof positions !== 'object') return [];
+
+        return Object.entries(positions).map(([position, tubePosition]) => ({
+          id: tubePosition.stitchId,
+          position: parseInt(position),
+          skipNumber: tubePosition.skipNumber,
+          distractorLevel: tubePosition.distractorLevel,
+          perfectCompletions: tubePosition.perfectCompletions
+        }));
       },
 
       // Helper function to extract minimal state
@@ -540,11 +745,19 @@ export const useZenjinStore = create<ZenjinStore>()(
         if (state.tubeState?.tubes) {
           Object.entries(state.tubeState.tubes).forEach(([tubeKey, tube]) => {
             if (tube) {
+              // Get positions for this tube, either directly or by converting from stitchOrder
+              const positions = tube.positions || get().getStitchPositions(Number(tubeKey) as 1 | 2 | 3);
+
+              // Convert positions to the legacy stitches array format
+              const stitches = positions ? get().convertPositionsToStitches(positions) : [];
+
               minimalState.tubes[tubeKey] = {
                 currentStitchId: tube.currentStitchId,
                 threadId: tube.threadId,
-                // Only essential position data for stitches
-                stitchPositions: get().extractStitchPositions(tube.stitches)
+                // Include both legacy stitchPositions and the new positions format
+                stitchPositions: positions || {},
+                // Also include the legacy stitches array for backward compatibility
+                stitches: stitches
               };
             }
           });
@@ -646,13 +859,127 @@ export const useZenjinStore = create<ZenjinStore>()(
             lastActive: new Date().toISOString()
           };
 
-          // Extract tube state
+          // Extract tube state with position-based model
           const tubeState = {
             activeTube: loadedState.activeTube || loadedState.activeTubeNumber || 1,
             activeTubeNumber: loadedState.activeTubeNumber || loadedState.activeTube || 1,
-            tubes: loadedState.tubes || {},
-            cycleCount: loadedState.cycleCount || 0
+            cycleCount: loadedState.cycleCount || 0,
+            tubes: {}
           };
+
+          // Process tube data with proper position handling
+          if (loadedState.tubes) {
+            Object.entries(loadedState.tubes).forEach(([tubeKey, tubeData]) => {
+              if (!tubeData) return;
+
+              // Cast to proper type
+              const tube = tubeData as any;
+
+              // Create the tube object with proper structure
+              tubeState.tubes[tubeKey] = {
+                currentStitchId: tube.currentStitchId || '',
+                threadId: tube.threadId || '',
+                stitchOrder: []
+              };
+
+              // Process positions based on what data is available
+              if (tube.stitchPositions && typeof tube.stitchPositions === 'object') {
+                // New format: explicit positions as an object
+                tubeState.tubes[tubeKey].positions = {};
+
+                // Convert to our TubePosition format
+                Object.entries(tube.stitchPositions).forEach(([position, data]) => {
+                  // Cast position to number and normalize to our format
+                  const pos = parseInt(position);
+                  const posData = data as any;
+
+                  if (typeof posData === 'object' && posData.stitchId) {
+                    // Direct format match
+                    tubeState.tubes[tubeKey].positions[pos] = {
+                      stitchId: posData.stitchId,
+                      skipNumber: posData.skipNumber || get().stitchProgressionConfig.initialSkipNumber,
+                      distractorLevel: posData.distractorLevel || get().stitchProgressionConfig.initialDistractorLevel,
+                      perfectCompletions: posData.perfectCompletions || 0,
+                      lastCompleted: posData.lastCompleted
+                    };
+                  } else if (typeof posData === 'string') {
+                    // Simplified format, just the stitchId
+                    tubeState.tubes[tubeKey].positions[pos] = {
+                      stitchId: posData,
+                      skipNumber: get().stitchProgressionConfig.initialSkipNumber,
+                      distractorLevel: get().stitchProgressionConfig.initialDistractorLevel,
+                      perfectCompletions: 0
+                    };
+                  }
+                });
+
+                // Also build stitchOrder array for backward compatibility
+                tubeState.tubes[tubeKey].stitchOrder = Object.entries(tubeState.tubes[tubeKey].positions)
+                  .sort(([posA], [posB]) => parseInt(posA) - parseInt(posB))
+                  .map(([_, tubPos]) => tubPos.stitchId);
+              } else if (tube.stitches && Array.isArray(tube.stitches)) {
+                // Legacy format: array of stitch objects
+                // Convert to positions object
+                tubeState.tubes[tubeKey].positions = {};
+
+                // First sort stitches by position (if available)
+                const sortedStitches = [...tube.stitches].sort((a, b) =>
+                  (a.position !== undefined ? a.position : 999) -
+                  (b.position !== undefined ? b.position : 999)
+                );
+
+                // Build stitchOrder for backward compatibility
+                const stitchOrder = [];
+
+                // Process each stitch
+                sortedStitches.forEach((stitch, index) => {
+                  if (!stitch || !stitch.id) return;
+
+                  // Use position from stitch if available, otherwise use array index
+                  const position = stitch.position !== undefined ? stitch.position : index;
+
+                  // Add to positions
+                  tubeState.tubes[tubeKey].positions[position] = {
+                    stitchId: stitch.id,
+                    skipNumber: stitch.skipNumber || get().stitchProgressionConfig.initialSkipNumber,
+                    distractorLevel: stitch.distractorLevel || get().stitchProgressionConfig.initialDistractorLevel,
+                    perfectCompletions: stitch.perfectCompletions || 0,
+                    lastCompleted: stitch.lastCompleted
+                  };
+
+                  // Add to stitchOrder
+                  stitchOrder.push(stitch.id);
+                });
+
+                // Set stitchOrder for backward compatibility
+                tubeState.tubes[tubeKey].stitchOrder = stitchOrder;
+              } else if (tube.stitchOrder && Array.isArray(tube.stitchOrder)) {
+                // Only stitchOrder array available
+                // Build positions from stitchOrder
+                tubeState.tubes[tubeKey].stitchOrder = tube.stitchOrder;
+                tubeState.tubes[tubeKey].positions = {};
+
+                // Create basic positions for each stitch in order
+                tube.stitchOrder.forEach((stitchId, index) => {
+                  if (!stitchId) return;
+
+                  tubeState.tubes[tubeKey].positions[index] = {
+                    stitchId,
+                    skipNumber: get().stitchProgressionConfig.initialSkipNumber,
+                    distractorLevel: get().stitchProgressionConfig.initialDistractorLevel,
+                    perfectCompletions: 0
+                  };
+                });
+              }
+
+              // Ensure currentStitchId is set to position 0 if not specified
+              if (!tubeState.tubes[tubeKey].currentStitchId &&
+                  tubeState.tubes[tubeKey].positions &&
+                  tubeState.tubes[tubeKey].positions[0]) {
+                tubeState.tubes[tubeKey].currentStitchId = tubeState.tubes[tubeKey].positions[0].stitchId;
+              }
+            });
+          }
 
           // Extract learning progress
           let evoPoints = 0;

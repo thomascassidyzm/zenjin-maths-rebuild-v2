@@ -16,9 +16,21 @@ export interface UserInformation {
 }
 
 // 2. Tube State
+export interface TubePosition {
+  stitchId: string;
+  skipNumber: number;
+  distractorLevel: number;
+  perfectCompletions: number;
+  lastCompleted?: string; // ISO 8601 timestamp
+}
+
 export interface Tube {
-  stitchOrder: string[]; // An ordered array of stitchIds. stitchOrder[0] is the active stitch.
-  currentStitchId: string; // The stitchId currently at the 'top' or position zero of this tube.
+  currentStitchId: string; // The stitchId currently at position zero of this tube.
+  stitchOrder: string[]; // Maintained for backward compatibility
+  threadId: string; // The thread this tube is currently showing
+  positions?: { // New field for explicit position tracking
+    [position: number]: TubePosition
+  };
 }
 
 export interface TubeState {
@@ -69,7 +81,14 @@ export interface Question {
   id: string;                    // Unique ID for the question itself (e.g., "q_7x8")
   questionText: string;          // The actual question, e.g., "What is 7 × 8?"
   correctAnswer: string;         // e.g., "56"
-  distractorChoices: DistractorChoice[]; // An array of level-specific distractors
+  distractorChoices?: DistractorChoice[]; // An array of level-specific distractors (maintained for backward compatibility)
+  distractors?: {                // New format matching database structure
+    L1: string;
+    L2: string;
+    L3: string;
+    L4?: string;
+    L5?: string;
+  };
 }
 
 export interface StitchCompletionRecord {
