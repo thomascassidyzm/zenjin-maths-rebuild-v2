@@ -96,16 +96,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
       
       console.log(`SIMPLE-STATE API: Successfully retrieved state for user ${userId}`);
-      
+      console.log(`SIMPLE-STATE API: State keys:`, data?.state ? Object.keys(data.state) : 'No state');
+
+      // Log the detailed structure of what we're returning
+      const returnState = data?.state || {
+        userId,
+        tubeState: null,
+        userInformation: null,
+        learningProgress: null,
+        lastUpdated: new Date().toISOString()
+      };
+
+      console.log(`SIMPLE-STATE API: Returning state keys:`, Object.keys(returnState));
+
+      if (returnState.tubeState) {
+        console.log(`SIMPLE-STATE API: tubeState exists with keys:`, Object.keys(returnState.tubeState));
+        if (returnState.tubeState.tubes) {
+          console.log(`SIMPLE-STATE API: tubes:`, Object.keys(returnState.tubeState.tubes));
+        }
+      }
+
       return res.status(200).json({
         success: true,
-        state: data?.state || {
-          userId,
-          tubeState: null,
-          userInformation: null,
-          learningProgress: null,
-          lastUpdated: new Date().toISOString()
-        },
+        state: returnState,
         source: data ? 'database' : 'default'
       });
     }

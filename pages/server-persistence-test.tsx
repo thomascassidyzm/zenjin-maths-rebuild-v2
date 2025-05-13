@@ -196,18 +196,37 @@ export default function ServerPersistenceTest() {
   // Display current state for debugging
   const currentStateString = () => {
     const state = useZenjinStore.getState();
-    
-    if (!state.tubeState) return 'No tube state';
-    
-    const tube1 = state.tubeState.tubes[1];
-    if (!tube1) return 'No tube 1 data';
-    
+
+    // Log the full state structure for debugging
+    console.log('Current state structure:', state);
+
+    if (!state.tubeState) {
+      console.error('No tubeState found in state');
+      return 'No tube state found';
+    }
+
+    console.log('TubeState keys:', Object.keys(state.tubeState));
+    console.log('Tubes available:', state.tubeState.tubes ? Object.keys(state.tubeState.tubes) : 'No tubes');
+
+    const tube1 = state.tubeState.tubes && state.tubeState.tubes[1];
+    if (!tube1) {
+      console.error('No tube 1 data found');
+      return 'No tube 1 data';
+    }
+
+    console.log('Tube 1 structure:', tube1);
+    console.log('Tube 1 positions:', tube1.positions ? Object.keys(tube1.positions) : 'No positions');
+
     // Format positions array for display
     const positions = tube1.positions || {};
     const positionsText = Object.entries(positions)
       .map(([pos, data]) => `Pos ${pos}: ${data.stitchId} (Skip: ${data.skipNumber}, Perfect: ${data.perfectCompletions || 0})`)
       .join('\n');
-    
+
+    if (!positionsText) {
+      return 'No position data in tube 1';
+    }
+
     return positionsText;
   };
   

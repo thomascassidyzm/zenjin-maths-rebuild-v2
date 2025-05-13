@@ -782,10 +782,13 @@ export const useZenjinStore = create<ZenjinStore>()(
           // The API will handle extracting what it needs
 
           // Prepare the data for server sync - just pass the full state with explicit userId
+          // Create a simplified state structure that preserves the key data we need
           const syncData = {
             state: {
-              ...state,
-              userId: state.userInformation.userId  // Ensure userId is directly in the state object
+              userId: state.userInformation.userId,
+              userInformation: state.userInformation,
+              tubeState: state.tubeState,
+              lastUpdated: new Date().toISOString()
             },
             id: state.userInformation.userId  // Also add as explicit id field
           };
@@ -850,7 +853,17 @@ export const useZenjinStore = create<ZenjinStore>()(
             return false;
           }
 
-          const loadedState = data.state;
+          console.log('Server returned state:', data.state);
+
+          // The server might return a nested state object where state.state contains the actual data
+          // Or it might be directly in state
+          let loadedState = data.state;
+
+          // Check for nested state structure
+          if (data.state.state && typeof data.state.state === 'object') {
+            console.log('Detected nested state structure, using state.state');
+            loadedState = data.state.state;
+          }
 
           // Convert from legacy format to Zustand format
           // Basic user information
@@ -869,9 +882,20 @@ export const useZenjinStore = create<ZenjinStore>()(
             tubes: {}
           };
 
+          // Check for different structures that might contain tube data
+          console.log('Looking for tube data in:', loadedState);
+
+          // Try multiple possible paths for tube data
+          const tubeDataSource = loadedState.tubes ||
+                               (loadedState.tubeState?.tubes) ||
+                               (loadedState.state?.tubeState?.tubes) ||
+                               {};
+
+          console.log('Found tube data:', tubeDataSource);
+
           // Process tube data with proper position handling
-          if (loadedState.tubes) {
-            Object.entries(loadedState.tubes).forEach(([tubeKey, tubeData]) => {
+          if (tubeDataSource) {
+            Object.entries(tubeDataSource).forEach(([tubeKey, tubeData]) => {
               if (!tubeData) return;
 
               // Cast to proper type
