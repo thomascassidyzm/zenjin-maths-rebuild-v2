@@ -50,24 +50,26 @@ export default function StitchCompletionTest() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [syncResult, setSyncResult] = useState<any>(null);
   
+  // Get existing test user ID from localStorage or create a new one
+  const getOrCreateTestUserId = () => {
+    let persistentTestUserId = localStorage.getItem('zenjin-test-userId');
+
+    if (!persistentTestUserId) {
+      persistentTestUserId = `test-user-${Date.now()}`;
+      localStorage.setItem('zenjin-test-userId', persistentTestUserId);
+    }
+
+    return persistentTestUserId;
+  };
+
   // State to store the persistent test user ID
-  const [testUserId, setTestUserId] = useState<string>('');
+  const [testUserId, setTestUserId] = useState<string>(getOrCreateTestUserId());
 
   // Initialize Zustand store if needed
   useEffect(() => {
-    if (!isInitialized && !userInfo) {
+    if (!isInitialized && !userInfo && testUserId) {
       console.log('Initializing test user in Zustand store');
-
-      // Get existing test user ID from localStorage or create a new one
-      let persistentTestUserId = localStorage.getItem('zenjin-test-userId');
-
-      if (!persistentTestUserId) {
-        persistentTestUserId = `test-user-${Date.now()}`;
-        localStorage.setItem('zenjin-test-userId', persistentTestUserId);
-      }
-
-      console.log(`Using persistent test user ID: ${persistentTestUserId}`);
-      setTestUserId(persistentTestUserId);
+      console.log(`Using persistent test user ID: ${testUserId}`);
       
       // Initialize stitches for each tube
       const tube1Stitches = [
@@ -493,6 +495,45 @@ export default function StitchCompletionTest() {
   
   // Load state from server
   const loadFromServer = async () => {
+    // If no userInfo but we have a testUserId, use it directly
+    if (!userInfo && testUserId) {
+      console.log(`Attempting to load state directly for test user ID: ${testUserId}`);
+      setIsProcessing(true);
+
+      try {
+        const result = await useZenjinStore.getState().loadFromServer(testUserId);
+        console.log('Direct load result:', result);
+
+        // Add to state history
+        setStateHistory(prev => [
+          ...prev,
+          {
+            timestamp: new Date().toISOString(),
+            activeTube: useZenjinStore.getState().tubeState?.activeTube || 1,
+            currentStitchIds: useZenjinStore.getState().tubeState ?
+              Object.entries(useZenjinStore.getState().tubeState.tubes).reduce((acc, [num, t]) => ({
+                ...acc,
+                [num]: t.currentStitchId
+              }), {}) : {},
+            stitchOrders: useZenjinStore.getState().tubeState ?
+              Object.entries(useZenjinStore.getState().tubeState.tubes).reduce((acc, [num, t]) => ({
+                ...acc,
+                [num]: t.stitchOrder || []
+              }), {}) : {},
+            points: useZenjinStore.getState().learningProgress?.evoPoints || 0,
+            action: `Directly loaded state for ${testUserId} (${result ? 'success' : 'failed'})`
+          }
+        ]);
+
+        setIsProcessing(false);
+        return;
+      } catch (error) {
+        console.error('Error in direct load:', error);
+        setIsProcessing(false);
+      }
+    }
+
+    // Fallback to normal flow
     if (!userInfo) {
       alert('No user information available. Initialize the store first.');
       return;
@@ -653,17 +694,116 @@ export default function StitchCompletionTest() {
                     <p className="text-xs text-white/70">
                       {userInfo?.isAnonymous ? 'Anonymous' : 'Authenticated'} user
                     </p>
-                    <button
-                      onClick={() => {
-                        if (confirm('Are you sure you want to reset the test user ID? This will create a new test user.')) {
-                          localStorage.removeItem('zenjin-test-userId');
-                          window.location.reload();
-                        }
-                      }}
-                      className="text-xs bg-red-600/30 hover:bg-red-600/50 px-2 py-0.5 rounded text-white/90"
-                    >
-                      Reset
-                    </button>
+                    <div className="flex space-x-2">
+                      {!userInfo && (
+                        <button
+                          onClick={() => {
+                            // Force initialize with our test user ID
+                            if (testUserId) {
+                              // Add full initialization with default tube state like we had before
+                              const tube1Stitches = [
+                                'stitch-T1-001-01',
+                                'stitch-T1-001-02',
+                                'stitch-T1-001-03',
+                                'stitch-T1-001-04',
+                                'stitch-T1-001-05'
+                              ];
+
+                              const tube2Stitches = [
+                                'stitch-T2-001-01',
+                                'stitch-T2-001-02',
+                                'stitch-T2-001-03',
+                                'stitch-T2-001-04',
+                                'stitch-T2-001-05'
+                              ];
+
+                              const tube3Stitches = [
+                                'stitch-T3-001-01',
+                                'stitch-T3-001-02',
+                                'stitch-T3-001-03',
+                                'stitch-T3-001-04',
+                                'stitch-T3-001-05'
+                              ];
+
+                              initializeState({
+                                userInformation: {
+                                  userId: testUserId,
+                                  isAnonymous: false,
+                                  createdAt: new Date().toISOString(),
+                                  lastActive: new Date().toISOString()
+                                },
+                                tubeState: {
+                                  activeTube: 1,
+                                  tubes: {
+                                    1: {
+                                      threadId: 'thread-T1-001',
+                                      currentStitchId: tube1Stitches[0],
+                                      stitchOrder: tube1Stitches,
+                                      positions: {
+                                        0: { stitchId: tube1Stitches[0], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 },
+                                        1: { stitchId: tube1Stitches[1], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 },
+                                        2: { stitchId: tube1Stitches[2], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 },
+                                        3: { stitchId: tube1Stitches[3], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 },
+                                        4: { stitchId: tube1Stitches[4], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 }
+                                      }
+                                    },
+                                    2: {
+                                      threadId: 'thread-T2-001',
+                                      currentStitchId: tube2Stitches[0],
+                                      stitchOrder: tube2Stitches,
+                                      positions: {
+                                        0: { stitchId: tube2Stitches[0], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 },
+                                        1: { stitchId: tube2Stitches[1], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 },
+                                        2: { stitchId: tube2Stitches[2], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 },
+                                        3: { stitchId: tube2Stitches[3], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 },
+                                        4: { stitchId: tube2Stitches[4], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 }
+                                      }
+                                    },
+                                    3: {
+                                      threadId: 'thread-T3-001',
+                                      currentStitchId: tube3Stitches[0],
+                                      stitchOrder: tube3Stitches,
+                                      positions: {
+                                        0: { stitchId: tube3Stitches[0], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 },
+                                        1: { stitchId: tube3Stitches[1], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 },
+                                        2: { stitchId: tube3Stitches[2], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 },
+                                        3: { stitchId: tube3Stitches[3], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 },
+                                        4: { stitchId: tube3Stitches[4], skipNumber: 3, distractorLevel: 1, perfectCompletions: 0 }
+                                      }
+                                    }
+                                  }
+                                },
+                                learningProgress: {
+                                  userId: testUserId,
+                                  totalTimeSpentLearning: 0,
+                                  evoPoints: 0,
+                                  evolutionLevel: 1,
+                                  currentBlinkSpeed: 1,
+                                  previousSessionBlinkSpeeds: [],
+                                  completedStitchesCount: 0,
+                                  perfectScoreStitchesCount: 0
+                                },
+                                isInitialized: true
+                              });
+                            }
+                          }}
+                          className="text-xs bg-green-600/30 hover:bg-green-600/50 px-2 py-0.5 rounded text-white/90"
+                        >
+                          Initialize
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          if (confirm('Are you sure you want to reset the test user ID? This will create a new test user.')) {
+                            localStorage.removeItem('zenjin-test-userId');
+                            window.location.reload();
+                          }
+                        }}
+                        className="text-xs bg-red-600/30 hover:bg-red-600/50 px-2 py-0.5 rounded text-white/90"
+                      >
+                        Reset
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
