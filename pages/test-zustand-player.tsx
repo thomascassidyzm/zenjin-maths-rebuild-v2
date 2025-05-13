@@ -19,23 +19,44 @@ export default function TestZustandPlayerPage() {
     ? Object.keys(contentCollection.stitches).length 
     : 0;
   
+  // State for user type selection
+  const [userType, setUserType] = useState<'anonymous' | 'authenticated' | 'premium'>('anonymous');
+
   // Initialize Zustand store if needed
   const isInitialized = useZenjinStore(state => state.isInitialized);
   const initializeState = useZenjinStore(state => state.initializeState);
   const userInfo = useZenjinStore(state => state.userInformation);
-  
-  // Ensure store is initialized
-  if (!isInitialized && !userInfo) {
-    // Create anonymous user ID
-    const anonymousId = `anon-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    
-    // Initialize the store with anonymous user
+  const resetStore = useZenjinStore(state => state.resetStore);
+
+  // Function to initialize store with selected user type
+  const initializeWithUserType = (type: 'anonymous' | 'authenticated' | 'premium') => {
+    // First reset store
+    resetStore();
+
+    // Generate appropriate user ID
+    let userId = '';
+    let isAnonymous = false;
+
+    if (type === 'anonymous') {
+      userId = `anon-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      isAnonymous = true;
+    } else if (type === 'authenticated') {
+      userId = `user-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      isAnonymous = false;
+    } else if (type === 'premium') {
+      userId = `premium-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      isAnonymous = false;
+    }
+
+    // Initialize the store with the appropriate user
     initializeState({
       userInformation: {
-        userId: anonymousId,
-        isAnonymous: true,
+        userId,
+        isAnonymous,
         createdAt: new Date().toISOString(),
-        lastActive: new Date().toISOString()
+        lastActive: new Date().toISOString(),
+        // Add premium flag for premium users
+        ...(type === 'premium' ? { isPremium: true } : {})
       },
       tubeState: {
         activeTube: 1,
@@ -107,10 +128,53 @@ export default function TestZustandPlayerPage() {
               <p className="text-gray-300 mb-1">
                 User ID: <span className="font-mono">{userInfo?.userId || 'None'}</span>
               </p>
-              <p className="text-gray-300">
+              <p className="text-gray-300 mb-1">
                 Is Anonymous: <span className="font-mono">{userInfo?.isAnonymous ? 'Yes' : 'No'}</span>
               </p>
+              <p className="text-gray-300">
+                Is Premium: <span className="font-mono">{userInfo?.isPremium ? 'Yes' : 'No'}</span>
+              </p>
             </div>
+          </div>
+
+          {/* User type selection */}
+          <div className="mt-4 border-t border-gray-700 pt-4">
+            <h3 className="text-lg font-medium mb-2">Test with Different User Types</h3>
+            <div className="flex gap-2">
+              <button
+                onClick={() => initializeWithUserType('anonymous')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium ${
+                  userType === 'anonymous'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                Anonymous User
+              </button>
+              <button
+                onClick={() => initializeWithUserType('authenticated')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium ${
+                  userType === 'authenticated'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                Authenticated User
+              </button>
+              <button
+                onClick={() => initializeWithUserType('premium')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium ${
+                  userType === 'premium'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                Premium User
+              </button>
+            </div>
+            <p className="text-gray-400 text-xs mt-2">
+              Switching user types will reset all state and content cache
+            </p>
           </div>
         </div>
         

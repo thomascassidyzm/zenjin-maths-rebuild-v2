@@ -54,9 +54,10 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
         console.log(`Tube ${tubeNumber} has ${activeTube.stitches.length} stitches:`,
           activeTube.stitches.map(s => s.id).join(', '));
 
-        // Check if these stitch IDs are in the bundled content
-        const foundInBundled = activeTube.stitches.filter(s => BUNDLED_FULL_CONTENT[s.id]);
-        console.log(`Found ${foundInBundled.length} of ${activeTube.stitches.length} stitches in bundled content`);
+        // Check if these stitch IDs are already in the Zustand store
+        const contentCollection = useZenjinStore.getState().contentCollection;
+        const foundInStore = activeTube.stitches.filter(s => contentCollection?.stitches?.[s.id]);
+        console.log(`Found ${foundInStore.length} of ${activeTube.stitches.length} stitches in Zustand store`);
       } else {
         console.error(`Tube ${tubeNumber} has no stitches`);
       }
@@ -70,7 +71,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
           id: stitch.id,
           name: stitch.id.split('-').pop() || 'Stitch',
           description: `Stitch ${stitch.id}`,
-          questions: [] // Questions will be loaded from bundled content
+          questions: [] // Questions will be loaded from the Zustand store
         }))
       };
 
@@ -227,10 +228,14 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       initialQuestionCount: stitch.questions ? stitch.questions.length : 0
     });
 
-    // Log all bundled content keys to debug missing content issues
-    console.log(`Available bundled content stitches: ${Object.keys(BUNDLED_FULL_CONTENT).length}`);
-    if (Object.keys(BUNDLED_FULL_CONTENT).length > 0) {
-      console.log(`Bundled content keys (first 5): ${Object.keys(BUNDLED_FULL_CONTENT).slice(0, 5).join(', ')}`);
+    // Log cached content in Zustand store for debugging
+    const contentCollection = useZenjinStore.getState().contentCollection;
+    const cachedStitchCount = contentCollection?.stitches
+      ? Object.keys(contentCollection.stitches).length
+      : 0;
+    console.log(`Available cached stitches in Zustand store: ${cachedStitchCount}`);
+    if (cachedStitchCount > 0) {
+      console.log(`Cached stitch keys (first 5): ${Object.keys(contentCollection.stitches).slice(0, 5).join(', ')}`);
     }
 
     // Detailed analysis of stitch ID format to help with matching
@@ -239,100 +244,59 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       const [_, tubeNum, threadNum, posNum] = stitchFormatMatch;
       console.log(`DEBUG: Stitch ID format analysis - Tube: ${tubeNum}, Thread: ${threadNum}, Position: ${posNum}`);
 
-      // Check if any stitches with similar patterns exist
-      const similarPatternKeys = Object.keys(BUNDLED_FULL_CONTENT).filter(key =>
+      // Check if any stitches with similar patterns exist in the Zustand store
+      const contentCollection = useZenjinStore.getState().contentCollection;
+      const stitchKeys = contentCollection?.stitches ? Object.keys(contentCollection.stitches) : [];
+      const similarPatternKeys = stitchKeys.filter(key =>
         key.startsWith(`stitch-T${tubeNum}-`) || key.includes(`-${threadNum}-`)
       ).slice(0, 5);
 
       if (similarPatternKeys.length > 0) {
-        console.log(`DEBUG: Similar pattern stitches found: ${similarPatternKeys.join(', ')}`);
+        console.log(`DEBUG: Similar pattern stitches found in store: ${similarPatternKeys.join(', ')}`);
       } else {
-        console.log(`DEBUG: No similar pattern stitches found for T${tubeNum}-${threadNum}`);
+        console.log(`DEBUG: No similar pattern stitches found in store for T${tubeNum}-${threadNum}`);
       }
     }
 
     // Simple debug logging to help understand issues
-    console.log(`DEBUG: Looking for stitch ID ${stitch.id} in bundled content`);
+    console.log(`DEBUG: Fetching stitch ${stitch.id} from Zustand store`);
 
-    // Log some stats about bundled content
-    const bundledContentCount = Object.keys(BUNDLED_FULL_CONTENT).length;
-    console.log(`DEBUG: BUNDLED_FULL_CONTENT has ${bundledContentCount} entries`);
+    // Get the fetchStitch function from Zustand store
+    const fetchStitch = useZenjinStore.getState().fetchStitch;
 
-    // Check if the stitch is in bundled content - try both direct access and normalized format
-    let hasStitchInBundledContent = BUNDLED_FULL_CONTENT.hasOwnProperty(stitch.id);
-    let bundledStitch = hasStitchInBundledContent ? BUNDLED_FULL_CONTENT[stitch.id] : null;
+    // Check if the stitch already has questions
+    if (stitch.questions && stitch.questions.length > 0) {
+      console.log(`DEBUG: Stitch ${stitch.id} already has ${stitch.questions.length} questions`);
+    } else {
+      try {
+        // Fetch the stitch from the Zustand store
+        fetchStitch(stitch.id).then(storeStitch => {
+          if (storeStitch && storeStitch.questions && storeStitch.questions.length > 0) {
+            console.log(`SUCCESS: Fetched ${storeStitch.questions.length} questions for stitch ${stitch.id} from Zustand store`);
+            stitch.questions = [...storeStitch.questions];
 
-    // If not found, try case-insensitive matching (important for cross-platform compatibility)
-    if (!hasStitchInBundledContent) {
-      const matchingKey = Object.keys(BUNDLED_FULL_CONTENT).find(
-        key => key.toLowerCase() === stitch.id.toLowerCase()
-      );
+            // If we're initializing a session, load the first question
+            if (sessionQs && sessionQs.length === 0 && stitch.questions.length > 0) {
+              const allQuestions = [...stitch.questions];
+              const sessionQuestions = allQuestions.slice(0, Math.min(questionsPerSession, allQuestions.length));
+              setSessionQuestions(sessionQuestions);
 
-      if (matchingKey) {
-        console.log(`DEBUG: Found case-insensitive match: ${matchingKey} for ${stitch.id}`);
-        hasStitchInBundledContent = true;
-        bundledStitch = BUNDLED_FULL_CONTENT[matchingKey];
-      }
-    }
-
-    console.log(`DEBUG: Stitch ${stitch.id} ${hasStitchInBundledContent ? 'IS' : 'IS NOT'} in BUNDLED_FULL_CONTENT`);
-
-    if (hasStitchInBundledContent && bundledStitch) {
-      // Log details about the stitch in bundled content
-      console.log(`DEBUG: Stitch details:`, {
-        id: bundledStitch.id,
-        threadId: bundledStitch.threadId,
-        hasQuestions: !!bundledStitch.questions,
-        questionCount: bundledStitch.questions?.length || 0
-      });
-
-      // Additional check if questions exist but are empty
-      if (bundledStitch.questions && bundledStitch.questions.length === 0) {
-        console.log(`WARNING: Stitch ${stitch.id} has an empty questions array in bundled content`);
-      }
-    }
-
-    // First check if we have this stitch in bundled content - using the bundledStitch variable
-    // which might contain a case-insensitive match
-    if (bundledStitch && bundledStitch.questions && bundledStitch.questions.length > 0) {
-      console.log(`Using ${bundledStitch.questions.length} questions from bundled content for stitch ${stitch.id}`);
-      // Use the bundled content's questions directly
-      stitch.questions = [...bundledStitch.questions];
-    }
-    // Fallback to standard lookup if the case-insensitive match failed
-    else if (BUNDLED_FULL_CONTENT[stitch.id] && BUNDLED_FULL_CONTENT[stitch.id].questions && BUNDLED_FULL_CONTENT[stitch.id].questions.length > 0) {
-      console.log(`Using ${BUNDLED_FULL_CONTENT[stitch.id].questions.length} questions from bundled content for stitch ${stitch.id}`);
-      // Use the bundled content's questions directly
-      stitch.questions = [...BUNDLED_FULL_CONTENT[stitch.id].questions];
-    }
-    // If failed with direct access, try to dynamically generate a stitch ID that might match the format
-    else {
-      // Try to normalize the stitch ID and see if it exists in that format
-      const tubeMatch = stitch.id.match(/stitch-T(\d+)-(\d+)-(\d+)/i);
-      let dynamicStitchId = null;
-
-      if (tubeMatch) {
-        // Reconstruct a potentially matching stitch ID
-        const [_, tubeNum, threadNum, posNum] = tubeMatch;
-        dynamicStitchId = `stitch-T${tubeNum}-${threadNum}-${posNum.padStart(2, '0')}`;
-
-        console.log(`DEBUG: Trying normalized stitch ID: ${dynamicStitchId}`);
-
-        // Check if this normalized ID exists in bundled content
-        if (dynamicStitchId !== stitch.id &&
-            BUNDLED_FULL_CONTENT[dynamicStitchId] &&
-            BUNDLED_FULL_CONTENT[dynamicStitchId].questions &&
-            BUNDLED_FULL_CONTENT[dynamicStitchId].questions.length > 0) {
-          console.log(`SUCCESS: Found matching stitch using normalized ID ${dynamicStitchId}`);
-          stitch.questions = [...BUNDLED_FULL_CONTENT[dynamicStitchId].questions];
-        } else {
-          // If still not found, fall back to sample questions
-          console.log(`Normalized stitch ID ${dynamicStitchId} not found in bundled content, falling back to samples`);
+              // Start with the first question
+              if (sessionQuestions.length > 0) {
+                setIsInitialized(true);
+                loadQuestion(sessionQuestions[0], false);
+              }
+            }
+          } else {
+            console.warn(`ERROR: Failed to fetch valid questions for stitch ${stitch.id} from Zustand store`);
+            useFallbackQuestions();
+          }
+        }).catch(error => {
+          console.error(`ERROR: Failed to fetch stitch ${stitch.id} from Zustand store:`, error);
           useFallbackQuestions();
-        }
-      } else {
-        // Fallback to checking passed-in questions when stitch is not in bundled content
-        console.log(`Stitch ${stitch.id} not found in bundled content, checking passed-in questions`);
+        });
+      } catch (error) {
+        console.error(`ERROR: Exception while fetching stitch ${stitch.id}:`, error);
         useFallbackQuestions();
       }
     }
@@ -618,10 +582,11 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
 
       // Additional debug info to identify the issue
       console.error(`CRITICAL ERROR: No questions initially found for stitch ${stitch.id}`);
-      console.error(`- Stitch exists in BUNDLED_FULL_CONTENT: ${BUNDLED_FULL_CONTENT.hasOwnProperty(stitch.id)}`);
-      if (BUNDLED_FULL_CONTENT.hasOwnProperty(stitch.id)) {
-        console.error(`- Bundled stitch has questions: ${!!(BUNDLED_FULL_CONTENT[stitch.id].questions)}`);
-        console.error(`- Bundled stitch question count: ${BUNDLED_FULL_CONTENT[stitch.id].questions?.length || 0}`);
+      const contentCollection = useZenjinStore.getState().contentCollection;
+      console.error(`- Stitch exists in Zustand store: ${!!(contentCollection?.stitches?.[stitch.id])}`);
+      if (contentCollection?.stitches?.[stitch.id]) {
+        console.error(`- Cached stitch has questions: ${!!(contentCollection.stitches[stitch.id].questions)}`);
+        console.error(`- Cached stitch question count: ${contentCollection.stitches[stitch.id].questions?.length || 0}`);
       }
 
       // Instead of exiting early with no content, we continue with our emergency questions

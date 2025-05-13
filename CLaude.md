@@ -9,6 +9,39 @@
 
 The Zenjin Maths app is an educational application that uses a Triple Helix learning system with tubes, threads, and stitches to deliver structured content to users. We've implemented a server-first approach using Zustand for state management, ensuring consistent content delivery for all users.
 
+## Server-First Content Approach
+
+The application uses a server-first content approach with Zustand as the single source of truth for all content:
+
+1. **No Bundled Content**: We've eliminated all bundled content dependencies. All content is fetched from the server API.
+2. **Zustand as Single Source of Truth**: The Zustand store manages all content and provides consistent access for all components.
+3. **StateMachine Integration**: The StateMachine uses the Zustand store for content via a dedicated adapter.
+4. **Resilient Design**: Emergency content generation ensures the app functions even during network failures.
+5. **Two-Phase Loading**: Content is loaded in two phases - initial vital content first, then complete content in the background.
+
+### Implementation Details
+
+The server-first content approach has these key components:
+
+- **Zustand Store Instance**: A utility for accessing the Zustand store outside React components, critical for StateMachine integration.
+- **Zustand Stitch Adapter**: An adapter that bridges the StateMachine with the Zustand store content system.
+- **StitchContentLoader Component**: A reusable component that handles loading, error states, and display of stitch content.
+- **stitchActions**: API functions for fetching stitch content from the server, with fallbacks for network failures.
+- **Emergency Content Generation**: Creates basic content when the server is unreachable, ensuring the app is always usable.
+
+### Data Flow
+
+1. User state (tube/stitch structure) is loaded from the server or localStorage
+2. When a stitch's content is needed:
+   - React components use hooks like `useStitchContent`
+   - Non-React code (like StateMachine) uses the adapter
+3. The Zustand store checks its cache for the stitch
+   - If found, returns immediately
+   - If not found, fetches from the server API, caches, and returns
+4. Two-phase loading optimizes performance:
+   - Phase 1: Load only the most critical stitches (current and next few)
+   - Phase 2: Load the remaining stitches in the background
+
 ## Key Files Modified/Created
 
 1. `/lib/store/zenjinStore.ts` - Enhanced with stitch fetching and content management
@@ -98,19 +131,25 @@ Key changes:
 
 Use these test pages to verify the implementation:
 
-1. `/offline-first-test` for testing:
+1. `/test-zustand-stitch` for testing the new Zustand-based content system:
+   - Manual fetch test for individual stitches
+   - StitchContentLoader component demonstration
+   - Raw useStitchContent hook usage
+   - Debugging tools for content loading
+
+2. `/test-zustand-player` for testing the ZustandDistinctionPlayer:
+   - Integrated player UI with Zustand store
+   - Full gameplay experience with server-fetched content
+   - Session completion and scoring
+   - Works with different user types (anonymous, authenticated)
+
+3. `/offline-first-test` for testing content buffering:
    - Different user types (anonymous, free, premium)
    - Feature flag status visualization
    - Content buffer statistics
    - Immediate startup across user types
 
-2. `/simple-offline-test` for verifying content:
-   - Browse all bundled content directly
-   - View complete content and questions
-   - No dependencies on other components
-   - Works without network connection
-
-3. `/stitch-completion-test` for testing state persistence:
+4. `/stitch-completion-test` for testing state persistence:
    - Complete stitches with perfect scores (20/20)
    - Cycle through tubes
    - Track stitch reposition following the Triple Helix pattern

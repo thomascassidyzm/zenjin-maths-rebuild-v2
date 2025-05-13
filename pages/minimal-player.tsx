@@ -11,6 +11,8 @@ import { useAuth } from '../context/AuthContext';
 import { useTripleHelixPlayer } from '../lib/playerUtils';
 import { useSubscriptionStatus } from '../hooks/useSubscriptionStatus';
 import UserWelcomeButton from '../components/UserWelcomeButton';
+import { useZenjinStore } from '../lib/store/zenjinStore';
+import { useTwoPhaseContentLoading } from '../lib/hooks/useTwoPhaseContentLoading';
 
 // Component for playful loading messages that cycle every 2 seconds
 const LoadingMessage = ({ isAnonymous }: { isAnonymous: boolean }) => {
@@ -59,6 +61,19 @@ export default function MinimalPlayer() {
   const { mode, force, resetPoints, dev, admin, continue: shouldContinue } = router.query;
   const { user, isAuthenticated, loading: authLoading, signOut } = useAuth();
   const { isSubscribed, tier } = useSubscriptionStatus();
+
+  // Initialize content loading with two-phase approach
+  const {
+    activeStitchLoaded,
+    phase1Loaded,
+    phase2Loaded,
+    phase1Loading,
+    totalStitchesLoaded,
+    loadAdditionalContent
+  } = useTwoPhaseContentLoading();
+
+  // Connect to Zustand store for content buffer
+  const fillInitialContentBuffer = useZenjinStore(state => state.fillInitialContentBuffer);
 
   // Add state for admin tube debugging
   const [tubeInfo, setTubeInfo] = useState<any>({});
@@ -317,7 +332,7 @@ export default function MinimalPlayer() {
         id: stitch.id,
         name: stitch.id.split('-').pop() || 'Stitch',
         description: `Stitch ${stitch.id}`,
-        questions: [] // Questions will be loaded from bundled content
+        questions: [] // Questions will be loaded from Zustand store via getStitch
       })) : []
     };
 
