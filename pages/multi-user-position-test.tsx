@@ -59,14 +59,26 @@ export default function MultiUserPositionTest() {
   // Load test users from localStorage on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      // Add enhanced console logging
+      console.log('🧠 ZUSTAND MULTI-USER TEST PAGE LOADED 🧠');
+      console.log('This page tests server persistence for the position-based tube model');
+      console.log('- Create multiple test users and perform actions with each');
+      console.log('- Save each user\'s state to the server using "Save User State"');
+      console.log('- Load state back from the server using "Load User State"');
+      console.log('- Verify that state persists between different users');
+
+      // Load saved test users from localStorage
       const savedUsers = localStorage.getItem('multi-user-test-users');
       if (savedUsers) {
         try {
           const parsedUsers = JSON.parse(savedUsers) as TestUser[];
           setTestUsers(parsedUsers);
+          console.log(`🧪 Loaded ${parsedUsers.length} test users from localStorage`);
         } catch (e) {
           console.error('Failed to parse saved users', e);
         }
+      } else {
+        console.log('📝 No saved test users found. Create a test user to begin.');
       }
     }
   }, []);
@@ -148,24 +160,59 @@ export default function MultiUserPositionTest() {
   // Switch to a different test user
   const switchToUser = useCallback(async (userId: string) => {
     if (userId === activeUserId) return;
-    
+
     setIsProcessing(true);
-    
+
     try {
       // First, reset the store to clear any existing data
       resetStore();
-      
+
       // Set the new active user
       setActiveUserId(userId);
-      
+
+      console.log(`Switching to user ${userId}, loading state from server...`);
+
       // Try to load this user's data from the server
       const loadResult = await useZenjinStore.getState().loadFromServer(userId);
-      
+
       if (loadResult) {
         setOperationResult(`Successfully loaded state for user ${userId} from server`);
         addOperationToHistory('Switch User', `Loaded data for user ${userId} from server`);
       } else {
-        // If server load fails, initialize with fresh state
+        console.log(`Server load failed, trying localStorage fallback...`);
+
+        // Try loading from localStorage before initializing fresh state
+        if (typeof window !== 'undefined') {
+          const storeKey = `multi-user-test-state-${userId}`;
+          const savedStateJson = localStorage.getItem(storeKey);
+
+          if (savedStateJson) {
+            try {
+              // Parse the saved state from localStorage
+              const savedState = JSON.parse(savedStateJson);
+
+              // Update the store with the saved state
+              const { userInformation, tubeState, learningProgress } = savedState;
+
+              useZenjinStore.getState().initializeState({
+                userInformation,
+                tubeState,
+                learningProgress,
+                isInitialized: true,
+                lastUpdated: new Date().toISOString()
+              });
+
+              setOperationResult(`Loaded state for user ${userId} from localStorage`);
+              addOperationToHistory('Switch User', `Loaded data from localStorage for user ${userId}`);
+              return;
+            } catch (parseError) {
+              console.log(`Error parsing localStorage state:`, parseError);
+              // Continue to initialize fresh state if localStorage fails
+            }
+          }
+        }
+
+        // If server and localStorage both fail, initialize with fresh state
         const user = testUsers.find(u => u.id === userId);
         initializeUserState(userId, user?.name || 'Unknown User');
         setOperationResult(`Initialized fresh state for user ${userId}`);
@@ -174,14 +221,14 @@ export default function MultiUserPositionTest() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       setOperationResult(`Error switching user: ${errorMessage}`);
-      
+
       // Initialize with fresh state
       const user = testUsers.find(u => u.id === userId);
       initializeUserState(userId, user?.name || 'Unknown User');
     } finally {
       setIsProcessing(false);
     }
-  }, [activeUserId, testUsers, addOperationToHistory]);
+  }, [activeUserId, testUsers, addOperationToHistory, resetStore, initializeUserState]);
   
   // Initialize state for a user
   const initializeUserState = useCallback((userId: string, userName: string) => {
@@ -268,7 +315,7 @@ export default function MultiUserPositionTest() {
     });
   }, [initializeState]);
   
-  // Save active user state to localStorage
+  // Save active user state to server
   const syncActiveUserToServer = useCallback(async () => {
     if (!activeUserId) {
       setOperationResult('No active user selected');
@@ -278,25 +325,26 @@ export default function MultiUserPositionTest() {
     setIsProcessing(true);
 
     try {
-      // Get current state from Zustand store
+      // Make sure the userInformation in the store has the correct user ID
       const currentState = useZenjinStore.getState();
 
-      // Extract the key pieces of state needed for persistence
-      const stateToSave = {
-        userInformation: currentState.userInformation,
-        tubeState: currentState.tubeState,
-        learningProgress: currentState.learningProgress,
-        lastUpdated: new Date().toISOString()
-      };
+      // If userInformation is missing or has a different userId, update it
+      if (!currentState.userInformation || currentState.userInformation.userId !== activeUserId) {
+        const user = testUsers.find(u => u.id === activeUserId);
+        useZenjinStore.getState().setUserInformation({
+          userId: activeUserId,
+          isAnonymous: false,
+          displayName: user?.name || 'Unknown User',
+          createdAt: new Date().toISOString(),
+          lastActive: new Date().toISOString()
+        });
+      }
 
-      // Save directly to localStorage under a key specific to this user
-      if (typeof window !== 'undefined') {
-        // User-specific store key
-        const storeKey = `multi-user-test-state-${activeUserId}`;
+      // Call the actual store's syncToServer method
+      console.log(`Syncing user ${activeUserId} state to server...`);
+      const result = await useZenjinStore.getState().syncToServer();
 
-        // Save the state
-        localStorage.setItem(storeKey, JSON.stringify(stateToSave));
-
+      if (result) {
         // Update the lastSynced timestamp for this user
         const now = new Date().toISOString();
         const updatedUsers = testUsers.map(user =>
@@ -308,15 +356,27 @@ export default function MultiUserPositionTest() {
         // Save updated user list to localStorage
         localStorage.setItem('multi-user-test-users', JSON.stringify(updatedUsers));
 
-        const result = true;
+        setOperationResult(`Successfully saved state for user ${activeUserId} to server`);
+        addOperationToHistory('Save State', `Saved state for current user to server`);
+      } else {
+        setOperationResult(`Failed to save state for user ${activeUserId} to server`);
+        addOperationToHistory('Save Error', `Failed to save state to server`);
 
-        if (result) {
-          setOperationResult(`Successfully saved state for user ${activeUserId} to localStorage`);
-          addOperationToHistory('Save State', `Saved state for current user to localStorage`);
-        } else {
-          setOperationResult(`Failed to save state for user ${activeUserId}`);
-          addOperationToHistory('Save Error', `Failed to save state`);
-        }
+        // Fallback to localStorage if server sync fails
+        console.log(`Server sync failed, falling back to localStorage...`);
+
+        // User-specific store key for localStorage
+        const storeKey = `multi-user-test-state-${activeUserId}`;
+
+        // Save the state to localStorage as fallback
+        localStorage.setItem(storeKey, JSON.stringify({
+          userInformation: useZenjinStore.getState().userInformation,
+          tubeState: useZenjinStore.getState().tubeState,
+          learningProgress: useZenjinStore.getState().learningProgress,
+          lastUpdated: new Date().toISOString()
+        }));
+
+        setOperationResult(`Server sync failed, saved state to localStorage instead`);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -327,7 +387,7 @@ export default function MultiUserPositionTest() {
     }
   }, [activeUserId, testUsers, addOperationToHistory]);
   
-  // Load active user state from localStorage
+  // Load active user state from server
   const loadActiveUserFromServer = useCallback(async () => {
     if (!activeUserId) {
       setOperationResult('No active user selected');
@@ -337,54 +397,73 @@ export default function MultiUserPositionTest() {
     setIsProcessing(true);
 
     try {
-      if (typeof window !== 'undefined') {
-        // User-specific store key
-        const storeKey = `multi-user-test-state-${activeUserId}`;
+      // Reset the store first to clear any existing data
+      resetStore();
 
-        // Try to load the state
-        const savedStateJson = localStorage.getItem(storeKey);
+      console.log(`Loading state for user ${activeUserId} from server...`);
 
-        if (savedStateJson) {
-          try {
-            // Parse the saved state
-            const savedState = JSON.parse(savedStateJson);
+      // Call the actual store's loadFromServer method
+      const result = await useZenjinStore.getState().loadFromServer(activeUserId);
 
-            // Reset the store first
-            resetStore();
+      if (result) {
+        setOperationResult(`Successfully loaded state for user ${activeUserId} from server`);
+        addOperationToHistory('Load State', `Loaded state for current user from server`);
+        return true;
+      } else {
+        setOperationResult(`Failed to load state from server for user ${activeUserId}`);
+        addOperationToHistory('Load Error', `Failed to load state from server`);
 
-            // Update the store with the saved state
-            const { userInformation, tubeState, learningProgress } = savedState;
+        // Try loading from localStorage as fallback
+        if (typeof window !== 'undefined') {
+          console.log(`Server load failed, trying localStorage fallback...`);
 
-            useZenjinStore.getState().initializeState({
-              userInformation,
-              tubeState,
-              learningProgress,
-              isInitialized: true,
-              lastUpdated: new Date().toISOString()
-            });
+          // User-specific store key
+          const storeKey = `multi-user-test-state-${activeUserId}`;
 
-            setOperationResult(`Successfully loaded state for user ${activeUserId} from localStorage`);
-            addOperationToHistory('Load State', `Loaded state for current user from localStorage`);
-            return true;
-          } catch (parseError) {
-            const errorMessage = parseError instanceof Error ? parseError.message : String(parseError);
-            setOperationResult(`Error parsing saved state: ${errorMessage}`);
-            addOperationToHistory('Load Error', `Failed to parse saved state: ${errorMessage}`);
-            return false;
+          // Try to load the state from localStorage
+          const savedStateJson = localStorage.getItem(storeKey);
+
+          if (savedStateJson) {
+            try {
+              // Parse the saved state
+              const savedState = JSON.parse(savedStateJson);
+
+              // Update the store with the saved state
+              const { userInformation, tubeState, learningProgress } = savedState;
+
+              useZenjinStore.getState().initializeState({
+                userInformation,
+                tubeState,
+                learningProgress,
+                isInitialized: true,
+                lastUpdated: new Date().toISOString()
+              });
+
+              setOperationResult(`Server load failed, loaded from localStorage instead`);
+              addOperationToHistory('Load State', `Loaded state from localStorage fallback`);
+              return true;
+            } catch (parseError) {
+              // If localStorage also fails, initialize fresh state
+              initializeUserState(activeUserId, testUsers.find(u => u.id === activeUserId)?.name || 'Unknown User');
+              setOperationResult(`Both server and localStorage failed. Initialized fresh state.`);
+              addOperationToHistory('Load State', `Initialized fresh state after all fallbacks failed`);
+            }
+          } else {
+            // No saved state in localStorage either, initialize fresh state
+            initializeUserState(activeUserId, testUsers.find(u => u.id === activeUserId)?.name || 'Unknown User');
+            setOperationResult(`No state found for user ${activeUserId}. Initialized fresh state.`);
+            addOperationToHistory('Load State', `Initialized fresh state (no saved state found)`);
           }
-        } else {
-          // No saved state found, initialize fresh state
-          initializeUserState(activeUserId, testUsers.find(u => u.id === activeUserId)?.name || 'Unknown User');
-          setOperationResult(`No saved state found for user ${activeUserId}. Initialized fresh state.`);
-          addOperationToHistory('Load State', `Initialized fresh state (no saved state found)`);
-          return false;
         }
+        return false;
       }
-      return false;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       setOperationResult(`Error loading state: ${errorMessage}`);
       addOperationToHistory('Load Error', errorMessage);
+
+      // Initialize fresh state on error
+      initializeUserState(activeUserId, testUsers.find(u => u.id === activeUserId)?.name || 'Unknown User');
       return false;
     } finally {
       setIsProcessing(false);
