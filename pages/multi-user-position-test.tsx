@@ -64,7 +64,23 @@ const MultiUserPositionTestPage = () => {
     details: string;
   }>>([]);
   
-  // Load test users from localStorage on mount
+  // Copy user ID to clipboard as a shareable link
+  const copyUserLinkToClipboard = useCallback((userId: string) => {
+    const shareableLink = generateShareableLink(userId);
+    if (navigator.clipboard && shareableLink) {
+      navigator.clipboard.writeText(shareableLink)
+        .then(() => {
+          setOperationResult(`Copied shareable link for user ${userId} to clipboard`);
+          addOperationToHistory('Copy Link', `Copied shareable link for cross-browser testing`);
+        })
+        .catch(err => {
+          console.error('Failed to copy link:', err);
+          setOperationResult(`Failed to copy link: ${err.message}`);
+        });
+    }
+  }, [generateShareableLink, addOperationToHistory]);
+
+  // Load test users from localStorage on mount and check URL parameters
   useEffect(() => {
     if (typeof window !== 'undefined') {
       // Add enhanced console logging
@@ -74,12 +90,15 @@ const MultiUserPositionTestPage = () => {
       console.log('- Save each user\'s state to the server using "Save User State"');
       console.log('- Load state back from the server using "Load User State"');
       console.log('- Verify that state persists between different users');
+      console.log('- Use the "Copy Link" button to test across browsers');
 
       // Load saved test users from localStorage
       const savedUsers = localStorage.getItem('multi-user-test-users');
+      let parsedUsers: TestUser[] = [];
+
       if (savedUsers) {
         try {
-          const parsedUsers = JSON.parse(savedUsers) as TestUser[];
+          parsedUsers = JSON.parse(savedUsers) as TestUser[];
           setTestUsers(parsedUsers);
           console.log(`🧪 Loaded ${parsedUsers.length} test users from localStorage`);
         } catch (e) {
@@ -88,9 +107,52 @@ const MultiUserPositionTestPage = () => {
       } else {
         console.log('📝 No saved test users found. Create a test user to begin.');
       }
+
+      // Check URL for user parameter
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlUserId = urlParams.get('user');
+
+      if (urlUserId) {
+        console.log(`🔗 URL contains user ID: ${urlUserId}`);
+
+        // Check if this user exists in our local users
+        const userExists = parsedUsers.some(user => user.id === urlUserId);
+
+        if (!userExists) {
+          // Create a temporary user for this ID
+          const newUser = {
+            id: urlUserId,
+            name: `User ${urlUserId.substring(0, 8)}...`,
+            color: 'blue',
+            lastSynced: new Date().toISOString()
+          };
+
+          // Add to our users list
+          const updatedUsers = [...parsedUsers, newUser];
+          setTestUsers(updatedUsers);
+          localStorage.setItem('multi-user-test-users', JSON.stringify(updatedUsers));
+
+          console.log(`👤 Created new user entry for ID from URL: ${urlUserId}`);
+        }
+
+        // Switch to this user automatically
+        setTimeout(() => {
+          console.log(`🔄 Auto-switching to user from URL: ${urlUserId}`);
+          switchToUser(urlUserId);
+        }, 500);
+      }
     }
   }, []);
   
+  // Generate a shareable link to copy
+  const generateShareableLink = useCallback((userId: string) => {
+    if (typeof window !== 'undefined') {
+      const baseUrl = window.location.origin;
+      return `${baseUrl}/multi-user-position-test?user=${encodeURIComponent(userId)}`;
+    }
+    return '';
+  }, []);
+
   // Add operation to history
   const addOperationToHistory = useCallback((action: string, details: string) => {
     setOperationHistory(prev => [
@@ -566,6 +628,22 @@ const MultiUserPositionTestPage = () => {
       setOperationHistory([]);
     }
   }, []);
+
+  // Clear local state only (keeps user list but clears store)
+  const clearLocalState = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      // Reset the store but keep the user list
+      resetStore();
+
+      // Clear localStorage state for all users (but keep the user list)
+      testUsers.forEach(user => {
+        localStorage.removeItem(`multi-user-test-state-${user.id}`);
+      });
+
+      setOperationResult('Cleared all local state. Test server persistence by loading users again.');
+      addOperationToHistory('Clear State', 'Cleared all local state to test server persistence');
+    }
+  }, [testUsers, addOperationToHistory]);
   
   // Format timestamp
   const formatTime = (timestamp: string) => {
