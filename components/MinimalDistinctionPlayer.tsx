@@ -6,7 +6,9 @@ import { useStitchContent } from '../lib/hooks/useStitchContent';
 import { useZenjinStore } from '../lib/store/zenjinStore';
 
 interface MinimalDistinctionPlayerProps {
-  thread: Thread;
+  thread?: Thread;
+  tubeNumber?: number;
+  tubeData?: any; // Contains tube data with positions or stitches
   onComplete: (results: any) => void;
   onEndSession?: (results: any) => void; // Optional callback for when user manually ends session
   questionsPerSession?: number;
@@ -49,33 +51,75 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
         return;
       }
 
-      // Log the stitch IDs we have in the tube data
+      // ENHANCEMENT: Support both position-based and legacy stitches array-based formats
+
+      // Check if we have position-based tube data (new format)
+      if (activeTube.positions && Object.keys(activeTube.positions).length > 0) {
+        console.log(`Tube ${tubeNumber} has ${Object.keys(activeTube.positions).length} stitches in position-based format`);
+
+        // Convert positions to stitches array for compatibility
+        const positionStitches = Object.entries(activeTube.positions).map(([position, tubePosition]) => ({
+          id: tubePosition.stitchId,
+          position: parseInt(position),
+          skipNumber: tubePosition.skipNumber || 3,
+          distractorLevel: tubePosition.distractorLevel || 'L1'
+        }));
+
+        // Sort by position
+        const sortedStitches = positionStitches.sort((a, b) => a.position - b.position);
+
+        // Check if these stitch IDs are already in the Zustand store
+        const contentCollection = useZenjinStore.getState().contentCollection;
+        const foundInStore = sortedStitches.filter(s =>
+          contentCollection?.stitches?.[s.id]
+        );
+        console.log(`Found ${foundInStore.length} of ${sortedStitches.length} stitches in Zustand store`);
+
+        // Create thread from tube data
+        const thread: Thread = {
+          id: activeTube.threadId || `thread-T${tubeNumber}-001`,
+          name: `Tube ${tubeNumber}`,
+          description: `Learning content for Tube ${tubeNumber}`,
+          stitches: sortedStitches.map(stitch => ({
+            id: stitch.id,
+            name: stitch.id.split('-').pop() || 'Stitch',
+            description: `Stitch ${stitch.id}`,
+            questions: [] // Questions will be loaded from the Zustand store
+          }))
+        };
+
+        setDerivedThread(thread);
+        return;
+      }
+
+      // Legacy format support (stitches array)
       if (activeTube.stitches && activeTube.stitches.length > 0) {
-        console.log(`Tube ${tubeNumber} has ${activeTube.stitches.length} stitches:`,
+        console.log(`Tube ${tubeNumber} has ${activeTube.stitches.length} stitches in legacy format:`,
           activeTube.stitches.map(s => s.id).join(', '));
 
         // Check if these stitch IDs are already in the Zustand store
         const contentCollection = useZenjinStore.getState().contentCollection;
         const foundInStore = activeTube.stitches.filter(s => contentCollection?.stitches?.[s.id]);
         console.log(`Found ${foundInStore.length} of ${activeTube.stitches.length} stitches in Zustand store`);
-      } else {
-        console.error(`Tube ${tubeNumber} has no stitches`);
+
+        // Create thread from tube data
+        const thread: Thread = {
+          id: activeTube.threadId || `thread-T${tubeNumber}-001`,
+          name: `Tube ${tubeNumber}`,
+          description: `Learning content for Tube ${tubeNumber}`,
+          stitches: (activeTube.stitches || []).map(stitch => ({
+            id: stitch.id,
+            name: stitch.id.split('-').pop() || 'Stitch',
+            description: `Stitch ${stitch.id}`,
+            questions: [] // Questions will be loaded from the Zustand store
+          }))
+        };
+
+        setDerivedThread(thread);
+        return;
       }
 
-      // Create thread from tube data
-      const thread: Thread = {
-        id: activeTube.threadId || `thread-T${tubeNumber}-001`,
-        name: `Tube ${tubeNumber}`,
-        description: `Learning content for Tube ${tubeNumber}`,
-        stitches: (activeTube.stitches || []).map(stitch => ({
-          id: stitch.id,
-          name: stitch.id.split('-').pop() || 'Stitch',
-          description: `Stitch ${stitch.id}`,
-          questions: [] // Questions will be loaded from the Zustand store
-        }))
-      };
-
-      setDerivedThread(thread);
+      console.error(`Tube ${tubeNumber} has no stitches (neither positions nor stitches array found)`);
     }
   }, [threadProp, tubeData, tubeNumber]);
   // Initialize Next.js router for client-side navigation
