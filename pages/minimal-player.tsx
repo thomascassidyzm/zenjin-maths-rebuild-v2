@@ -12,6 +12,7 @@ import { useSubscriptionStatus } from '../hooks/useSubscriptionStatus';
 import UserWelcomeButton from '../components/UserWelcomeButton';
 import { useZenjinStore } from '../lib/store/zenjinStore';
 import { useTwoPhaseContentLoading } from '../lib/hooks/useTwoPhaseContentLoading';
+import PlayerWithLoader from '../components/PlayerWithLoader';
 
 // Component for playful loading messages that cycle every 2 seconds
 const LoadingMessage = ({ isAnonymous }: { isAnonymous: boolean }) => {
@@ -587,27 +588,60 @@ export default function MinimalPlayer() {
     console.log(`Using tube ${activeTubeNumber} with ${stitchCount} stitches (${hasPositions ? 'position-based' : 'legacy'} format)`);
 
     try {
+      // Get the current stitch ID from the tube data
+      const currentStitchId = activeTube.currentStitchId || 
+        (hasPositions && Object.values(activeTube.positions)[0]?.stitchId) ||
+        (hasStitches && activeTube.stitches[0]?.id);
+        
+      // If we don't have a stitch ID, we can't load content
+      if (!currentStitchId) {
+        console.error('No stitch ID available for content loading');
+        return (
+          <div className="bg-white/20 backdrop-blur-lg p-8 rounded-xl shadow-xl text-center">
+            <div className="text-white text-xl mb-4">Missing Stitch Data</div>
+            <div className="text-white text-opacity-70 mb-6">
+              Unable to identify which stitch to load. Please try reloading the page.
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-500 transition-colors"
+            >
+              Reload
+            </button>
+          </div>
+        );
+      }
+
+      // Use PlayerWithLoader to handle loading, with MinimalDistinctionPlayer as child
       return (
-        <MinimalDistinctionPlayer
-          tubeNumber={activeTubeNumber}
-          tubeData={tubeData}
-          onComplete={(results) => {
-            console.log('Session complete, recording results', results);
-            // Handle session completion
-            if (results?.totalPoints) {
-              setSessionPoints(prev => prev + results.totalPoints);
-            }
-            recordAnswer(results);
-          }}
-          onEndSession={(results) => {
-            console.log('Session ended manually', results);
-            // Handle manual session ending
-            recordAnswer(results);
-          }}
-          questionsPerSession={10} // Default to 10 questions per session
-          sessionTotalPoints={totalPoints || 0} // Use accumulated points
-          userId={user?.id}
-        />
+        <PlayerWithLoader
+          tubeId={activeTubeNumber}
+          stitchId={currentStitchId}
+          minLoadingTime={3000} // Show the loading screen for at least 3 seconds
+          maxAttempts={3}      // Try up to 3 times to load content
+          onContentLoaded={() => console.log('Content loaded successfully')}
+        >
+          <MinimalDistinctionPlayer
+            tubeNumber={activeTubeNumber}
+            tubeData={tubeData}
+            onComplete={(results) => {
+              console.log('Session complete, recording results', results);
+              // Handle session completion
+              if (results?.totalPoints) {
+                setSessionPoints(prev => prev + results.totalPoints);
+              }
+              recordAnswer(results);
+            }}
+            onEndSession={(results) => {
+              console.log('Session ended manually', results);
+              // Handle manual session ending
+              recordAnswer(results);
+            }}
+            questionsPerSession={10} // Default to 10 questions per session
+            sessionTotalPoints={totalPoints || 0} // Use accumulated points
+            userId={user?.id}
+          />
+        </PlayerWithLoader>
       );
     } catch (error) {
       // Handle any errors during rendering

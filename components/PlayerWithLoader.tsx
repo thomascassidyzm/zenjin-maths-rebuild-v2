@@ -152,6 +152,27 @@ const PlayerWithLoader: React.FC<PlayerWithLoaderProps> = ({
     const maxLoopCount = 3; // Maximum 3 polling attempts to minimize server hits
     let loopCount = 0;
     
+    // Debug the content collection to see what's available
+    try {
+      const storeState = contentCollection;
+      logWithTime(`DEBUG: Current content collection state:`);
+      logWithTime(`- Has collection: ${!!storeState}`);
+      if (storeState) {
+        logWithTime(`- Has stitches: ${!!storeState.stitches}`);
+        logWithTime(`- Stitch count: ${storeState.stitches ? Object.keys(storeState.stitches).length : 0}`);
+        logWithTime(`- Looking for stitch: ${stitchId}`);
+        logWithTime(`- Stitch exists in collection: ${!!(storeState.stitches && storeState.stitches[stitchId])}`);
+        
+        // Check if we have a single stitch match
+        if (storeState.stitches && storeState.stitches[stitchId]) {
+          const stitch = storeState.stitches[stitchId];
+          logWithTime(`- Found stitch in collection with ${stitch.questions?.length || 0} questions`);
+        }
+      }
+    } catch (e) {
+      logWithTime(`Error debugging content collection: ${e}`);
+    }
+    
     const initialCheck = async () => {
       const isLoaded = await checkContentLoaded();
       if (!isLoaded) {
@@ -222,7 +243,7 @@ const PlayerWithLoader: React.FC<PlayerWithLoaderProps> = ({
         intervalId = null;
       }
     };
-  }, [checkContentLoaded, logWithTime]);
+  }, [checkContentLoaded, logWithTime, contentCollection, stitchId]);
 
   // Handle when loading screen animation is complete and minLoadingTime passed
   const handleAnimationComplete = useCallback(() => {
