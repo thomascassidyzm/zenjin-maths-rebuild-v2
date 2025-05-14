@@ -145,26 +145,83 @@ const PlayerWithLoader: React.FC<PlayerWithLoaderProps> = ({
   // Initial content check
   useEffect(() => {
     logWithTime('Starting content loading process');
+    let intervalId: NodeJS.Timeout | null = null;
+    let totalRuntime = 0;
+    const maxRuntime = 10000; // Maximum 10 seconds before giving up
+    const pollingInterval = 1000; // 1 second between checks
+    const maxLoopCount = 3; // Maximum 3 polling attempts to minimize server hits
+    let loopCount = 0;
     
     const initialCheck = async () => {
       const isLoaded = await checkContentLoaded();
       if (!isLoaded) {
-        // If not loaded, set up polling
-        const interval = setInterval(async () => {
-          const success = await checkContentLoaded();
-          if (success) {
-            clearInterval(interval);
-            logWithTime('Content loading polling completed');
-          }
-        }, 1000); // Check every second
+        logWithTime(`Initial content check failed. Will try ${maxLoopCount} more attempts to minimize server load.`);
         
-        return () => clearInterval(interval);
+        // If not loaded, set up polling with strict limits (reduced to minimize server hits)
+        intervalId = setInterval(async () => {
+          // Check if we've exceeded maximum polling attempts
+          if (loopCount >= maxLoopCount) {
+            logWithTime(`⚠️ Maximum polling attempts (${maxLoopCount}) reached, stopping checks`);
+            if (intervalId) {
+              clearInterval(intervalId);
+              intervalId = null;
+            }
+            
+            // Force content loaded state to proceed with error UI
+            setContentLoaded(true);
+            setQuestionsAvailable(false);
+            return;
+          }
+          
+          // Check if we've exceeded maximum runtime
+          totalRuntime += pollingInterval;
+          if (totalRuntime >= maxRuntime) {
+            logWithTime(`⚠️ Maximum polling runtime (${maxRuntime/1000}s) reached, stopping checks`);
+            if (intervalId) {
+              clearInterval(intervalId);
+              intervalId = null;
+            }
+            
+            // Force content loaded state to proceed with error UI
+            setContentLoaded(true);
+            setQuestionsAvailable(false);
+            return;
+          }
+          
+          // Increment loop counter
+          loopCount++;
+          logWithTime(`Polling attempt ${loopCount}/${maxLoopCount} (runtime: ${totalRuntime/1000}s)`);
+          
+          // Try to load content
+          try {
+            const success = await checkContentLoaded();
+            if (success) {
+              logWithTime('✅ Content loaded during polling, clearing interval');
+              if (intervalId) {
+                clearInterval(intervalId);
+                intervalId = null;
+              }
+            }
+          } catch (error) {
+            logWithTime(`⚠️ Error during polling: ${error}`);
+            // On error, increment attempt counter but don't stop - the maxLoopCount will handle this
+          }
+        }, pollingInterval);
       } else {
-        logWithTime('Content loaded on first check');
+        logWithTime('✅ Content loaded on first check');
       }
     };
     
     initialCheck();
+    
+    // Cleanup function - critical to prevent memory leaks and infinite loops
+    return () => {
+      if (intervalId) {
+        logWithTime('Cleaning up content polling interval');
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
   }, [checkContentLoaded, logWithTime]);
 
   // Handle when loading screen animation is complete and minLoadingTime passed
@@ -198,17 +255,44 @@ const PlayerWithLoader: React.FC<PlayerWithLoaderProps> = ({
   const waitForContent = useCallback(() => {
     logWithTime('Setting up content loading check interval');
     
-    const checkInterval = setInterval(() => {
+    let waitInterval: NodeJS.Timeout | null = null;
+    let waitAttempts = 0;
+    const maxWaitAttempts = 6; // Max 3 seconds (6 * 500ms) - reduced to minimize polling
+    
+    waitInterval = setInterval(() => {
+      // Increment attempts
+      waitAttempts++;
+      
       if (contentLoaded) {
         logWithTime('Content is now loaded, hiding loading screen');
         setShowLoadingScreen(false);
-        clearInterval(checkInterval);
+        if (waitInterval) {
+          clearInterval(waitInterval);
+          waitInterval = null;
+        }
+      } else if (waitAttempts >= maxWaitAttempts) {
+        // If we've waited too long, proceed anyway with error state
+        logWithTime(`⚠️ Maximum wait attempts (${maxWaitAttempts}) reached, proceeding with error state`);
+        setContentLoaded(true);
+        setQuestionsAvailable(false);
+        setShowLoadingScreen(false);
+        if (waitInterval) {
+          clearInterval(waitInterval);
+          waitInterval = null;
+        }
       } else {
-        logWithTime('Content still not loaded, continuing to wait');
+        logWithTime(`Content still not loaded, continuing to wait (attempt ${waitAttempts}/${maxWaitAttempts})`);
       }
     }, 500); // Check every half second
     
-    return () => clearInterval(checkInterval);
+    // Cleanup function
+    return () => {
+      if (waitInterval) {
+        logWithTime('Cleaning up wait for content interval');
+        clearInterval(waitInterval);
+        waitInterval = null;
+      }
+    };
   }, [contentLoaded, logWithTime]);
 
   // If showing loading screen, render that
@@ -229,20 +313,42 @@ const PlayerWithLoader: React.FC<PlayerWithLoaderProps> = ({
   if (!questionsAvailable) {
     logWithTime('⚠️ Showing player with no questions available warning');
     return (
-      <div className="flex flex-col items-center justify-center h-full w-full bg-red-700 text-white p-6 rounded-xl">
-        <h2 className="text-2xl font-bold mb-4">Content Loading Issue</h2>
-        <p className="text-lg mb-4">
-          We were unable to load the questions for this session after multiple attempts.
-        </p>
-        <p className="mb-6">
-          You may want to refresh the page or check your network connection.
-        </p>
-        <button 
-          className="bg-white text-red-700 px-4 py-2 rounded font-bold hover:bg-gray-100"
-          onClick={() => window.location.reload()}
-        >
-          Reload Page
-        </button>
+      <div className="flex flex-col items-center justify-center h-full w-full bg-slate-800 p-6">
+        <div className="bg-gradient-to-b from-red-600 to-red-800 rounded-2xl shadow-2xl w-full max-w-md mx-auto overflow-hidden">
+          {/* Top decoration bar */}
+          <div className="h-2 bg-gradient-to-r from-orange-400 via-red-500 to-pink-500"></div>
+          
+          <div className="p-8 text-white">
+            <div className="flex flex-col items-center">
+              {/* Error icon */}
+              <div className="w-16 h-16 rounded-full bg-red-100 text-red-700 flex items-center justify-center mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              
+              <h2 className="text-2xl font-bold mb-4">Content Loading Issue</h2>
+              
+              <p className="text-lg mb-4 text-center">
+                We were unable to load the questions for this session after multiple attempts.
+              </p>
+              
+              <p className="mb-6 text-center text-red-200">
+                You may want to refresh the page or check your network connection.
+              </p>
+              
+              <button 
+                className="bg-white text-red-700 px-6 py-3 rounded-lg font-bold hover:bg-gray-100 shadow-lg transition-all"
+                onClick={() => window.location.reload()}
+              >
+                Reload Page
+              </button>
+            </div>
+          </div>
+          
+          {/* Bottom decoration bar */}
+          <div className="h-2 bg-gradient-to-r from-pink-500 via-red-500 to-orange-400"></div>
+        </div>
       </div>
     );
   }

@@ -94,56 +94,67 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
   const mathSymbols = ['+', '-', '×', '÷', '=', '%', '∑', '∫', 'π', '√'];
   
   return (
-    <div className="loading-screen fixed inset-0 flex flex-col items-center justify-center h-full w-full bg-gradient-to-b from-teal-500 to-teal-700 text-white p-6 shadow-xl">
-      {/* Welcome Message */}
-      <div className="welcome-message text-center mb-8">
-        <h2 className="text-2xl font-bold mb-2">
-          {isAnonymous ? 'Welcome to Zenjin Maths!' : `Welcome back, ${userName || 'learner'}!`}
-        </h2>
-        <p className="text-lg max-w-md mx-auto">
-          For every question, select the best answer. Even if you're not sure, make your best guess. 
-          You'll learn as you go along!
-        </p>
-      </div>
-      
-      {/* Loading Animation */}
-      <div className="relative w-64 h-64 mb-6">
-        {/* Circular progress track */}
-        <div className="absolute inset-0 rounded-full border-8 border-teal-300 opacity-30"></div>
+    <div className="loading-screen fixed inset-0 flex flex-col items-center justify-center h-full w-full bg-gradient-to-b from-slate-800 to-slate-900 p-6">
+      {/* Card Layout */}
+      <div className="bg-gradient-to-b from-teal-500 to-teal-700 rounded-2xl shadow-2xl w-full max-w-md mx-auto overflow-hidden">
+        {/* Top decoration bar */}
+        <div className="h-2 bg-gradient-to-r from-blue-400 via-teal-300 to-emerald-400"></div>
         
-        {/* Spinning progress indicator */}
-        <div className="absolute inset-0 rounded-full border-t-8 border-white animate-spin"></div>
-        
-        {/* Container for math symbols */}
-        <div className="math-symbols-container absolute inset-0 flex items-center justify-center">
-          {/* Floating math symbols */}
-          {mathSymbols.map((symbol, index) => (
-            <div 
-              key={index}
-              className="absolute text-2xl font-bold math-float"
-              style={{
-                animationDelay: `${index * 0.3}s`,
-                top: `${20 + Math.sin(index) * 40}%`,
-                left: `${20 + Math.cos(index) * 40}%`,
-                opacity: 0.8
-              }}
-            >
-              {symbol}
-            </div>
-          ))}
+        <div className="p-8 text-white">
+          {/* Welcome Message */}
+          <div className="welcome-message text-center mb-6">
+            <h2 className="text-2xl font-bold mb-3">
+              {isAnonymous ? 'Welcome to Zenjin Maths!' : `Welcome back, ${userName || 'learner'}!`}
+            </h2>
+            <p className="text-lg max-w-md mx-auto">
+              For every question, select the best answer. Even if you're not sure, make your best guess. 
+              You'll learn as you go along!
+            </p>
+          </div>
           
-          {/* Central countdown (optional) */}
-          {countdown > 0 && (
-            <div className="text-5xl font-bold loading-pulse">
-              {countdown}
+          {/* Loading Animation */}
+          <div className="relative w-56 h-56 mx-auto mb-6">
+            {/* Circular progress track */}
+            <div className="absolute inset-0 rounded-full border-8 border-teal-300 opacity-30"></div>
+            
+            {/* Spinning progress indicator */}
+            <div className="absolute inset-0 rounded-full border-t-8 border-white animate-spin"></div>
+            
+            {/* Container for math symbols */}
+            <div className="math-symbols-container absolute inset-0 flex items-center justify-center">
+              {/* Floating math symbols */}
+              {mathSymbols.map((symbol, index) => (
+                <div 
+                  key={index}
+                  className="absolute text-2xl font-bold math-float"
+                  style={{
+                    animationDelay: `${index * 0.3}s`,
+                    top: `${20 + Math.sin(index) * 40}%`,
+                    left: `${20 + Math.cos(index) * 40}%`,
+                    opacity: 0.8
+                  }}
+                >
+                  {symbol}
+                </div>
+              ))}
+              
+              {/* Central countdown (optional) */}
+              {countdown > 0 && (
+                <div className="text-5xl font-bold loading-pulse">
+                  {countdown}
+                </div>
+              )}
             </div>
-          )}
+          </div>
+          
+          {/* Loading message */}
+          <div className="loading-progress text-center text-lg font-medium loading-pulse">
+            {loadingMessages[messageIndex]}
+          </div>
         </div>
-      </div>
-      
-      {/* Loading message */}
-      <div className="loading-progress text-center text-lg font-medium loading-pulse">
-        {loadingMessages[messageIndex]}
+        
+        {/* Bottom decoration bar */}
+        <div className="h-2 bg-gradient-to-r from-emerald-400 via-teal-300 to-blue-400"></div>
       </div>
       
       {/* Debug info */}

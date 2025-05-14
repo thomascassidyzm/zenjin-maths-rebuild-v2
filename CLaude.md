@@ -9,6 +9,30 @@
 
 The Zenjin Maths app is an educational application that uses a Triple Helix learning system with tubes, threads, and stitches to deliver structured content to users. We've implemented a server-first approach using Zustand for state management, ensuring consistent content delivery for all users.
 
+## MinimalDistinctionPlayer Integration (May 14, 2025)
+
+We've created documentation and example pages to demonstrate how to properly integrate the `MinimalDistinctionPlayer` with our loading screen solution:
+
+1. Created a detailed integration guide at `/docs/LOADING-SCREEN-INTEGRATION.md` with:
+   - Comprehensive examples of different integration patterns
+   - Explanation of how `PlayerWithLoader` and `LoadingScreen` interact
+   - Detailed API documentation for all component props
+   - Troubleshooting guidance for common issues
+
+2. Implemented a demonstration page at `/pages/minimal-player-with-loader.tsx` that shows:
+   - Proper integration of `PlayerWithLoader` with `MinimalDistinctionPlayer`
+   - Content loading using the Zustand store
+   - Handling of both authenticated and anonymous users
+   - Detailed diagnostics for monitoring the loading process
+
+3. Created a client-side component at `/components/MinimalPlayerWithLoaderContent.tsx` with:
+   - Store initialization and error handling
+   - Content buffer filling
+   - Proper integration with the authentication system
+   - Interactive diagnostics panel for debugging
+
+This implementation ensures that `MinimalDistinctionPlayer` correctly works with our loading screen system, preventing race conditions where the player tries to render before content is fully loaded.
+
 ## Clean Start Player Implementation (May 14, 2025)
 
 We implemented a robust testing environment with the Clean Start Player that addresses race conditions, localStorage interference, and SSR issues:
@@ -157,6 +181,9 @@ The implementation ensures that:
 15. `/components/CleanStartPlayerContent.jsx` - Client-side testing UI with localStorage management
 16. `/pages/client-only-session-metrics.jsx` - Client-side only session metrics test
 17. `/components/ClientOnlySessionMetrics.jsx` - Client-side session metrics component
+18. `/docs/LOADING-SCREEN-INTEGRATION.md` - Comprehensive guide for integrating with MinimalDistinctionPlayer
+19. `/pages/minimal-player-with-loader.tsx` - Example page demonstrating MinimalDistinctionPlayer integration
+20. `/components/MinimalPlayerWithLoaderContent.tsx` - Client-side component for MinimalDistinctionPlayer integration
 
 ## Core Implementation Features
 
@@ -281,6 +308,12 @@ Use these test pages to verify the implementation:
    - PlayerWithLoader integration test
    - Tests both anonymous and authenticated user states
    - Verifies proper z-index layering for UI elements
+
+8. `/minimal-player-with-loader` for testing integration with MinimalDistinctionPlayer:
+   - Shows how to properly integrate PlayerWithLoader with MinimalDistinctionPlayer
+   - Demonstrates content loading with the Zustand store
+   - Includes detailed diagnostics for debugging
+   - Handles both authenticated and anonymous user states
 
 ## Anonymous API Call Fix (May 4, 2025)
 
