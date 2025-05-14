@@ -61,6 +61,14 @@ const VersionBadge: React.FC<VersionBadgeProps> = ({
     return null;
   }
   
+  // Generate the current timestamp to ensure we always know when this version was loaded
+  const currentTimestamp = new Date().toISOString();
+  const loadedAt = new Date().toLocaleTimeString();
+  
+  // Format current timestamp in YYMMDD-HHMM format for easy comparison
+  const currentDateTime = new Date();
+  const loadTimeFormatted = `${currentDateTime.getFullYear().toString().slice(2)}${(currentDateTime.getMonth() + 1).toString().padStart(2, '0')}${currentDateTime.getDate().toString().padStart(2, '0')}-${currentDateTime.getHours().toString().padStart(2, '0')}${currentDateTime.getMinutes().toString().padStart(2, '0')}`;
+
   return (
     <div 
       className={`${className} z-[1000] ${expanded || detailed ? 'bg-slate-800' : 'bg-slate-800/70'} 
@@ -84,6 +92,15 @@ const VersionBadge: React.FC<VersionBadgeProps> = ({
               {new Date(buildTimestamp).toLocaleString()}
             </span>
           </div>
+          <div className="flex justify-between items-center">
+            <span className="font-semibold">Loaded at:</span>
+            <span title={currentTimestamp}>
+              {loadedAt}
+            </span>
+          </div>
+          <div className="mt-2 border-t border-slate-700 pt-2 text-amber-300 text-center">
+            Loading Screen Fix: v{packageVersion}-{buildId}
+          </div>
           {detailed && (
             <div className="mt-1 text-xs text-white/70">
               Click to collapse
@@ -102,7 +119,7 @@ const VersionBadge: React.FC<VersionBadgeProps> = ({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span title={`Version ${packageVersion} (Build ${buildId})`}>
-            v{packageVersion}-{buildId}
+            v{packageVersion}-{buildId}/{loadTimeFormatted}
           </span>
         </div>
       )}
