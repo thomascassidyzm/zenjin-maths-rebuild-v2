@@ -8,6 +8,7 @@ import { stateManager } from '../lib/state/stateManager';
 import { contentManager } from '../lib/content/contentManager';
 import Script from 'next/script';
 import Head from 'next/head';
+import VersionBadge from '../components/VersionBadge';
 // EMERGENCY FIX: Disable unnecessary API calls
 import '../lib/disableApiCalls';
 
@@ -72,6 +73,9 @@ function MyApp({ Component, pageProps }: AppProps) {
       
       {/* Main app component */}
       <Component {...pageProps} />
+      
+      {/* Version badge for all pages */}
+      <VersionBadge />
     </AuthProvider>
   );
 }

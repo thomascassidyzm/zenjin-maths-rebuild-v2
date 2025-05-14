@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '../context/AuthContext';
 import UserWelcomeButton from '../components/UserWelcomeButton';
+import VersionBadge from '../components/VersionBadge';
 
 /**
  * Home Page / Player Start
@@ -123,6 +124,7 @@ export default function Home() {
             </div>
           </div>
         </main>
+        
       </div>
     );
   }
@@ -191,6 +193,7 @@ export default function Home() {
           </div>
         </div>
       </main>
+      
     </div>
   );
 }
