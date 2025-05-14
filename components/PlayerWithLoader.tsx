@@ -407,7 +407,7 @@ const PlayerWithLoader: React.FC<PlayerWithLoaderProps> = ({
   if (showWarmUp) {
     logWithTime('🔥 Showing warm-up session while main content loads');
     return (
-      <div className="warm-up-wrapper" style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <div className="warm-up-wrapper" style={{ position: 'relative', width: '100%', height: '100%', background: 'transparent' }}>
         <WarmUpMode
           questionsCount={warmUpQuestionsCount}
           onWarmUpComplete={handleWarmUpComplete}
@@ -420,7 +420,7 @@ const PlayerWithLoader: React.FC<PlayerWithLoaderProps> = ({
   // Otherwise render the player with main content
   logWithTime('✅ Rendering player with loaded content');
   return (
-    <div className="player-content" style={{ position: 'relative', zIndex: 'var(--z-content)' }}>
+    <div className="player-content" style={{ position: 'relative', zIndex: 'var(--z-content)', background: 'transparent' }}>
       {children}
     </div>
   );

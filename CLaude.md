@@ -4,10 +4,28 @@
 - There is no dev server environment
 - All deployments are to Vercel
 - Ensure code changes can be tested directly in production
+- Remember to read this file at the start of each conversation
 
 ## Project Overview
 
 The Zenjin Maths app is an educational application that uses a Triple Helix learning system with tubes, threads, and stitches to deliver structured content to users. We've implemented a server-first approach using Zustand for state management, ensuring consistent content delivery for all users.
+
+## Warm-Up Mode Implementation (May 15, 2025)
+
+We've implemented a warm-up mode feature to address race conditions in content loading:
+
+1. **Warm-Up Questions**: Shows engaging warm-up questions while the main content loads
+2. **Transition Animation**: Provides a smooth transition from warm-up to personalized content
+3. **Eliminated Fallback Questions**: Replaced error-prone fallback question logic with the warm-up approach
+4. **Created Documentation**: Added `/docs/WARM-UP-MODE.md` with implementation details
+
+The implementation includes:
+- `/lib/warmUpQuestions.ts` - Module for loading and managing warm-up questions
+- `/components/WarmUpMode.tsx` - Component for displaying warm-up questions
+- `/components/WarmUpTransition.tsx` - Component for transition animation
+- Enhanced `PlayerWithLoader.tsx` with warm-up mode support
+
+This approach ensures users have immediate engagement with relevant content rather than seeing errors or loading screens, while completely eliminating the race condition issues previously encountered.
 
 ## MinimalDistinctionPlayer Integration (May 14, 2025)
 

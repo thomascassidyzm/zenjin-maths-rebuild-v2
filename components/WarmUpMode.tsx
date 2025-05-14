@@ -109,7 +109,7 @@ const WarmUpMode: React.FC<WarmUpModeProps> = ({
 
   // Render the MinimalDistinctionPlayer with warm-up questions
   return (
-    <div className="relative">
+    <div className="relative" style={{ background: 'transparent' }}>
       {/* Background animations */}
       <div className="absolute inset-0 overflow-hidden z-0">
         <BackgroundBubbles />
@@ -189,7 +189,7 @@ const WarmUpMode: React.FC<WarmUpModeProps> = ({
       `}</style>
       
       {/* Use the standard MinimalDistinctionPlayer with our warm-up data */}
-      <div className="relative z-10">
+      <div className="relative z-10" style={{ background: 'transparent' }}>
         <MinimalDistinctionPlayer
           tubeNumber={1}
           tubeData={warmUpTubeData}
