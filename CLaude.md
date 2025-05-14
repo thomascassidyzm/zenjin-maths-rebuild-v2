@@ -9,6 +9,34 @@
 
 The Zenjin Maths app is an educational application that uses a Triple Helix learning system with tubes, threads, and stitches to deliver structured content to users. We've implemented a server-first approach using Zustand for state management, ensuring consistent content delivery for all users.
 
+## Clean Start Player Implementation (May 14, 2025)
+
+We implemented a robust testing environment with the Clean Start Player that addresses race conditions, localStorage interference, and SSR issues:
+
+1. Created a clean testing environment at `/pages/clean-start-player.jsx` with:
+   - LocalStorage management controls
+   - Manual testing of loading screen
+   - Detailed diagnostics panel
+   - Client-side only rendering with dynamic imports
+
+2. Enhanced the PlayerWithLoader component with improved content loading:
+   - Multiple loading strategies with verification that questions exist
+   - Detailed logging with timestamps for debugging
+   - Proper timing coordination with minimum display time
+   - Error handling with user-friendly messages
+
+3. Improved the LoadingScreen component:
+   - Added more loading messages for a better user experience
+   - Ensured minimum display time is properly enforced
+   - Added optional debug overlay for testing
+   - Fixed timing issues with proper useEffect cleanup
+
+The Clean Start Player ensures:
+1. A completely fresh testing environment (no localStorage interference)
+2. Proper content loading before player rendering
+3. Consistent user experience with appropriate loading screens
+4. Detailed diagnostics for troubleshooting
+
 ## Server-First Content Approach
 
 The application uses a server-first content approach with Zustand as the single source of truth for all content:
@@ -88,6 +116,28 @@ The z-index management system establishes a clear hierarchy:
 
 This ensures that the loading screen always appears on top of other elements while content is loading.
 
+## Session Metrics SSR Fix (May 14, 2025)
+
+We fixed the "useState is not defined" build error in the test-session-metrics page by implementing:
+
+1. **Client-Side Only Rendering**:
+   - Created `/pages/client-only-session-metrics.jsx` with dynamic imports and `ssr: false`
+   - Implemented `/components/ClientOnlySessionMetrics.jsx` for client-side testing
+   - Fixed `test-session-metrics.jsx` with proper client-side detection
+
+2. **Loading Indicators**:
+   - Added static placeholders for server-side rendering
+   - Implemented loading components for dynamic imports
+
+3. **Proper React Hooks Usage**:
+   - Ensured useState and other hooks are only used on the client side
+   - Used proper dependency arrays to avoid unnecessary re-renders
+
+The implementation ensures that:
+1. The build process completes successfully without SSR errors
+2. The session metrics functionality is properly tested
+3. All React hooks are used according to the rules of hooks
+
 ## Key Files Modified/Created
 
 1. `/lib/store/zenjinStore.ts` - Enhanced with stitch fetching and content management
@@ -103,6 +153,10 @@ This ensures that the loading screen always appears on top of other elements whi
 11. `/components/PlayerWithLoader.tsx` - Improved to coordinate content loading with UI
 12. `/styles/zindex.css` - New file for z-index management system
 13. `/pages/test-loading-screen.tsx` - New test page for the loading screen
+14. `/pages/clean-start-player.jsx` - Clean testing environment for the player
+15. `/components/CleanStartPlayerContent.jsx` - Client-side testing UI with localStorage management
+16. `/pages/client-only-session-metrics.jsx` - Client-side only session metrics test
+17. `/components/ClientOnlySessionMetrics.jsx` - Client-side session metrics component
 
 ## Core Implementation Features
 
@@ -114,6 +168,8 @@ This ensures that the loading screen always appears on top of other elements whi
 6. **Efficient Caching**: Content cached in Zustand store for reuse
 7. **Loading Screen**: Welcome screen and loading indicator to handle content loading race conditions
 8. **Z-Index Management**: Centralized system for managing z-index values across the app
+9. **Clean Testing Environment**: Tools for testing with a fresh state
+10. **Client-Side Only Rendering**: Avoiding SSR issues with proper dynamic imports
 
 ## Technical Architecture
 
@@ -126,6 +182,7 @@ This ensures that the loading screen always appears on top of other elements whi
 - State is persisted in localStorage for all user types
 - Authenticated users can also sync state to the server
 - The `LoadingScreen` and `PlayerWithLoader` ensure content is fully loaded before rendering the player
+- The Clean Start Player provides a robust testing environment
 
 ## Position-Based Model Fix (May 13, 2025)
 
@@ -184,32 +241,42 @@ Key changes:
 
 Use these test pages to verify the implementation:
 
-1. `/test-zustand-stitch` for testing the new Zustand-based content system:
+1. `/clean-start-player` for testing with a completely clean environment:
+   - LocalStorage management controls
+   - Manual testing of loading screen and player
+   - Detailed diagnostics for troubleshooting
+
+2. `/client-only-session-metrics` for testing session metrics without SSR issues:
+   - Client-side only rendering to avoid useState errors
+   - Complete mock player with session recording
+   - Works with the updated session metrics system
+
+3. `/test-zustand-stitch` for testing the new Zustand-based content system:
    - Manual fetch test for individual stitches
    - StitchContentLoader component demonstration
    - Raw useStitchContent hook usage
    - Debugging tools for content loading
 
-2. `/test-zustand-player` for testing the ZustandDistinctionPlayer:
+4. `/test-zustand-player` for testing the ZustandDistinctionPlayer:
    - Integrated player UI with Zustand store
    - Full gameplay experience with server-fetched content
    - Session completion and scoring
    - Works with different user types (anonymous, authenticated)
 
-3. `/offline-first-test` for testing content buffering:
+5. `/offline-first-test` for testing content buffering:
    - Different user types (anonymous, free, premium)
    - Feature flag status visualization
    - Content buffer statistics
    - Immediate startup across user types
 
-4. `/stitch-completion-test` for testing state persistence:
+6. `/stitch-completion-test` for testing state persistence:
    - Complete stitches with perfect scores (20/20)
    - Cycle through tubes
    - Track stitch reposition following the Triple Helix pattern
    - Test syncing state to and loading from the server
    - Visualize state changes in a detailed history view
 
-5. `/test-loading-screen` for testing the loading screen implementation:
+7. `/test-loading-screen` for testing the loading screen implementation:
    - Direct LoadingScreen component demonstration
    - PlayerWithLoader integration test
    - Tests both anonymous and authenticated user states
@@ -256,6 +323,8 @@ The improved implementation:
 5. The `/hybrid-player` page demonstrates the recommended implementation
 6. Future improvements could include offline support via service workers
 7. The z-index management system should be extended to cover all UI components
+8. Consider adding loading progress indicators to the loading screen
+9. Extend the clean start player approach to other testing scenarios
 
 ## Important Instructions for Claude
 

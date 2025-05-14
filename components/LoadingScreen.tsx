@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 // Loading messages that cycle every 3 seconds
 const loadingMessages = [
@@ -7,7 +7,11 @@ const loadingMessages = [
   "Lining up the perfect questions...",
   "Calculating the optimal sequence...",
   "Preparing your learning journey...",
-  "Organizing the math puzzles..."
+  "Organizing the math puzzles...",
+  "Setting up personalized content...",
+  "Generating optimal learning path...",
+  "Warming up problem-solving circuits...",
+  "Connecting to the world of numbers..."
 ];
 
 interface LoadingScreenProps {
@@ -15,6 +19,7 @@ interface LoadingScreenProps {
   userName?: string;
   onAnimationComplete?: () => void;
   minDisplayTime?: number; // minimum time to show in ms
+  showDebugInfo?: boolean; // whether to show debug information
 }
 
 /**
@@ -25,11 +30,14 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
   isAnonymous = true,
   userName,
   onAnimationComplete,
-  minDisplayTime = 2500 // show for at least 2.5 seconds
+  minDisplayTime = 3000, // show for at least 3 seconds
+  showDebugInfo = false
 }) => {
   const [messageIndex, setMessageIndex] = useState(0);
   const [countdown, setCountdown] = useState(3);
   const [animationComplete, setAnimationComplete] = useState(false);
+  const [loadingStartTime] = useState(Date.now());
+  const [timeElapsed, setTimeElapsed] = useState(0);
   
   // Cycle through loading messages
   useEffect(() => {
@@ -40,16 +48,36 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
     return () => clearInterval(messageInterval);
   }, []);
   
+  // Update elapsed time for debugging
+  useEffect(() => {
+    if (showDebugInfo) {
+      const updateInterval = setInterval(() => {
+        setTimeElapsed(Date.now() - loadingStartTime);
+      }, 100);
+      
+      return () => clearInterval(updateInterval);
+    }
+  }, [loadingStartTime, showDebugInfo]);
+  
   // Ensure minimum display time
   useEffect(() => {
+    // Log when this effect runs
+    console.log(`LoadingScreen: Setting up minimum display time of ${minDisplayTime}ms`);
+    
     const timer = setTimeout(() => {
+      console.log(`LoadingScreen: Minimum display time of ${minDisplayTime}ms reached`);
       setAnimationComplete(true);
+      
       if (onAnimationComplete) {
+        console.log('LoadingScreen: Calling onAnimationComplete callback');
         onAnimationComplete();
       }
     }, minDisplayTime);
     
-    return () => clearTimeout(timer);
+    return () => {
+      console.log('LoadingScreen: Cleaning up minimum display time timer');
+      clearTimeout(timer);
+    };
   }, [minDisplayTime, onAnimationComplete]);
   
   // Simple countdown effect
@@ -117,6 +145,15 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
       <div className="loading-progress text-center text-lg font-medium loading-pulse">
         {loadingMessages[messageIndex]}
       </div>
+      
+      {/* Debug info */}
+      {showDebugInfo && (
+        <div className="fixed bottom-4 left-4 bg-black bg-opacity-50 p-2 rounded text-xs font-mono">
+          <div>Time elapsed: {Math.floor(timeElapsed / 100) / 10}s</div>
+          <div>Min time: {minDisplayTime / 1000}s</div>
+          <div>Animation complete: {animationComplete ? 'Yes' : 'No'}</div>
+        </div>
+      )}
     </div>
   );
 };
