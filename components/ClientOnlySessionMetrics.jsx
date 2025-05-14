@@ -1,15 +1,12 @@
-/**
- * Test Session Metrics Page
- * 
- * Simple test page to verify the session metrics recording through Zustand
- * and test the bubble animations for visual consistency.
- */
-
 import React, { useState, useEffect } from 'react';
-import dynamic from 'next/dynamic';
+import { useZenjinStore } from '../lib/store';
+import SessionMetricsProvider from '../lib/components/SessionMetricsProvider';
 import styles from '../styles/test-session-metrics.module.css';
 
-// Mock player component for testing - client-side only
+/**
+ * Mock player component for testing session metrics
+ * This is only rendered on the client side
+ */
 const MockPlayerComponent = (props) => {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [results, setResults] = useState([]);
@@ -167,68 +164,34 @@ const MockPlayerComponent = (props) => {
   );
 };
 
-// Dynamically load the SessionMetricsProvider component, but only on the client side
-const SessionMetricsProvider = dynamic(
-  () => import('../lib/components/SessionMetricsProvider'),
-  { ssr: false }
-);
-
-// Render a placeholder during server-side rendering
-const ServerSidePlaceholder = () => (
-  <div className={styles.testPage}>
-    <h1>Test Session Metrics</h1>
-    <div className={styles.description}>
-      <p>Loading session metrics test...</p>
-    </div>
-    <div className={styles.playerWrapper}>
-      <div className={styles.playerContainer}>
-        <p>Loading test player...</p>
-      </div>
-    </div>
-  </div>
-);
-
-// Main test page with client-side only rendering
-const TestSessionMetricsPage = () => {
-  // Only render the full component on the client side
-  const [isClient, setIsClient] = useState(false);
-  
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-  
-  // Return the placeholder during server-side rendering
-  if (!isClient) {
-    return <ServerSidePlaceholder />;
-  }
-  
-  // Import and use Zustand store only on the client side
-  const { useZenjinStore } = require('../lib/store');
+/**
+ * Main client-only test page component
+ * Only rendered on the client side to avoid SSR issues
+ */
+const ClientOnlySessionMetrics = () => {
   const { resetStore, initializeState } = useZenjinStore();
   
   // Initialize store with test data
   useEffect(() => {
-    if (isClient) {
-      // Reset store to clean state
-      resetStore();
-      
-      // Set some test data
-      initializeState({
-        userInformation: {
-          userId: 'test-user-id',
-          isAnonymous: false,
-          displayName: 'Test User',
-          createdAt: new Date().toISOString(),
-          lastActive: new Date().toISOString()
-        },
-        isInitialized: true
-      });
-    }
-  }, [isClient, resetStore, initializeState]);
+    // Reset store to clean state
+    resetStore();
+    
+    // Set some test data
+    initializeState({
+      userInformation: {
+        userId: 'test-user-id',
+        isAnonymous: false,
+        displayName: 'Test User',
+        createdAt: new Date().toISOString(),
+        lastActive: new Date().toISOString()
+      },
+      isInitialized: true
+    });
+  }, [resetStore, initializeState]);
   
   return (
     <div className={styles.testPage}>
-      <h1>Test Session Metrics</h1>
+      <h1>Client-Only Session Metrics</h1>
       
       <div className={styles.description}>
         <p>This page tests:</p>
@@ -238,6 +201,9 @@ const TestSessionMetricsPage = () => {
           <li>Bubble animations for visual consistency</li>
           <li>Teal color scheme (instead of blue)</li>
         </ol>
+        <p className="text-green-500 font-bold mt-2">
+          This page is rendered entirely on the client side to avoid SSR issues.
+        </p>
       </div>
       
       <div className={styles.playerWrapper}>
@@ -255,4 +221,4 @@ const TestSessionMetricsPage = () => {
   );
 };
 
-export default TestSessionMetricsPage;
+export default ClientOnlySessionMetrics;
