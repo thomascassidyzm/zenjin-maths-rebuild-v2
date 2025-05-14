@@ -42,6 +42,52 @@ The server-first content approach has these key components:
    - Phase 1: Load only the most critical stitches (current and next few)
    - Phase 2: Load the remaining stitches in the background
 
+## Loading Screen Implementation (May 14, 2025)
+
+We implemented a welcome/loading screen with z-index management to address race conditions in content loading:
+
+1. Created a z-index management system in `/styles/zindex.css` for consistent layering throughout the app
+2. Enhanced the `LoadingScreen.tsx` component with proper z-index classes and positioning
+3. Improved `PlayerWithLoader.tsx` to coordinate content loading with UI rendering
+4. Created a test page at `/pages/test-loading-screen.tsx` to demonstrate the loading screen
+5. Updated `globals.css` to import the new z-index management system
+
+Key features of the loading screen implementation:
+- Displays a welcome message and instructions while content loads
+- Shows animated math symbols and cycling loading messages
+- Ensures a minimum display time to prevent flickering
+- Uses proper z-index management for layering
+- Handles both anonymous and authenticated user states
+
+The z-index management system establishes a clear hierarchy:
+```css
+:root {
+  /* Base layers */
+  --z-background: -10;
+  --z-default: 1;
+  --z-content: 10;
+  
+  /* Interactive components */
+  --z-buttons: 20;
+  --z-navigation: 30;
+  --z-dropdown: 40;
+  --z-tooltips: 50;
+  
+  /* Overlays */
+  --z-overlays: 100;
+  --z-modals: 200;
+  --z-notifications: 300;
+  
+  /* Loading screens */
+  --z-loading-screen: 500;
+  
+  /* Critical UI elements that should always be on top */
+  --z-critical: 1000;
+}
+```
+
+This ensures that the loading screen always appears on top of other elements while content is loading.
+
 ## Key Files Modified/Created
 
 1. `/lib/store/zenjinStore.ts` - Enhanced with stitch fetching and content management
@@ -53,6 +99,10 @@ The server-first content approach has these key components:
 7. `/pages/test-zustand-stitch.tsx` - Test page for verifying stitch fetching
 8. `/pages/test-zustand-player.tsx` - Test page for the ZustandDistinctionPlayer
 9. `/pages/integrated-player.tsx` - Demo page showing full integration with the app
+10. `/components/LoadingScreen.tsx` - Enhanced with z-index classes and proper positioning
+11. `/components/PlayerWithLoader.tsx` - Improved to coordinate content loading with UI
+12. `/styles/zindex.css` - New file for z-index management system
+13. `/pages/test-loading-screen.tsx` - New test page for the loading screen
 
 ## Core Implementation Features
 
@@ -62,6 +112,8 @@ The server-first content approach has these key components:
 4. **React Hooks**: Custom hooks for simplified component integration
 5. **UI Components**: Standardized loading and error handling
 6. **Efficient Caching**: Content cached in Zustand store for reuse
+7. **Loading Screen**: Welcome screen and loading indicator to handle content loading race conditions
+8. **Z-Index Management**: Centralized system for managing z-index values across the app
 
 ## Technical Architecture
 
@@ -73,6 +125,7 @@ The server-first content approach has these key components:
 - `ZustandDistinctionPlayer` provides the main UI for stitch interaction
 - State is persisted in localStorage for all user types
 - Authenticated users can also sync state to the server
+- The `LoadingScreen` and `PlayerWithLoader` ensure content is fully loaded before rendering the player
 
 ## Position-Based Model Fix (May 13, 2025)
 
@@ -156,6 +209,12 @@ Use these test pages to verify the implementation:
    - Test syncing state to and loading from the server
    - Visualize state changes in a detailed history view
 
+5. `/test-loading-screen` for testing the loading screen implementation:
+   - Direct LoadingScreen component demonstration
+   - PlayerWithLoader integration test
+   - Tests both anonymous and authenticated user states
+   - Verifies proper z-index layering for UI elements
+
 ## Anonymous API Call Fix (May 4, 2025)
 
 We eliminated unnecessary API calls to `/api/user-stitches` for anonymous users by:
@@ -196,6 +255,7 @@ The improved implementation:
 4. All content is cached in the Zustand store for efficient access
 5. The `/hybrid-player` page demonstrates the recommended implementation
 6. Future improvements could include offline support via service workers
+7. The z-index management system should be extended to cover all UI components
 
 ## Important Instructions for Claude
 

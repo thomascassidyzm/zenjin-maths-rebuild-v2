@@ -1,0 +1,48 @@
+/**
+ * Z-index management system
+ * This file establishes a clear hierarchy for z-index values across the application
+ */
+
+:root {
+  /* Base layers */
+  --z-background: -10;
+  --z-default: 1;
+  --z-content: 10;
+  
+  /* Interactive components */
+  --z-buttons: 20;
+  --z-navigation: 30;
+  --z-dropdown: 40;
+  --z-tooltips: 50;
+  
+  /* Overlays */
+  --z-overlays: 100;
+  --z-modals: 200;
+  --z-notifications: 300;
+  
+  /* Loading screens */
+  --z-loading-screen: 500;
+  
+  /* Critical UI elements that should always be on top */
+  --z-critical: 1000;
+}
+
+/* Loading screen class */
+.loading-screen {
+  z-index: var(--z-loading-screen);
+}
+
+/* Animation container for math symbols */
+.math-symbols-container {
+  z-index: calc(var(--z-loading-screen) + 10);
+}
+
+/* Welcome message */
+.welcome-message {
+  z-index: calc(var(--z-loading-screen) + 20);
+}
+
+/* Progress indicator */
+.loading-progress {
+  z-index: calc(var(--z-loading-screen) + 30);
+}

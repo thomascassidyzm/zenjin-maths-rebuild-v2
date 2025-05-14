@@ -27,18 +27,25 @@ const SessionMetricsProvider = ({
     addStitchToCollection,
     contentCollection 
   } = useZenjinStore();
-
+  
+  // Add state to track content loading status
+  const [contentLoaded, setContentLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  
   // Prefetch content to ensure it's available before recording
   const ensureContentLoaded = useCallback(async () => {
     if (!stitchId) return false;
     
     try {
+      setIsLoading(true);
       console.log('Ensuring content is loaded for stitch:', stitchId);
       
       // Check if content is already in collection
       const existingStitch = contentCollection?.stitches?.[stitchId];
       if (existingStitch && existingStitch.questions && existingStitch.questions.length > 0) {
         console.log('Stitch already loaded in content collection');
+        setContentLoaded(true);
+        setIsLoading(false);
         return true;
       }
       
@@ -48,12 +55,14 @@ const SessionMetricsProvider = ({
       
       if (!stitch) {
         console.error('Failed to prefetch stitch content for', stitchId);
+        setIsLoading(false);
         return false;
       }
       
       // Verify questions are loaded correctly
       if (!stitch.questions || stitch.questions.length === 0) {
         console.error('Stitch has no questions:', stitchId);
+        setIsLoading(false);
         return false;
       }
       
