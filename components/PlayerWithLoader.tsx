@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useZenjinStore } from '../lib/store';
 import LoadingScreen from './LoadingScreen';
 import { useAuth } from '../context/AuthContext';
+import WarmUpMode from './WarmUpMode';
+import WarmUpTransition from './WarmUpTransition';
 
 interface PlayerWithLoaderProps {
   children: React.ReactNode;
@@ -10,6 +12,8 @@ interface PlayerWithLoaderProps {
   minLoadingTime?: number;
   maxAttempts?: number;
   onContentLoaded?: () => void;
+  useWarmUp?: boolean;
+  warmUpQuestionsCount?: number;
 }
 
 /**
@@ -22,10 +26,14 @@ const PlayerWithLoader: React.FC<PlayerWithLoaderProps> = ({
   stitchId,
   minLoadingTime = 3000, // Minimum time to show loading screen (ms)
   maxAttempts = 10,     // Maximum attempts to load content
-  onContentLoaded
+  onContentLoaded,
+  useWarmUp = true,     // Use warm-up mode by default
+  warmUpQuestionsCount = 10 // Number of warm-up questions to show
 }) => {
   const [contentLoaded, setContentLoaded] = useState(false);
   const [showLoadingScreen, setShowLoadingScreen] = useState(true);
+  const [showWarmUp, setShowWarmUp] = useState(useWarmUp);
+  const [showTransition, setShowTransition] = useState(false);
   const [contentCheckAttempts, setContentCheckAttempts] = useState(0);
   const [questionsAvailable, setQuestionsAvailable] = useState(false);
   const [loadingStartTime] = useState(Date.now());
@@ -271,6 +279,19 @@ const PlayerWithLoader: React.FC<PlayerWithLoaderProps> = ({
       waitForContent();
     }
   }, [contentLoaded, loadingStartTime, minLoadingTime, logWithTime]);
+  
+  // Handle when warm-up is complete
+  const handleWarmUpComplete = useCallback(() => {
+    logWithTime('Warm-up session completed, showing transition animation');
+    setShowTransition(true);
+  }, [logWithTime]);
+  
+  // Handle when transition animation is complete
+  const handleTransitionComplete = useCallback(() => {
+    logWithTime('Transition animation completed, switching to main content');
+    setShowTransition(false);
+    setShowWarmUp(false);
+  }, [logWithTime]);
 
   // Function to wait for content loading to complete
   const waitForContent = useCallback(() => {
@@ -330,8 +351,8 @@ const PlayerWithLoader: React.FC<PlayerWithLoaderProps> = ({
     );
   }
   
-  // Show warning if content loaded but no questions available
-  if (!questionsAvailable) {
+  // Show warning if content loaded but no questions available (and not using warm-up)
+  if (!questionsAvailable && !showWarmUp) {
     logWithTime('⚠️ Showing player with no questions available warning');
     return (
       <div className="flex flex-col items-center justify-center h-full w-full bg-slate-800 p-6">
@@ -374,7 +395,29 @@ const PlayerWithLoader: React.FC<PlayerWithLoaderProps> = ({
     );
   }
   
-  // Otherwise render the player
+  // If transition is showing, render the transition component
+  if (showTransition) {
+    logWithTime('🚀 Showing transition animation from warm-up to main content');
+    return (
+      <WarmUpTransition onTransitionComplete={handleTransitionComplete} duration={3000} />
+    );
+  }
+  
+  // If warm-up mode is enabled and content is loaded (or loading), show warm-up
+  if (showWarmUp) {
+    logWithTime('🔥 Showing warm-up session while main content loads');
+    return (
+      <div className="warm-up-wrapper" style={{ position: 'relative', width: '100%', height: '100%' }}>
+        <WarmUpMode
+          questionsCount={warmUpQuestionsCount}
+          onWarmUpComplete={handleWarmUpComplete}
+          userId={user?.id}
+        />
+      </div>
+    );
+  }
+  
+  // Otherwise render the player with main content
   logWithTime('✅ Rendering player with loaded content');
   return (
     <div className="player-content" style={{ position: 'relative', zIndex: 'var(--z-content)' }}>

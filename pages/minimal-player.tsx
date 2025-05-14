@@ -620,6 +620,8 @@ export default function MinimalPlayer() {
           minLoadingTime={3000} // Show the loading screen for at least 3 seconds
           maxAttempts={3}      // Try up to 3 times to load content
           onContentLoaded={() => console.log('Content loaded successfully')}
+          useWarmUp={true}     // Enable the warm-up mode
+          warmUpQuestionsCount={10} // Show 10 warm-up questions
         >
           <MinimalDistinctionPlayer
             tubeNumber={activeTubeNumber}
@@ -637,7 +639,7 @@ export default function MinimalPlayer() {
               // Handle manual session ending
               recordAnswer(results);
             }}
-            questionsPerSession={10} // Default to 10 questions per session
+            questionsPerSession={20} // Increase to 20 questions per session to allow for stitch completion
             sessionTotalPoints={totalPoints || 0} // Use accumulated points
             userId={user?.id}
           />

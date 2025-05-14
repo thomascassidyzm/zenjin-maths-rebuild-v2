@@ -319,22 +319,48 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     }
 
     // Helper function to use fallback questions when needed
-    function useFallbackQuestions() {
+    function useFallbackQuestions(stitchToUse = stitch) {
+      console.log(`DEBUG: Using fallback questions for stitch ${stitchToUse.id}`);
+      
+      // Debug the content collection state before using fallbacks
+      const contentCollection = useZenjinStore.getState().contentCollection;
+      console.log(`DEBUG: Content collection state when falling back:`, {
+        hasCollection: !!contentCollection,
+        stitchCount: contentCollection?.stitches ? Object.keys(contentCollection.stitches).length : 0,
+        hasStitchInStore: contentCollection?.stitches ? !!contentCollection.stitches[stitchToUse.id] : false,
+        questionsInStore: contentCollection?.stitches && contentCollection.stitches[stitchToUse.id]?.questions ? 
+          contentCollection.stitches[stitchToUse.id].questions.length : 0
+      });
+      
+      // If the stitch exists in store with questions, use them
+      if (contentCollection?.stitches && 
+          contentCollection.stitches[stitchToUse.id] && 
+          contentCollection.stitches[stitchToUse.id].questions &&
+          contentCollection.stitches[stitchToUse.id].questions.length > 0) {
+        
+        console.log(`RECOVERY: Found ${contentCollection.stitches[stitchToUse.id].questions.length} questions in store for stitch ${stitchToUse.id}, using those instead of fallbacks`);
+        stitchToUse.questions = [...contentCollection.stitches[stitchToUse.id].questions];
+        return;
+      }
+      
+      // Initialize questions array if it doesn't exist
+      if (!stitchToUse.questions) {
+        stitchToUse.questions = [];
+      }
+      
       // Check if the questions array has valid questions
       // NOTE: This is a safety measure - the questions should already be properly formatted
-      const validQuestions = stitch.questions.filter(q => (
+      const validQuestions = stitchToUse.questions.filter(q => (
         q.text && q.correctAnswer && q.distractors &&
         q.distractors.L1 && q.distractors.L2 && q.distractors.L3
       ));
 
       if (validQuestions.length === 0) {
-        console.error(`No valid questions found for stitch ${stitch.id} in tube ${tubeNumber}`);
+        console.error(`No valid questions found for stitch ${stitchToUse.id} in tube ${tubeNumber}`);
 
         // For anonymous users, always provide sample math questions
         // This ensures consistent experience for all user types
         const isAnonymousUser = !userId || userId.startsWith('anon-');
-
-        if (isAnonymousUser) {
           // Use basic math questions for anonymous users to ensure they have a good experience
           let sampleQuestions = [];
 
