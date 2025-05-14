@@ -306,25 +306,25 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
             }
           } else {
             console.warn(`ERROR: Failed to fetch valid questions for stitch ${stitch.id} from Zustand store`);
-            useFallbackQuestions(stitch);
+            validateContent(stitch);
           }
         }).catch(error => {
           console.error(`ERROR: Failed to fetch stitch ${stitch.id} from Zustand store:`, error);
-          useFallbackQuestions(stitch);
+          validateContent(stitch);
         });
       } catch (error) {
         console.error(`ERROR: Exception while fetching stitch ${stitch.id}:`, error);
-        useFallbackQuestions(stitch);
+        validateContent(stitch);
       }
     }
 
-    // Helper function to use fallback questions when needed
-    function useFallbackQuestions(stitchToUse = stitch) {
-      console.log(`DEBUG: Using fallback questions for stitch ${stitchToUse.id}`);
+    // Helper function to check if the content is properly loaded
+    function validateContent(stitchToUse = stitch) {
+      console.log(`DEBUG: Validating content for stitch ${stitchToUse.id}`);
       
-      // Debug the content collection state before using fallbacks
+      // Debug the content collection state
       const contentCollection = useZenjinStore.getState().contentCollection;
-      console.log(`DEBUG: Content collection state when falling back:`, {
+      console.log(`DEBUG: Content collection state:`, {
         hasCollection: !!contentCollection,
         stitchCount: contentCollection?.stitches ? Object.keys(contentCollection.stitches).length : 0,
         hasStitchInStore: contentCollection?.stitches ? !!contentCollection.stitches[stitchToUse.id] : false,
@@ -338,9 +338,9 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
           contentCollection.stitches[stitchToUse.id].questions &&
           contentCollection.stitches[stitchToUse.id].questions.length > 0) {
         
-        console.log(`RECOVERY: Found ${contentCollection.stitches[stitchToUse.id].questions.length} questions in store for stitch ${stitchToUse.id}, using those instead of fallbacks`);
+        console.log(`FOUND: ${contentCollection.stitches[stitchToUse.id].questions.length} questions in store for stitch ${stitchToUse.id}`);
         stitchToUse.questions = [...contentCollection.stitches[stitchToUse.id].questions];
-        return;
+        return true;
       }
       
       // Initialize questions array if it doesn't exist
@@ -349,189 +349,36 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       }
       
       // Check if the questions array has valid questions
-      // NOTE: This is a safety measure - the questions should already be properly formatted
       const validQuestions = stitchToUse.questions.filter(q => (
         q.text && q.correctAnswer && q.distractors &&
         q.distractors.L1 && q.distractors.L2 && q.distractors.L3
       ));
 
-      if (validQuestions.length === 0) {
-        console.error(`No valid questions found for stitch ${stitchToUse.id} in tube ${tubeNumber}`);
-
-        // For anonymous users, always provide sample math questions
-        // This ensures consistent experience for all user types
-        const isAnonymousUser = !userId || userId.startsWith('anon-');
-          // Use basic math questions for anonymous users to ensure they have a good experience
-          let sampleQuestions = [];
-
-          // Try to determine tube type from stitch ID to provide appropriate questions
-          const tubeMatch = stitch.id.match(/stitch-T(\d+)-/i);
-          const tubeNum = tubeMatch ? parseInt(tubeMatch[1]) : tubeNumber || 1;
-
-          if (tubeNum === 1) {
-            // Tube 1: Number Facts - counting, comparison, sequences
-            sampleQuestions = [
-              {
-                id: `${stitch.id}-sample-1`,
-                text: 'What number comes after 5?',
-                correctAnswer: '6',
-                distractors: { L1: '7', L2: '4', L3: '5' }
-              },
-              {
-                id: `${stitch.id}-sample-2`,
-                text: 'Which is greater: 8 or 4?',
-                correctAnswer: '8',
-                distractors: { L1: '4', L2: 'They are equal', L3: 'Cannot compare' }
-              },
-              {
-                id: `${stitch.id}-sample-3`,
-                text: 'What comes next: 2, 4, 6, ?',
-                correctAnswer: '8',
-                distractors: { L1: '7', L2: '10', L3: '9' }
-              },
-              {
-                id: `${stitch.id}-sample-4`,
-                text: 'Count to 10. What number comes after 7?',
-                correctAnswer: '8',
-                distractors: { L1: '6', L2: '9', L3: '7' }
-              },
-              {
-                id: `${stitch.id}-sample-5`,
-                text: 'What is the smallest number: 3, 7, or 2?',
-                correctAnswer: '2',
-                distractors: { L1: '3', L2: '7', L3: '10' }
-              }
-            ];
-          } else if (tubeNum === 2) {
-            // Tube 2: Basic Operations - addition, subtraction
-            sampleQuestions = [
-              {
-                id: `${stitch.id}-sample-1`,
-                text: '3 + 5',
-                correctAnswer: '8',
-                distractors: { L1: '7', L2: '9', L3: '6' }
-              },
-              {
-                id: `${stitch.id}-sample-2`,
-                text: '7 - 2',
-                correctAnswer: '5',
-                distractors: { L1: '4', L2: '6', L3: '3' }
-              },
-              {
-                id: `${stitch.id}-sample-3`,
-                text: '4 + 6',
-                correctAnswer: '10',
-                distractors: { L1: '8', L2: '12', L3: '9' }
-              },
-              {
-                id: `${stitch.id}-sample-4`,
-                text: '10 - 5',
-                correctAnswer: '5',
-                distractors: { L1: '4', L2: '6', L3: '15' }
-              },
-              {
-                id: `${stitch.id}-sample-5`,
-                text: '9 + 7',
-                correctAnswer: '16',
-                distractors: { L1: '15', L2: '17', L3: '14' }
-              }
-            ];
-          } else if (tubeNum === 3) {
-            // Tube 3: Problem Solving - word problems
-            sampleQuestions = [
-              {
-                id: `${stitch.id}-sample-1`,
-                text: 'Sarah has 5 apples. Tom gives her 3 more. How many apples does Sarah have now?',
-                correctAnswer: '8',
-                distractors: { L1: '7', L2: '2', L3: '15' }
-              },
-              {
-                id: `${stitch.id}-sample-2`,
-                text: 'Jack has 10 stickers. He gives 4 to his friend. How many stickers does Jack have left?',
-                correctAnswer: '6',
-                distractors: { L1: '14', L2: '4', L3: '5' }
-              },
-              {
-                id: `${stitch.id}-sample-3`,
-                text: 'There are 8 birds on a tree. 3 more birds join them. How many birds are there now?',
-                correctAnswer: '11',
-                distractors: { L1: '10', L2: '12', L3: '5' }
-              },
-              {
-                id: `${stitch.id}-sample-4`,
-                text: 'Emma has 9 sweets. She eats 4 sweets. How many sweets does she have left?',
-                correctAnswer: '5',
-                distractors: { L1: '13', L2: '4', L3: '6' }
-              },
-              {
-                id: `${stitch.id}-sample-5`,
-                text: 'There are 7 children on the bus. At the stop, 3 more children get on. How many children are on the bus now?',
-                correctAnswer: '10',
-                distractors: { L1: '4', L2: '9', L3: '11' }
-              }
-            ];
-          } else {
-            // Default mixed questions
-            sampleQuestions = [
-              {
-                id: `${stitch.id}-sample-1`,
-                text: '3 + 5',
-                correctAnswer: '8',
-                distractors: { L1: '7', L2: '9', L3: '6' }
-              },
-              {
-                id: `${stitch.id}-sample-2`,
-                text: '7 - 2',
-                correctAnswer: '5',
-                distractors: { L1: '4', L2: '6', L3: '3' }
-              },
-              {
-                id: `${stitch.id}-sample-3`,
-                text: '4 × 3',
-                correctAnswer: '12',
-                distractors: { L1: '6', L2: '10', L3: '9' }
-              },
-              {
-                id: `${stitch.id}-sample-4`,
-                text: '10 ÷ 2',
-                correctAnswer: '5',
-                distractors: { L1: '4', L2: '6', L3: '2' }
-              },
-              {
-                id: `${stitch.id}-sample-5`,
-                text: '9 + 7',
-                correctAnswer: '16',
-                distractors: { L1: '15', L2: '17', L3: '6' }
-              }
-            ];
-          }
-
-          // Set the sample questions on the stitch
-          stitch.questions = sampleQuestions;
-          console.log(`Using ${sampleQuestions.length} tube-specific sample questions for user (stitch ${stitch.id})`);
-        } else {
-          // For authenticated users, show the error message
-          const errorQuestions = [
-            {
-              id: `${stitch.id}-error-1`,
-              text: 'Content missing. Please contact support.',
-              correctAnswer: 'Contact support',
-              distractors: {
-                L1: 'Try again later',
-                L2: 'Refresh page',
-                L3: 'Check settings'
-              }
-            }
-          ];
-
-          // Set the error questions on the stitch
-          stitch.questions = errorQuestions;
-          console.log(`Using error placeholder question for stitch ${stitch.id}`);
-        }
-      } else {
-        console.log(`Using ${validQuestions.length} valid existing questions from database for stitch ${stitch.id}`);
-        stitch.questions = validQuestions;
+      if (validQuestions.length > 0) {
+        console.log(`Using ${validQuestions.length} valid existing questions for stitch ${stitchToUse.id}`);
+        stitchToUse.questions = validQuestions;
+        return true;
       }
+      
+      // No valid questions found
+      console.error(`No valid questions found for stitch ${stitchToUse.id} in tube ${tubeNumber}`);
+      
+      // We'll use a single "loading" question to indicate content is missing
+      // The warm-up mode should prevent this from ever being shown to users
+      const loadingQuestion = {
+        id: `${stitchToUse.id}-loading-1`,
+        text: 'Loading your personalized content...',
+        correctAnswer: 'Continue',
+        distractors: {
+          L1: 'Reload',
+          L2: 'Wait',
+          L3: 'Help'
+        }
+      };
+      
+      // Set the loading question
+      stitchToUse.questions = [loadingQuestion];
+      return false;
     }
 
     // Clone the questions array to avoid mutation issues
@@ -540,101 +387,33 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     // Double-check we have questions
     if (allQuestions.length === 0) {
       console.warn("Still no questions available after attempted initialization");
-
-      // Generate absolute fallback questions as a last resort
-      // This ensures we ALWAYS have some questions to show
-      // Generate questions based on tube number for a consistent user experience
-      const isAnonymousUser = !userId || userId.startsWith('anon-');
-      const tubeMatch = stitch.id.match(/stitch-T(\d+)-/i);
-      const tubeNumber = tubeMatch ? parseInt(tubeMatch[1]) : 1;
-
-      // Last resort emergency questions based on tube type
-      if (isAnonymousUser) {
-        console.log(`EMERGENCY FALLBACK: Generating last-resort questions for anonymous user`);
-
-        // Generate emergency questions based on tube
-        let emergencyQuestions = [];
-
-        if (tubeNumber === 1) {
-          // Tube 1: Number Facts - counting, comparison, sequences
-          emergencyQuestions = [
-            {
-              id: `${stitch.id}-emergency-1`,
-              text: 'What number comes after 3?',
-              correctAnswer: '4',
-              distractors: { L1: '5', L2: '2', L3: '3' }
-            },
-            {
-              id: `${stitch.id}-emergency-2`,
-              text: 'Which is the largest: 2, 5, or 3?',
-              correctAnswer: '5',
-              distractors: { L1: '2', L2: '3', L3: '0' }
-            }
-          ];
-        } else if (tubeNumber === 2) {
-          // Tube 2: Basic Operations
-          emergencyQuestions = [
-            {
-              id: `${stitch.id}-emergency-1`,
-              text: '2 + 2',
-              correctAnswer: '4',
-              distractors: { L1: '3', L2: '5', L3: '2' }
-            },
-            {
-              id: `${stitch.id}-emergency-2`,
-              text: '5 - 2',
-              correctAnswer: '3',
-              distractors: { L1: '2', L2: '4', L3: '7' }
-            }
-          ];
-        } else {
-          // Tube 3 or default
-          emergencyQuestions = [
-            {
-              id: `${stitch.id}-emergency-1`,
-              text: 'I have 3 apples and get 2 more. How many do I have?',
-              correctAnswer: '5',
-              distractors: { L1: '4', L2: '6', L3: '1' }
-            },
-            {
-              id: `${stitch.id}-emergency-2`,
-              text: 'There are 4 birds on a tree. 1 flies away. How many are left?',
-              correctAnswer: '3',
-              distractors: { L1: '2', L2: '4', L3: '5' }
-            }
-          ];
+      
+      // Provide a minimal loading question
+      const loadingQuestion = {
+        id: `${stitch.id}-loading-1`,
+        text: 'Preparing your personalized content...',
+        correctAnswer: 'Continue',
+        distractors: { 
+          L1: 'Wait', 
+          L2: 'Reload', 
+          L3: 'Help' 
         }
-
-        // Set emergency questions and continue
-        allQuestions = emergencyQuestions;
-        stitch.questions = emergencyQuestions;
-        console.log(`Using ${emergencyQuestions.length} emergency questions for anonymous user`);
-      } else {
-        // For authenticated users, show a simple error without stopping the session
-        const errorQuestion = {
-          id: `${stitch.id}-critical-error`,
-          text: 'Content unavailable. Please try again.',
-          correctAnswer: 'Continue',
-          distractors: { L1: 'Refresh', L2: 'Try again', L3: 'Help' }
-        };
-
-        allQuestions = [errorQuestion];
-        stitch.questions = [errorQuestion];
-        console.log(`Using error question for authenticated user as last resort`);
-      }
-
-      // Additional debug info to identify the issue
-      console.error(`CRITICAL ERROR: No questions initially found for stitch ${stitch.id}`);
+      };
+      
+      // Use this minimal question as a last resort
+      allQuestions = [loadingQuestion];
+      stitch.questions = [loadingQuestion];
+      
+      // Log detailed diagnostics
+      console.error(`CONTENT WARNING: No questions initially found for stitch ${stitch.id}`);
       const contentCollection = useZenjinStore.getState().contentCollection;
       console.error(`- Stitch exists in Zustand store: ${!!(contentCollection?.stitches?.[stitch.id])}`);
       if (contentCollection?.stitches?.[stitch.id]) {
         console.error(`- Cached stitch has questions: ${!!(contentCollection.stitches[stitch.id].questions)}`);
         console.error(`- Cached stitch question count: ${contentCollection.stitches[stitch.id].questions?.length || 0}`);
       }
-
-      // Instead of exiting early with no content, we continue with our emergency questions
-      // This ensures users always see something instead of the "no questions" error
-      console.log(`Continuing with fallback questions after critical error`);
+      
+      console.log(`Using minimal loading question as placeholder - warm-up mode should prevent this from being seen`);
     }
 
     // Shuffle all questions using URN randomness
