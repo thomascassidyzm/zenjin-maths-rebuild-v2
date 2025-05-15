@@ -532,11 +532,10 @@ export function getAllWarmUpQuestions(): Question[] {
  * Get a random subset of warm-up questions
  * @param count Number of questions to return (default: 10)
  * @param easyOnly Whether to only include easier questions (default: true)
- * @param tubeNumber Optional tube number to get questions for specific tube (1, 2, or 3)
  * @returns Array of randomly selected questions
  */
-export function getRandomWarmUpQuestions(count: number = 10, easyOnly: boolean = true, tubeNumber?: number): Question[] {
-  console.log(`getRandomWarmUpQuestions: Requesting ${count} random warm-up questions (easyOnly: ${easyOnly}, tubeNumber: ${tubeNumber || 'any'})`);
+export function getRandomWarmUpQuestions(count: number = 10, easyOnly: boolean = true): Question[] {
+  console.log(`getRandomWarmUpQuestions: Requesting ${count} random warm-up questions (easyOnly: ${easyOnly})`);
   
   const allQuestions = getAllWarmUpQuestions();
   console.log(`getRandomWarmUpQuestions: Got ${allQuestions.length} total questions from getAllWarmUpQuestions`);
@@ -544,49 +543,31 @@ export function getRandomWarmUpQuestions(count: number = 10, easyOnly: boolean =
   // For warm-up, prefer questions with simpler distractors
   let questionPool = allQuestions;
   
-  // If a specific tube is requested, divide questions into three groups
-  if (tubeNumber && tubeNumber >= 1 && tubeNumber <= 3) {
-    // Split all questions into roughly three equal parts
-    const questionsPerTube = Math.ceil(allQuestions.length / 3);
-    const startIdx = (tubeNumber - 1) * questionsPerTube;
-    const endIdx = Math.min(startIdx + questionsPerTube, allQuestions.length);
-    
-    // Get questions just for this tube
-    questionPool = allQuestions.slice(startIdx, endIdx);
-    console.log(`getRandomWarmUpQuestions: Selected ${questionPool.length} questions for tube ${tubeNumber}`);
-  }
-  
-  // Further prioritize easier questions within this pool
+  // Prioritize easier questions (the first half of our questions are generally easier)
   if (easyOnly) {
-    // For tube-specific questions, we can't be as choosy - we'll take 70% easiest within that tube
-    const sortedByDifficulty = [...questionPool].sort((a, b) => {
-      // A very simple difficulty estimation - questions with lower numbers are typically easier
-      const numA = parseInt(a.text.replace(/[^0-9]/g, '')) || 0;
-      const numB = parseInt(b.text.replace(/[^0-9]/g, '')) || 0;
-      return numA - numB;
-    });
+    // Take all questions but make sure easy questions are more common
+    const easyQuestions = allQuestions.slice(0, Math.ceil(allQuestions.length / 2));
+    const otherQuestions = allQuestions.slice(Math.ceil(allQuestions.length / 2));
     
-    // 80% easier, 20% harder
+    // 80% of questions should be easy, 20% can be harder
     const easyCount = Math.floor(count * 0.8);
     const otherCount = count - easyCount;
     
-    // Take easier questions first, then supplement with others
-    const selectedEasy = sortedByDifficulty.slice(0, Math.min(easyCount, sortedByDifficulty.length));
+    // Shuffle both pools
+    const shuffledEasy = [...easyQuestions].sort(() => 0.5 - Math.random());
+    const shuffledOther = [...otherQuestions].sort(() => 0.5 - Math.random());
     
-    // Shuffle remaining questions for variety
-    const remainingQuestions = sortedByDifficulty.slice(Math.min(easyCount, sortedByDifficulty.length));
-    const shuffledRemaining = [...remainingQuestions].sort(() => 0.5 - Math.random());
-    
-    // Take additional questions if needed
-    const selectedOther = shuffledRemaining.slice(0, Math.min(otherCount, shuffledRemaining.length));
+    // Take the required number from each pool
+    const selectedEasy = shuffledEasy.slice(0, Math.min(easyCount, shuffledEasy.length));
+    const selectedOther = shuffledOther.slice(0, Math.min(otherCount, shuffledOther.length));
     
     // Combine and shuffle again for final mix
     questionPool = [...selectedEasy, ...selectedOther].sort(() => 0.5 - Math.random());
     
     console.log(`getRandomWarmUpQuestions: Selected ${selectedEasy.length} easy questions and ${selectedOther.length} other questions`);
   } else {
-    // Just shuffle all questions in this pool
-    questionPool = [...questionPool].sort(() => 0.5 - Math.random());
+    // Just shuffle all questions
+    questionPool = [...allQuestions].sort(() => 0.5 - Math.random());
   }
   
   // If we don't have enough questions, return all we have
@@ -596,31 +577,18 @@ export function getRandomWarmUpQuestions(count: number = 10, easyOnly: boolean =
   }
   
   // Take the first 'count' questions from our pool
-  const selectedQuestions = questionPool.slice(0, count);
-  console.log(`getRandomWarmUpQuestions: Returning ${selectedQuestions.length} randomly selected questions from pool of ${questionPool.length}`);
-  
-  // CRITICAL FIX: Ensure all questions have correct property names
-  const normalizedQuestions = selectedQuestions.map(q => {
-    // If the question already has correctAnswer property, just return it
-    if ('correctAnswer' in q) {
-      return q;
-    }
-    // Otherwise normalize snake_case to camelCase
-    return normalizeQuestionFormat(q as any);
-  });
+  console.log(`getRandomWarmUpQuestions: Returning ${count} randomly selected questions from pool of ${questionPool.length}`);
   
   // Log first question for debugging
-  if (normalizedQuestions.length > 0) {
-    console.log('First question in selection (with correct property names):', {
-      id: normalizedQuestions[0].id,
-      text: normalizedQuestions[0].text,
-      correctAnswer: normalizedQuestions[0].correctAnswer,
-      hasCorrectAnswer: 'correctAnswer' in normalizedQuestions[0],
-      hasCorrect_answer: (normalizedQuestions[0] as any).correct_answer !== undefined
+  if (questionPool.length > 0) {
+    console.log('First question in selection:', {
+      id: questionPool[0].id,
+      text: questionPool[0].text,
+      correctAnswer: questionPool[0].correctAnswer
     });
   }
   
-  return normalizedQuestions;
+  return questionPool.slice(0, count);
 }
 
 /**
@@ -643,27 +611,20 @@ export function createWarmUpStitch(count: number = 10) {
 
 /**
  * Create a complete warm-up tube structure ready for the player
- * @param count Number of questions to include per tube (default: 8)
- * @param startingTube Which tube to mark as active (default: 1)
- * @returns A complete tube data structure with embedded questions for all three tubes
+ * @param count Number of questions to include (default: 10)
+ * @returns A complete tube data structure with embedded questions
  */
-export function createWarmUpTube(count: number = 8, startingTube: number = 1) {
-  console.log(`createWarmUpTube: Creating complete warm-up tube structure with ${count} questions per tube, starting with tube ${startingTube}`);
-  
-  // Get questions for each tube
-  const tube1Questions = getRandomWarmUpQuestions(count, true, 1);
-  const tube2Questions = getRandomWarmUpQuestions(count, true, 2);
-  const tube3Questions = getRandomWarmUpQuestions(count, true, 3);
-  
-  console.log(`createWarmUpTube: Created questions for all three tubes (T1: ${tube1Questions.length}, T2: ${tube2Questions.length}, T3: ${tube3Questions.length})`);
+export function createWarmUpTube(count: number = 10) {
+  console.log(`createWarmUpTube: Creating complete warm-up tube with ${count} questions`);
+  const questions = getRandomWarmUpQuestions(count);
   
   // Create a complete self-contained tube structure that doesn't depend on Zustand
   return {
-    1: { // Tube number 1 (Addition)
-      currentStitchId: 'warm-up-stitch-t1',
+    1: { // Tube number 1 
+      currentStitchId: 'warm-up-stitch',
       positions: {
         0: { // Position 0
-          stitchId: 'warm-up-stitch-t1',
+          stitchId: 'warm-up-stitch',
           skipNumber: 3,
           distractorLevel: 'L1'
         }
@@ -671,51 +632,11 @@ export function createWarmUpTube(count: number = 8, startingTube: number = 1) {
       // Add questions directly to the stitch
       stitches: [
         {
-          id: 'warm-up-stitch-t1',
+          id: 'warm-up-stitch',
           position: 0,
           skipNumber: 3,
           distractorLevel: 'L1',
-          questions: tube1Questions // Directly embed the questions
-        }
-      ]
-    },
-    2: { // Tube number 2 (Subtraction)
-      currentStitchId: 'warm-up-stitch-t2',
-      positions: {
-        0: { // Position 0
-          stitchId: 'warm-up-stitch-t2',
-          skipNumber: 3,
-          distractorLevel: 'L1'
-        }
-      },
-      // Add questions directly to the stitch
-      stitches: [
-        {
-          id: 'warm-up-stitch-t2',
-          position: 0,
-          skipNumber: 3,
-          distractorLevel: 'L1',
-          questions: tube2Questions // Directly embed the questions
-        }
-      ]
-    },
-    3: { // Tube number 3 (Multiplication/Division)
-      currentStitchId: 'warm-up-stitch-t3',
-      positions: {
-        0: { // Position 0
-          stitchId: 'warm-up-stitch-t3',
-          skipNumber: 3,
-          distractorLevel: 'L1'
-        }
-      },
-      // Add questions directly to the stitch
-      stitches: [
-        {
-          id: 'warm-up-stitch-t3',
-          position: 0,
-          skipNumber: 3,
-          distractorLevel: 'L1',
-          questions: tube3Questions // Directly embed the questions
+          questions: questions // Directly embed the questions
         }
       ]
     }

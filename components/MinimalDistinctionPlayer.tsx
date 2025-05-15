@@ -40,8 +40,8 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
   const [stitches, setStitches] = useState<any[]>([]);
   const [currentStitchId, setCurrentStitchId] = useState<string | null>(null);
   
-  // Additional state to preserve warm-up stitch ID (now we use tube-specific IDs)
-  const [warmUpStitchId, setWarmUpStitchId] = useState<string | null>(null);
+  // Additional state to preserve warm-up stitch ID
+  const [warmUpStitchId, setWarmUpStitchId] = useState<string>('warm-up-stitch');
 
   // Add state for loading status
   const [isStitchLoading, setIsStitchLoading] = useState(true);
@@ -95,10 +95,9 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     
     // Use the proper stitch ID based on mode
     if (isWarmUpMode) {
-      // In warm-up mode, use tube-specific warm-up stitch ID
-      const tubeSpecificStitchId = `warm-up-stitch-t${tubeNumber}`;
-      setCurrentStitchId(tubeSpecificStitchId);
-      console.log(`WARM-UP MODE: Set currentStitchId explicitly to '${tubeSpecificStitchId}' for tube ${tubeNumber}`);
+      // In warm-up mode, always use warm-up-stitch ID
+      setCurrentStitchId('warm-up-stitch');
+      console.log(`WARM-UP MODE: Set currentStitchId explicitly to 'warm-up-stitch'`);
     } else {
       // In normal mode, use the stitch ID from the tube data or the first stitch
       setCurrentStitchId(activeTube.currentStitchId ||
@@ -200,9 +199,9 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     // Determine which stitch ID to use based on mode
     let activeStitchId;
     if (isWarmUpMode) {
-      // In warm-up mode, use tube-specific warm-up stitch ID
-      activeStitchId = `warm-up-stitch-t${tubeNumber}`;
-      console.log('WARM-UP MODE: Forcing stitch ID to', activeStitchId, 'for tube', tubeNumber);
+      // In warm-up mode, always use warm-up-stitch ID
+      activeStitchId = 'warm-up-stitch';
+      console.log('WARM-UP MODE: Forcing stitch ID to', activeStitchId);
       
       // Also log the tube data structure for debugging
       console.log('WARM-UP MODE: Current tube data structure:', {
@@ -420,8 +419,8 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
         }
         // If not found in stitch, look in the tube data
         else if (tubeData && tubeData[tubeNumber]?.stitches) {
-          // Find the warm-up stitch in the stitches array for the specific tube
-          const warmUpStitch = tubeData[tubeNumber].stitches.find(s => s.id === `warm-up-stitch-t${tubeNumber}`);
+          // Find the warm-up stitch in the stitches array
+          const warmUpStitch = tubeData[tubeNumber].stitches.find(s => s.id === 'warm-up-stitch');
           if (warmUpStitch && warmUpStitch.questions && warmUpStitch.questions.length > 0) {
             console.log(`WARM-UP: Found ${warmUpStitch.questions.length} questions in tube data`);
             warmUpQuestions = [...warmUpStitch.questions];
@@ -429,22 +428,10 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
         }
         
         // Check if the questions array has valid questions
-        const validQuestions = warmUpQuestions.filter(q => {
-          // Handle both camelCase and snake_case fields
-          const hasCorrectAnswer = q.correctAnswer !== undefined || (q as any).correct_answer !== undefined;
-          const hasDistractors = q.distractors || (q as any).distractors;
-          const hasText = q.text || (q as any).text;
-          
-          // Normalize field names if needed
-          if ((q as any).correct_answer !== undefined && q.correctAnswer === undefined) {
-            q.correctAnswer = (q as any).correct_answer;
-          }
-          
-          return hasText && hasCorrectAnswer && hasDistractors &&
-            (hasDistractors.L1 || (hasDistractors as any).l1) && 
-            ((hasDistractors.L2 || (hasDistractors as any).l2) || true) && 
-            ((hasDistractors.L3 || (hasDistractors as any).l3) || true);
-        });
+        const validQuestions = warmUpQuestions.filter(q => (
+          q.text && q.correctAnswer && q.distractors &&
+          q.distractors.L1 && (q.distractors.L2 || true) && (q.distractors.L3 || true)
+        ));
 
         if (validQuestions.length > 0) {
           console.log(`WARM-UP: Using ${validQuestions.length} valid existing questions for stitch ${stitchToUse.id}`);
@@ -1771,8 +1758,8 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
             )}
           </div>
           
-          {/* Options - with fixed positioning to prevent movement during resize */}
-          <div className="buttons-container relative" style={{ height: '80px', margin: '0 auto 16px auto', width: '280px' }}>
+          {/* Options - always in 2 columns */}
+          <div className="grid grid-cols-2 gap-4 mb-4 buttons-container" style={{ position: 'relative' }}>
             {options.map((option, index) => (
               <button
                 key={`${currentQuestion.id}-${option}-${index}`}
@@ -1785,7 +1772,6 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
                   text-3xl font-bold
                   transition-all duration-300
                   option-hover
-                  absolute
                   ${buttonToShake === option && isButtonShaking ? 'animate-shudder' : ''}
                   ${selectedOption === option && isCorrect ? 'bg-green-500 text-white glow-green' : ''}
                   ${selectedOption === option && !isCorrect ? 'glow-red' : ''}
@@ -1794,13 +1780,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
                   ${selectedOption === 'timeout' ? 'neutral-option' : ''}
                   ${selectedOption === null ? 'bg-white text-gray-800' : ''}
                 `}
-                style={{ 
-                  width: '130px', 
-                  height: '70px',
-                  minHeight: '70px', 
-                  left: index === 0 ? '0px' : '150px',
-                  top: '5px'
-                }}
+                style={{ height: '70px', minHeight: '70px', position: 'relative' }}
               >
                 {option}
               </button>
