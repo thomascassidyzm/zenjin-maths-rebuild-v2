@@ -31,7 +31,8 @@ const PlayerWithLoader: React.FC<PlayerWithLoaderProps> = ({
   warmUpQuestionsCount = 10 // Number of warm-up questions to show
 }) => {
   const [contentLoaded, setContentLoaded] = useState(false);
-  const [showLoadingScreen, setShowLoadingScreen] = useState(true);
+  // Start with loading screen hidden if warm-up mode is enabled
+  const [showLoadingScreen, setShowLoadingScreen] = useState(!useWarmUp);
   const [showWarmUp, setShowWarmUp] = useState(useWarmUp);
   const [showTransition, setShowTransition] = useState(false);
   const [contentCheckAttempts, setContentCheckAttempts] = useState(0);

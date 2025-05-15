@@ -1199,9 +1199,9 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
   // If session is complete, show a minimal loading state with fixed dimensions
   if (isSessionComplete) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'transparent' }}>
+      <div style={{ width: '375px', height: '500px', background: 'transparent' }} className="flex items-center justify-center">
         {/* Simple loading indicator with fixed dimensions and same structure */}
-        <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden fixed-player-card">
+        <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden w-full h-full">
           {/* Header for consistent layout */}
           <div className="bg-white bg-opacity-10 p-4 flex justify-between items-center opacity-50">
             <div>
@@ -1229,8 +1229,8 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     const hasQuestions = sessionQuestions.length > 0;
     
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'transparent' }}>
-        <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden fixed-player-card">
+      <div style={{ width: '375px', height: '500px', background: 'transparent' }} className="flex items-center justify-center">
+        <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden w-full h-full">
           {/* Header for consistent layout */}
           <div className="bg-white bg-opacity-10 p-4 flex justify-between items-center opacity-50">
             <div>
@@ -1572,11 +1572,11 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'transparent' }}>
-      {/* Fixed width/height container similar to iPhone 8 dimensions */}
+    <div style={{ width: '375px', height: '500px', background: 'transparent' }} className="flex items-center justify-center">
+      {/* Fixed width/height container with iPhone dimensions */}
       <div 
         ref={questionCardRef}
-        className="bg-white bg-opacity-10 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden fixed-player-card"
+        className="bg-white bg-opacity-10 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden w-full h-full"
       >
         {/* Points display - SIMPLIFIED TO SHOW ONLY POINTS */}
         <div className="bg-white bg-opacity-10 p-3 flex justify-between items-center">

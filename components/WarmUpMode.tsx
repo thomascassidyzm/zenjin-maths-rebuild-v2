@@ -109,7 +109,7 @@ const WarmUpMode: React.FC<WarmUpModeProps> = ({
 
   // Render the MinimalDistinctionPlayer with warm-up questions
   return (
-    <div className="relative" style={{ background: 'transparent' }}>
+    <div className="relative min-h-screen flex items-center justify-center" style={{ background: 'transparent' }}>
       {/* Background animations */}
       <div className="absolute inset-0 overflow-hidden z-0">
         <BackgroundBubbles />
@@ -120,76 +120,8 @@ const WarmUpMode: React.FC<WarmUpModeProps> = ({
         Warming Up Your Math Skills
       </div>
       
-      {/* Animated math symbols floating around */}
-      <div className="absolute inset-0 pointer-events-none z-5 overflow-hidden">
-        <div className="math-symbol" style={{
-          position: 'absolute',
-          top: '10%',
-          left: '5%',
-          fontSize: '2rem',
-          opacity: 0.3,
-          animation: 'float 8s ease-in-out infinite'
-        }}>+</div>
-        <div className="math-symbol" style={{
-          position: 'absolute',
-          top: '20%',
-          right: '10%',
-          fontSize: '3rem',
-          opacity: 0.4,
-          animation: 'float 10s ease-in-out infinite'
-        }}>−</div>
-        <div className="math-symbol" style={{
-          position: 'absolute',
-          bottom: '15%',
-          left: '20%',
-          fontSize: '4rem',
-          opacity: 0.2,
-          animation: 'float 7s ease-in-out infinite'
-        }}>×</div>
-        <div className="math-symbol" style={{
-          position: 'absolute',
-          bottom: '30%',
-          right: '15%',
-          fontSize: '3.5rem',
-          opacity: 0.3,
-          animation: 'float 9s ease-in-out infinite'
-        }}>÷</div>
-        <div className="math-symbol" style={{
-          position: 'absolute',
-          top: '40%',
-          left: '30%',
-          fontSize: '2.5rem',
-          opacity: 0.25,
-          animation: 'float 12s ease-in-out infinite'
-        }}>%</div>
-        <div className="math-symbol" style={{
-          position: 'absolute',
-          bottom: '40%',
-          right: '30%',
-          fontSize: '2rem',
-          opacity: 0.35,
-          animation: 'float 11s ease-in-out infinite'
-        }}>π</div>
-      </div>
-      
-      {/* Floating style for math symbols */}
-      <style jsx>{`
-        @keyframes float {
-          0% { transform: translate(0, 0) rotate(0deg); }
-          25% { transform: translate(5px, 15px) rotate(5deg); }
-          50% { transform: translate(10px, 5px) rotate(0deg); }
-          75% { transform: translate(5px, -5px) rotate(-5deg); }
-          100% { transform: translate(0, 0) rotate(0deg); }
-        }
-        .math-symbol {
-          color: white;
-          font-weight: bold;
-          text-shadow: 0 0 10px rgba(255,255,255,0.5);
-        }
-      `}</style>
-      
       {/* Use the standard MinimalDistinctionPlayer with our warm-up data */}
-      <div className="relative z-10" style={{ background: 'transparent' }}>
+      <div className="z-10" style={{ background: 'transparent', width: '375px', height: '500px' }}>
         <MinimalDistinctionPlayer
           tubeNumber={1}
           tubeData={warmUpTubeData}
