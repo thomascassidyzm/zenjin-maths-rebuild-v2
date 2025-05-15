@@ -11,7 +11,7 @@ interface WarmUpTransitionProps {
  */
 const WarmUpTransition: React.FC<WarmUpTransitionProps> = ({
   onTransitionComplete,
-  duration = 2000, // Default duration: 2 seconds (even shorter for better UX)
+  duration = 2500, // Default duration: 2.5 seconds (shorter for better UX)
   children // The actual player component to show on the back of card
 }) => {
   // Track animation progress
@@ -152,8 +152,8 @@ const WarmUpTransition: React.FC<WarmUpTransitionProps> = ({
               justifyContent: 'center',
               alignItems: 'center',
               // Only show after we're past 90 degrees and fade in
-              opacity: progress > 80 ? (progress - 80) / 40 : 0,
-              transition: 'opacity 0.15s ease-out',
+              opacity: progress > 90 ? (progress - 90) / 60 : 0,
+              transition: 'opacity 0.2s ease-out',
             }}
           >
             {children ? (
@@ -179,7 +179,7 @@ const WarmUpTransition: React.FC<WarmUpTransitionProps> = ({
                       stroke="#14b8a6" /* teal-500 */
                       strokeWidth="5"
                       strokeDasharray="252"
-                      strokeDashoffset={252 - (252 * (progress > 100 ? progress - 100 : 0)) / 60}
+                      strokeDashoffset={252 - (252 * (progress > 110 ? progress - 110 : 0)) / 70}
                       strokeLinecap="round"
                     />
                     <path
@@ -188,7 +188,7 @@ const WarmUpTransition: React.FC<WarmUpTransitionProps> = ({
                       stroke="#14b8a6" /* teal-500 */
                       strokeWidth="3"
                       strokeLinecap="round"
-                      style={{ opacity: progress > 120 ? (progress - 120) / 40 : 0 }}
+                      style={{ opacity: progress > 135 ? (progress - 135) / 45 : 0 }}
                     />
                   </svg>
                 </div>

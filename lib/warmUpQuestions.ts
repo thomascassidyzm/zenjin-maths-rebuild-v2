@@ -482,62 +482,17 @@ interface RawQuestion {
 
 /**
  * Normalize question format from database snake_case to camelCase
- * This handles both existing and raw questions
- * @param questionData Question data in any format (RawQuestion or partially normalized)
+ * @param dbQuestion Question in database format
  * @returns Question in the format expected by MinimalDistinctionPlayer
  */
-export function normalizeQuestionFormat(questionData: any): Question {
-  // Create a normalized copy so we don't modify the original
-  const normalized: any = {...questionData};
-  
-  // Handle id
-  if (!normalized.id) {
-    normalized.id = `question-${Math.random().toString(36).substring(2, 9)}`;
-  }
-  
-  // Handle text
-  if (!normalized.text && normalized.text_content) {
-    normalized.text = normalized.text_content;
-  }
-  
-  // Handle correctAnswer - this is the most critical field to normalize
-  if (!normalized.correctAnswer && normalized.correct_answer !== undefined) {
-    normalized.correctAnswer = normalized.correct_answer;
-    console.log(`Normalized correctAnswer for question ${normalized.id}`);
-  }
-  
-  // Handle distractors
-  if (!normalized.distractors) {
-    normalized.distractors = {};
-  }
-  
-  // If we have lowercase distractor fields, normalize them to uppercase
-  if (normalized.distractors.l1 && !normalized.distractors.L1) {
-    normalized.distractors.L1 = normalized.distractors.l1;
-  }
-  
-  if (normalized.distractors.l2 && !normalized.distractors.L2) {
-    normalized.distractors.L2 = normalized.distractors.l2;
-  }
-  
-  if (normalized.distractors.l3 && !normalized.distractors.L3) {
-    normalized.distractors.L3 = normalized.distractors.l3;
-  }
-  
-  // Ensure distractors have all required levels
-  if (!normalized.distractors.L1) {
-    normalized.distractors.L1 = '';
-  }
-  
-  if (!normalized.distractors.L2) {
-    normalized.distractors.L2 = '';
-  }
-  
-  if (!normalized.distractors.L3) {
-    normalized.distractors.L3 = '';
-  }
-  
-  return normalized as Question;
+export function normalizeQuestionFormat(dbQuestion: RawQuestion): Question {
+  return {
+    id: dbQuestion.id,
+    text: dbQuestion.text,
+    correctAnswer: dbQuestion.correct_answer, // Convert from snake_case to camelCase
+    distractors: dbQuestion.distractors,
+    // Add any other needed fields to match Question interface
+  };
 }
 
 /**

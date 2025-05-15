@@ -816,53 +816,25 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     isTimingOut,
   ]);
 
-  // Move to next question, next tube, or complete session
+  // Move to next question or complete session
   const moveToNextQuestion = useCallback(() => {
     const nextIndex = currentQuestionIndex + 1;
     
-    // Check if we have more questions in the current stitch
     if (nextIndex < sessionQuestions.length) {
       setCurrentQuestionIndex(nextIndex);
       loadQuestion(sessionQuestions[nextIndex], false);
-      return;
-    }
-    
-    // If we're in warm-up mode, check if we can cycle to the next tube
-    if (isWarmUpMode) {
-      const nextTubeNumber = tubeNumber < 3 ? tubeNumber + 1 : 1;
-      console.log(`Warm-up tube ${tubeNumber} completed. Cycling to tube ${nextTubeNumber}`);
+    } else {
+      // Wait a moment before completing the session to ensure all UI updates finish
+      // This prevents the session from completing before showing feedback for the last question
+      console.log('All questions completed, scheduling session completion...');
       
-      // Check if we have valid tube data for the next tube
-      if (tubeData[nextTubeNumber] && 
-          tubeData[nextTubeNumber].stitches && 
-          tubeData[nextTubeNumber].stitches.length > 0 &&
-          tubeData[nextTubeNumber].stitches[0].questions &&
-          tubeData[nextTubeNumber].stitches[0].questions.length > 0) {
-        
-        // Reset current question index
-        setCurrentQuestionIndex(0);
-        
-        // Pass control back to parent by calling onComplete with a special flag
-        onComplete({
-          success: true,
-          cycleTube: true,
-          nextTubeNumber,
-          message: `Cycling to tube ${nextTubeNumber}`
-        });
-        
-        return;
-      }
+      // Use the exact same delay as question transitions for consistent pacing
+      setTimeout(() => {
+        console.log('Session questions completed, finalizing session...');
+        completeSession();
+      }, 1000); // Exact same timing as question transitions
     }
-    
-    // If not in warm-up mode or no next tube available, complete the session
-    console.log('All questions completed, scheduling session completion...');
-    
-    // Use the exact same delay as question transitions for consistent pacing
-    setTimeout(() => {
-      console.log('Session questions completed, finalizing session...');
-      completeSession();
-    }, 1000); // Exact same timing as question transitions
-  }, [currentQuestionIndex, sessionQuestions, loadQuestion, isWarmUpMode, tubeNumber, tubeData, onComplete]);
+  }, [currentQuestionIndex, sessionQuestions, loadQuestion]);
 
   // Complete the session and report results
   const completeSession = useCallback(() => {
@@ -1799,8 +1771,8 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
             )}
           </div>
           
-          {/* Options - optimized fixed positioning to prevent movement during resize */}
-          <div className="buttons-container relative" style={{ height: '80px', margin: '0 auto 16px auto', width: '240px' }}>
+          {/* Options - with fixed positioning to prevent movement during resize */}
+          <div className="buttons-container relative" style={{ height: '80px', margin: '0 auto 16px auto', width: '280px' }}>
             {options.map((option, index) => (
               <button
                 key={`${currentQuestion.id}-${option}-${index}`}
@@ -1823,9 +1795,10 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
                   ${selectedOption === null ? 'bg-white text-gray-800' : ''}
                 `}
                 style={{ 
-                  width: '110px', 
+                  width: '130px', 
                   height: '70px',
-                  left: index === 0 ? '0px' : '130px',
+                  minHeight: '70px', 
+                  left: index === 0 ? '0px' : '150px',
                   top: '5px'
                 }}
               >
@@ -1835,8 +1808,8 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
           </div>
         </div>
         
-        {/* Footer area with Finish button (hidden in warm-up mode) - fixed height */}
-        <div className="bg-white bg-opacity-10 p-3 flex justify-between items-center" style={{ height: '52px' }}>
+        {/* Footer area with Finish button (hidden in warm-up mode) */}
+        <div className="bg-white bg-opacity-10 p-3 flex justify-between items-center">
           <div className="w-24"></div> {/* Spacer for balance */}
           <div className="text-center">
             {!isWarmUpMode && onEndSession && (
