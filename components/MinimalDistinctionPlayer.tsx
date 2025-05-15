@@ -39,6 +39,9 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
   // Extract stitches directly from the tube data
   const [stitches, setStitches] = useState<any[]>([]);
   const [currentStitchId, setCurrentStitchId] = useState<string | null>(null);
+  
+  // Additional state to preserve warm-up stitch ID
+  const [warmUpStitchId, setWarmUpStitchId] = useState<string>('warm-up-stitch');
 
   // Add state for loading status
   const [isStitchLoading, setIsStitchLoading] = useState(true);
@@ -89,8 +92,17 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
 
     // Set the extracted stitches and current stitch ID
     setStitches(extractedStitches);
-    setCurrentStitchId(activeTube.currentStitchId ||
-      (extractedStitches.length > 0 ? extractedStitches[0].id : null));
+    
+    // Use the proper stitch ID based on mode
+    if (isWarmUpMode) {
+      // In warm-up mode, always use warm-up-stitch ID
+      setCurrentStitchId('warm-up-stitch');
+      console.log(`WARM-UP MODE: Set currentStitchId explicitly to 'warm-up-stitch'`);
+    } else {
+      // In normal mode, use the stitch ID from the tube data or the first stitch
+      setCurrentStitchId(activeTube.currentStitchId ||
+        (extractedStitches.length > 0 ? extractedStitches[0].id : null));
+    }
 
     console.log(`Tube ${tubeNumber} processed: ${extractedStitches.length} stitches extracted`);
   }, [tubeData, tubeNumber]);
@@ -184,9 +196,29 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     const stitchIds = stitches.slice(0, 5).map(s => s.id);
     console.log(`Tube ${tubeNumber} has stitches:`, stitchIds.join(', '));
 
-    // Use the first stitch or the current stitch if specified
-    const activeStitchId = currentStitchId || stitches[0].id;
+    // Determine which stitch ID to use based on mode
+    let activeStitchId;
+    if (isWarmUpMode) {
+      // In warm-up mode, always use warm-up-stitch ID
+      activeStitchId = 'warm-up-stitch';
+      console.log('WARM-UP MODE: Forcing stitch ID to', activeStitchId);
+      
+      // Also log the tube data structure for debugging
+      console.log('WARM-UP MODE: Current tube data structure:', {
+        hasTubeData: !!tubeData,
+        tubeNumber,
+        tubeDataKeys: tubeData ? Object.keys(tubeData) : [],
+        hasTubeStitches: tubeData && tubeData[tubeNumber] ? !!tubeData[tubeNumber].stitches : false,
+        stitchCount: tubeData && tubeData[tubeNumber] && tubeData[tubeNumber].stitches ? tubeData[tubeNumber].stitches.length : 0
+      });
+    } else {
+      // In normal mode, use the current stitch ID or the first stitch
+      activeStitchId = currentStitchId || stitches[0].id;
+    }
+    
+    // Find the stitch by ID or fallback to first stitch
     const stitch = stitches.find(s => s.id === activeStitchId) || stitches[0];
+    console.log('Using stitch:', stitch.id);
 
     // Check if we're switching to a different tube
     const isNewTube = previousTubeRef.current !== tubeNumber;
@@ -235,18 +267,35 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     if (isWarmUpMode) {
       console.log(`WARM-UP MODE ACTIVE: Bypassing Zustand store for stitch ${stitch.id}`);
       
-      // Initialize stitch's questions array if it doesn't exist
-      if (!stitch.questions) {
-        stitch.questions = [];
-      }
+      // Extract questions directly from the tube data - CRITICAL FIX
+      // This handles the self-contained tube data structure we created in WarmUpMode.tsx
+      let warmUpQuestions = [];
       
-      // Check if the stitch already has questions from tubeData
-      if (stitch.questions && stitch.questions.length > 0) {
-        console.log(`WARM-UP: Using ${stitch.questions.length} questions directly from tubeData`);
+      // Get the questions from the stitch in the tube stitches array
+      if (tubeData[tubeNumber]?.stitches) {
+        // Find the warm-up stitch in the stitches array
+        const warmUpStitch = tubeData[tubeNumber].stitches.find(s => s.id === 'warm-up-stitch');
+        if (warmUpStitch && warmUpStitch.questions && warmUpStitch.questions.length > 0) {
+          console.log(`WARM-UP: Found ${warmUpStitch.questions.length} questions in warm-up stitch`);
+          warmUpQuestions = [...warmUpStitch.questions];
+        }
+      }
+
+      // If we found questions, use them directly
+      if (warmUpQuestions.length > 0) {
+        console.log(`WARM-UP: Using ${warmUpQuestions.length} questions directly from tube data`, {
+          firstQuestion: {
+            id: warmUpQuestions[0].id,
+            text: warmUpQuestions[0].text,
+            correctAnswer: warmUpQuestions[0].correctAnswer
+          }
+        });
+        
+        // Add the questions to the stitch
+        stitch.questions = warmUpQuestions;
         
         // Use questions directly from tubeData
-        const allQuestions = [...stitch.questions];
-        const sessionQs = allQuestions.slice(0, Math.min(questionsPerSession, allQuestions.length));
+        const sessionQs = warmUpQuestions.slice(0, Math.min(questionsPerSession, warmUpQuestions.length));
         setSessionQuestions(sessionQs);
         
         // Start with the first question if available
@@ -360,13 +409,26 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       if (isWarmUpMode) {
         console.log(`WARM-UP VALIDATION: Checking questions directly from tubeData for stitch ${stitchToUse.id}`);
         
-        // Initialize questions array if it doesn't exist
-        if (!stitchToUse.questions) {
-          stitchToUse.questions = [];
+        // Try to extract questions directly from the tube data
+        let warmUpQuestions = [];
+        
+        // Look for questions in the stitch itself
+        if (stitchToUse.questions && stitchToUse.questions.length > 0) {
+          warmUpQuestions = [...stitchToUse.questions];
+          console.log(`WARM-UP: Found ${warmUpQuestions.length} questions directly in stitch`);
+        }
+        // If not found in stitch, look in the tube data
+        else if (tubeData && tubeData[tubeNumber]?.stitches) {
+          // Find the warm-up stitch in the stitches array
+          const warmUpStitch = tubeData[tubeNumber].stitches.find(s => s.id === 'warm-up-stitch');
+          if (warmUpStitch && warmUpStitch.questions && warmUpStitch.questions.length > 0) {
+            console.log(`WARM-UP: Found ${warmUpStitch.questions.length} questions in tube data`);
+            warmUpQuestions = [...warmUpStitch.questions];
+          }
         }
         
         // Check if the questions array has valid questions
-        const validQuestions = stitchToUse.questions.filter(q => (
+        const validQuestions = warmUpQuestions.filter(q => (
           q.text && q.correctAnswer && q.distractors &&
           q.distractors.L1 && (q.distractors.L2 || true) && (q.distractors.L3 || true)
         ));

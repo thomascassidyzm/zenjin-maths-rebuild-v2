@@ -104,9 +104,42 @@ const WarmUpMode: React.FC<WarmUpModeProps> = ({
     );
   }
 
-  // Prepare tube data for MinimalDistinctionPlayer using the createWarmUpTube helper
-  // This skips all Zustand lookups by creating a self-contained tube structure
-  const warmUpTubeData = createWarmUpTube(questionsCount);
+  // Get random warm-up questions without any Zustand involvement
+  const warmUpQs = getRandomWarmUpQuestions(questionsCount);
+  console.log(`WarmUpMode: Selected ${warmUpQs.length} questions for direct use in player`);
+  
+  // Create a SUPER-SIMPLE tube data structure that doesn't involve Zustand at all
+  const warmUpTubeData = {
+    1: {
+      currentStitchId: 'warm-up-stitch',
+      positions: {
+        0: {
+          stitchId: 'warm-up-stitch',
+          skipNumber: 3,
+          distractorLevel: 'L1'
+        }
+      },
+      stitches: [
+        {
+          id: 'warm-up-stitch',
+          position: 0,
+          skipNumber: 3,
+          distractorLevel: 'L1',
+          questions: warmUpQs
+        }
+      ]
+    }
+  };
+  
+  // Log the first question to verify format
+  if (warmUpQs.length > 0) {
+    console.log('WarmUpMode: First question for player:', {
+      id: warmUpQs[0].id,
+      text: warmUpQs[0].text,
+      correctAnswer: warmUpQs[0].correctAnswer,
+      distractors: warmUpQs[0].distractors
+    });
+  }
 
   // Render the MinimalDistinctionPlayer with warm-up questions
   return (

@@ -62,101 +62,136 @@ const WarmUpTransition: React.FC<WarmUpTransitionProps> = ({
   );
   
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 bg-gradient-to-b from-indigo-900 to-blue-900">
-      {/* Background animation */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="stars-container">
-          {[...Array(50)].map((_, i) => (
-            <div
-              key={i}
-              className="star"
-              style={{
-                top: `${Math.random() * 100}%`,
-                left: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 2}s`,
-                animationDuration: `${0.5 + Math.random() * 1}s`
-              }}
-            />
-          ))}
-        </div>
-      </div>
-      
-      {/* Main content */}
-      <div className="relative z-10 text-center p-8 max-w-md">
-        <h2 className="text-4xl font-bold mb-6 text-white">
-          {transitionMessages[messageIndex]}
-        </h2>
-        
-        {/* Progress bar */}
-        <div className="w-full h-2 bg-white/20 rounded-full mt-6 mb-4 overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-teal-400 to-blue-500 rounded-full transition-all duration-300 ease-out"
-            style={{ width: `${progress}%` }}
-          ></div>
-        </div>
-        
-        {/* Brain loading animation */}
-        <div className="mt-8">
-          <div className="brain-loading">
-            <svg width="80" height="80" viewBox="0 0 100 100" className="mx-auto">
-              <path
-                d="M50,15 C30,15 15,30 15,50 C15,70 30,85 50,85 C70,85 85,70 85,50 C85,30 70,15 50,15 Z"
-                fill="none"
-                stroke="white"
-                strokeWidth="5"
-                strokeDasharray="252"
-                strokeDashoffset={252 - (252 * progress) / 100}
-                strokeLinecap="round"
-              />
-              {/* Brain details */}
-              <path
-                d="M40,35 C45,30 55,30 60,35 M35,50 C40,45 45,47 50,45 C55,43 60,45 65,50 M40,65 C45,70 55,70 60,65"
-                fill="none"
-                stroke="white"
-                strokeWidth="3"
-                strokeDasharray="120"
-                strokeDashoffset={120 - (120 * Math.max(0, progress - 30)) / 70}
-                strokeLinecap="round"
-                style={{ opacity: progress > 30 ? 1 : 0 }}
-              />
-            </svg>
+    <div className="flex items-center justify-center" style={{ width: '375px', height: '500px' }}>
+      {/* Card with 3D flip effect */}
+      <div 
+        className="card-container"
+        style={{
+          width: '100%',
+          height: '100%',
+          perspective: '1500px'
+        }}
+      >
+        <div 
+          className="card-flipper" 
+          style={{
+            width: '100%',
+            height: '100%',
+            position: 'relative',
+            transformStyle: 'preserve-3d',
+            transform: `rotateY(${progress * 1.8}deg)`, // 0 to 180 degrees
+            transition: 'transform 0.3s ease-out',
+          }}
+        >
+          {/* Front of card (visible at start) */}
+          <div 
+            className="card-front bg-gradient-to-b from-indigo-800 to-blue-900 rounded-2xl shadow-xl p-6"
+            style={{
+              width: '100%',
+              height: '100%',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              backfaceVisibility: 'hidden',
+              zIndex: 2,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+          >
+            <h2 className="text-2xl font-bold mb-6 text-white text-center">
+              {transitionMessages[0]}
+            </h2>
+            
+            {/* Progress bar */}
+            <div className="w-full h-2 bg-white/20 rounded-full mt-4 mb-6 overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-teal-400 to-blue-500 rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${progress}%` }}
+              ></div>
+            </div>
+            
+            {/* Simple card flipping animation */}
+            <div className="my-6 relative w-20 h-24">
+              <div 
+                className="absolute inset-0 bg-gradient-to-r from-teal-500 to-blue-500 rounded-lg shadow-lg flex items-center justify-center"
+                style={{ 
+                  transform: `rotateY(${progress * 3.6}deg)`, 
+                  transformStyle: 'preserve-3d',
+                  backfaceVisibility: 'hidden'
+                }}
+              >
+                <span className="text-white text-3xl font-bold">+</span>
+              </div>
+            </div>
+            
+            <p className="text-white/80 text-center">
+              {transitionMessages[1]}
+            </p>
+          </div>
+          
+          {/* Back of card (visible at end) */}
+          <div 
+            className="card-back bg-gradient-to-b from-teal-800 to-emerald-900 rounded-2xl shadow-xl p-6"
+            style={{
+              width: '100%',
+              height: '100%',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              backfaceVisibility: 'hidden',
+              transform: 'rotateY(180deg)',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              opacity: progress > 50 ? (progress - 50) / 50 : 0, // Fade in
+            }}
+          >
+            <div className="brain-icon mb-4">
+              <svg width="60" height="60" viewBox="0 0 100 100" className="mx-auto">
+                <path
+                  d="M50,15 C30,15 15,30 15,50 C15,70 30,85 50,85 C70,85 85,70 85,50 C85,30 70,15 50,15 Z"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="5"
+                  strokeDasharray="252"
+                  strokeDashoffset={252 - (252 * (progress > 50 ? progress - 50 : 0)) / 50}
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M40,35 C45,30 55,30 60,35 M35,50 C40,45 45,47 50,45 C55,43 60,45 65,50 M40,65 C45,70 55,70 60,65"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  style={{ opacity: progress > 75 ? (progress - 75) / 25 : 0 }}
+                />
+              </svg>
+            </div>
+            
+            <h2 className="text-2xl font-bold mb-4 text-white text-center">
+              {transitionMessages[2]}
+            </h2>
+            
+            <p className="text-white/80 text-lg font-medium text-center">
+              {transitionMessages[3]}
+            </p>
           </div>
         </div>
       </div>
-      
-      {/* CSS animations */}
+    
+      {/* CSS for animations */}
       <style jsx>{`
-        .stars-container {
-          position: absolute;
-          width: 100%;
-          height: 100%;
-        }
-        
-        .star {
-          position: absolute;
-          width: 3px;
-          height: 3px;
-          background-color: white;
-          border-radius: 50%;
-          opacity: 0;
-          animation: twinkle linear infinite;
-        }
-        
-        @keyframes twinkle {
-          0% { transform: scale(0); opacity: 0; }
-          50% { transform: scale(1.2); opacity: 0.8; }
-          100% { transform: scale(0); opacity: 0; }
-        }
-        
-        .brain-loading {
-          transform-origin: center;
-          animation: pulse 2s ease-in-out infinite;
-        }
-        
         @keyframes pulse {
           0% { transform: scale(1); }
           50% { transform: scale(1.05); }
           100% { transform: scale(1); }
+        }
+        
+        .brain-icon {
+          animation: pulse 2s ease-in-out infinite;
         }
       `}</style>
     </div>

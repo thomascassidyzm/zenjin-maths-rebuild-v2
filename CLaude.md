@@ -20,10 +20,18 @@ We've implemented a warm-up mode feature to address race conditions in content l
 4. **Created Documentation**: Added `/docs/WARM-UP-MODE.md` with implementation details
 
 The implementation includes:
-- `/lib/warmUpQuestions.ts` - Module for loading and managing warm-up questions
+- `/lib/warmUpQuestions.ts` - Module with 50 embedded math questions and helpers
 - `/components/WarmUpMode.tsx` - Component for displaying warm-up questions
 - `/components/WarmUpTransition.tsx` - Component for transition animation
 - Enhanced `PlayerWithLoader.tsx` with warm-up mode support
+
+Key improvements in our latest update:
+- **Embedded Questions**: Now contains 50 embedded math questions for reliability
+- **No External Dependencies**: Completely self-contained with no JSON file loading
+- **Skip Loading Screen**: Warm-up mode starts immediately without showing loading screen
+- **Transparent Background**: Allows bubble animations to be visible behind player
+- **No Finish Button**: Removed unnecessary Finish button from warm-up mode
+- **Bypass Zustand**: Directly uses embedded questions without Zustand store lookups
 
 This approach ensures users have immediate engagement with relevant content rather than seeing errors or loading screens, while completely eliminating the race condition issues previously encountered.
 
