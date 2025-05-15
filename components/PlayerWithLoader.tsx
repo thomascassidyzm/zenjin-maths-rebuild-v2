@@ -4,7 +4,6 @@ import LoadingScreen from './LoadingScreen';
 import { useAuth } from '../context/AuthContext';
 import WarmUpMode from './WarmUpMode';
 import WarmUpTransition from './WarmUpTransition';
-import SimpleTransition from './SimpleTransition';
 
 interface PlayerWithLoaderProps {
   children: React.ReactNode;
@@ -397,16 +396,16 @@ const PlayerWithLoader: React.FC<PlayerWithLoaderProps> = ({
     );
   }
   
-  // If transition is showing, render the simplified transition component with the actual player as children
+  // If transition is showing, render the transition component with the actual player as children
   if (showTransition) {
     logWithTime('🚀 Showing transition animation from warm-up to main content');
     return (
-      <SimpleTransition onTransitionComplete={handleTransitionComplete} duration={1500}>
-        {/* Pass the actual player component as children to show after transition */}
+      <WarmUpTransition onTransitionComplete={handleTransitionComplete} duration={3000}>
+        {/* Pass the actual player component as children to show on the back of the card */}
         <div className="player-content" style={{ width: '100%', height: '100%', position: 'relative', zIndex: 1 }}>
           {children}
         </div>
-      </SimpleTransition>
+      </WarmUpTransition>
     );
   }
   
