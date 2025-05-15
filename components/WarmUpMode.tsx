@@ -30,10 +30,10 @@ const WarmUpMode: React.FC<WarmUpModeProps> = ({
 
   // Load warm-up questions when component mounts - directly use the embedded questions
   useEffect(() => {
-    console.log(`Loading ${questionsCount} warm-up questions directly...`);
+    console.log(`Loading 10 warm-up questions directly...`);
     
-    // Get warm-up questions directly from our embedded questions
-    const questions = getRandomWarmUpQuestions(questionsCount);
+    // Get exactly 10 warm-up questions directly from our embedded questions
+    const questions = getRandomWarmUpQuestions(10, true);
     
     // Debug the questions that were loaded
     console.log(`Got ${questions.length} warm-up questions from our embedded collection`);
@@ -48,23 +48,15 @@ const WarmUpMode: React.FC<WarmUpModeProps> = ({
     // Set the questions and mark loading as complete
     setWarmUpQuestions(questions);
     setIsLoading(false);
-  }, [questionsCount]);
+  }, []); // No dependencies to prevent reloading
 
-  // When warm-up session is completed or needs to cycle tubes
+  // When warm-up session is completed
   const handleWarmUpComplete = useCallback((results: any) => {
-    console.log('Warm-up session completed or cycling:', results);
+    console.log('Warm-up session completed:', results);
     
-    // Check if this is a tube cycling request
-    if (results && results.cycleTube && results.nextTubeNumber) {
-      console.log(`Cycling to tube ${results.nextTubeNumber}`);
-      // Update the current tube number
-      setCurrentTube(results.nextTubeNumber);
-      return;
-    }
-    
-    // Otherwise, this is a normal completion - move to main content
+    // Move to main content
     onWarmUpComplete();
-  }, [onWarmUpComplete, currentTube]);
+  }, [onWarmUpComplete]);
 
   // Handle manual end session
   const handleEndSession = useCallback((results: any) => {
@@ -166,31 +158,41 @@ const WarmUpMode: React.FC<WarmUpModeProps> = ({
         Warming Up Your Math Skills
       </div>
       
-      {/* Use the standard MinimalDistinctionPlayer with our warm-up data */}
-      <div className="z-10 relative" style={{ background: 'transparent', width: '375px', height: '500px' }}>
-        <MinimalDistinctionPlayer
-          tubeNumber={currentTube}
-          tubeData={warmUpTubeData}
-          onComplete={handleWarmUpComplete}
-          onEndSession={handleEndSession}
-          questionsPerSession={questionsCount}
-          sessionTotalPoints={0}
-          userId={userId}
-          isWarmUpMode={true}
-        />
-        
-        {/* Skip button positioned at the bottom - only show when content is ready */}
-        {contentIsReady && (
-          <div className="absolute bottom-3 left-0 right-0 flex justify-center items-center">
-            <button
-              onClick={onWarmUpComplete}
-              className="bg-teal-600 hover:bg-teal-500 text-white font-medium py-1.5 px-4 rounded-lg transition-colors text-sm z-20 animate-fadeIn"
-            >
-              I'm ready to start!
-            </button>
+      {/* Show loading indicator when loading questions */}
+      {isLoading ? (
+        <div className="z-10 relative flex items-center justify-center" style={{ background: 'transparent', width: '375px', height: '500px' }}>
+          <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden p-6 text-center">
+            <div className="inline-block animate-spin h-10 w-10 border-4 border-teal-300 border-t-transparent rounded-full mb-4"></div>
+            <h2 className="text-white text-xl font-medium">Loading warm-up questions...</h2>
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        /* Use the standard MinimalDistinctionPlayer with our warm-up data */
+        <div className="z-10 relative" style={{ background: 'transparent', width: '375px', height: '500px' }}>
+          <MinimalDistinctionPlayer
+            tubeNumber={currentTube}
+            tubeData={warmUpTubeData}
+            onComplete={handleWarmUpComplete}
+            onEndSession={handleEndSession}
+            questionsPerSession={10} /* Fixed to exactly 10 questions */
+            sessionTotalPoints={0}
+            userId={userId}
+            isWarmUpMode={true}
+          />
+          
+          {/* Skip button positioned at the bottom - only show when content is ready */}
+          {contentIsReady && (
+            <div className="absolute bottom-3 left-0 right-0 flex justify-center items-center">
+              <button
+                onClick={onWarmUpComplete}
+                className="bg-teal-600 hover:bg-teal-500 text-white font-medium py-1.5 px-4 rounded-lg transition-colors text-sm z-20 animate-fadeIn shadow-lg"
+              >
+                I'm ready to start!
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

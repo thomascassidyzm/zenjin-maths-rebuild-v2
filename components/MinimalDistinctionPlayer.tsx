@@ -731,7 +731,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     }, 1500);
   }, [loadQuestion, selectedOption, timerAnimation, isTimingOut]);
 
-  // Handle option selection
+  // Handle option selection with enhanced field normalization
   const handleOptionSelect = useCallback((option: string) => {
     // Don't process if already selected or no question
     if (selectedOption !== null || !currentQuestion) return;
@@ -753,8 +753,33 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     const answerTime = Date.now() - questionStartTime;
     setTimeToAnswer(answerTime);
     
-    // Check if answer is correct
-    const correct = option === currentQuestion.correctAnswer;
+    // CRITICAL FIX: Enhanced field normalization for correctAnswer
+    // Check all possible field variations to ensure we find the answer
+    let correctAnswer;
+    
+    // First check standard camelCase and snake_case fields
+    if (currentQuestion.correctAnswer !== undefined) {
+      correctAnswer = currentQuestion.correctAnswer;
+    } else if ((currentQuestion as any).correct_answer !== undefined) {
+      correctAnswer = (currentQuestion as any).correct_answer;
+    } else if ((currentQuestion as any).correct !== undefined) {
+      correctAnswer = (currentQuestion as any).correct;
+    } else if ((currentQuestion as any).answer !== undefined) {
+      correctAnswer = (currentQuestion as any).answer;
+    } else {
+      // Default to first option as a last resort (should never happen)
+      console.error('No correct answer field found! Using fallback');
+      correctAnswer = option;
+    }
+    
+    // Log the answer format for debugging
+    console.log(`Answer check: option=${option}, correctAnswer format:`, {
+      camelCase: currentQuestion.correctAnswer !== undefined,
+      snakeCase: (currentQuestion as any).correct_answer !== undefined,
+      answerValue: correctAnswer
+    });
+    
+    const correct = option === correctAnswer;
     setIsCorrect(correct);
     setSelectedOption(option);
     
@@ -816,7 +841,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     isTimingOut,
   ]);
 
-  // Move to next question, next tube, or complete session
+  // Move to next question or complete session (simplified - no tube cycling)
   const moveToNextQuestion = useCallback(() => {
     const nextIndex = currentQuestionIndex + 1;
     
@@ -827,42 +852,15 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       return;
     }
     
-    // If we're in warm-up mode, check if we can cycle to the next tube
-    if (isWarmUpMode) {
-      const nextTubeNumber = tubeNumber < 3 ? tubeNumber + 1 : 1;
-      console.log(`Warm-up tube ${tubeNumber} completed. Cycling to tube ${nextTubeNumber}`);
-      
-      // Check if we have valid tube data for the next tube
-      if (tubeData[nextTubeNumber] && 
-          tubeData[nextTubeNumber].stitches && 
-          tubeData[nextTubeNumber].stitches.length > 0 &&
-          tubeData[nextTubeNumber].stitches[0].questions &&
-          tubeData[nextTubeNumber].stitches[0].questions.length > 0) {
-        
-        // Reset current question index
-        setCurrentQuestionIndex(0);
-        
-        // Pass control back to parent by calling onComplete with a special flag
-        onComplete({
-          success: true,
-          cycleTube: true,
-          nextTubeNumber,
-          message: `Cycling to tube ${nextTubeNumber}`
-        });
-        
-        return;
-      }
-    }
-    
-    // If not in warm-up mode or no next tube available, complete the session
+    // All questions completed, complete the session
     console.log('All questions completed, scheduling session completion...');
     
-    // Use the exact same delay as question transitions for consistent pacing
+    // Use a delay for consistent pacing
     setTimeout(() => {
       console.log('Session questions completed, finalizing session...');
       completeSession();
     }, 1000); // Exact same timing as question transitions
-  }, [currentQuestionIndex, sessionQuestions, loadQuestion, isWarmUpMode, tubeNumber, tubeData, onComplete]);
+  }, [currentQuestionIndex, sessionQuestions, loadQuestion, completeSession]);
 
   // Complete the session and report results
   const completeSession = useCallback(() => {
@@ -1799,8 +1797,8 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
             )}
           </div>
           
-          {/* Options - optimized fixed positioning to prevent movement during resize */}
-          <div className="buttons-container relative" style={{ height: '80px', margin: '0 auto 16px auto', width: '240px' }}>
+          {/* Options - using CSS class-based absolute positioning for consistency */}
+          <div className="buttons-container">
             {options.map((option, index) => (
               <button
                 key={`${currentQuestion.id}-${option}-${index}`}
@@ -1808,12 +1806,9 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
                 disabled={selectedOption !== null}
                 className={`
                   option-button answer-button
-                  flex items-center justify-center 
-                  rounded-full
                   text-3xl font-bold
-                  transition-all duration-300
+                  transition-colors duration-300
                   option-hover
-                  absolute
                   ${buttonToShake === option && isButtonShaking ? 'animate-shudder' : ''}
                   ${selectedOption === option && isCorrect ? 'bg-green-500 text-white glow-green' : ''}
                   ${selectedOption === option && !isCorrect ? 'glow-red' : ''}
@@ -1822,12 +1817,6 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
                   ${selectedOption === 'timeout' ? 'neutral-option' : ''}
                   ${selectedOption === null ? 'bg-white text-gray-800' : ''}
                 `}
-                style={{ 
-                  width: '110px', 
-                  height: '70px',
-                  left: index === 0 ? '0px' : '130px',
-                  top: '5px'
-                }}
               >
                 {option}
               </button>
@@ -1836,7 +1825,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
         </div>
         
         {/* Footer area with Finish button (hidden in warm-up mode) - fixed height */}
-        <div className="bg-white bg-opacity-10 p-3 flex justify-between items-center" style={{ height: '52px' }}>
+        <div className="bg-white bg-opacity-10 p-3 flex justify-between items-center question-footer">
           <div className="w-24"></div> {/* Spacer for balance */}
           <div className="text-center">
             {!isWarmUpMode && onEndSession && (
