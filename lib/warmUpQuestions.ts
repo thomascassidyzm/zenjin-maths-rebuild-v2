@@ -5,6 +5,8 @@
  * questions that are shown to users while the main content loads.
  */
 
+import { Question } from './types/distinction-learning';
+
 // Embed the warm-up questions directly in the code for reliability
 // This also eliminates the need for file loading and error handling
 const warmUpQuestionsRaw = [
@@ -463,8 +465,6 @@ const warmUpQuestionsRaw = [
 // Log the number of warm-up questions available
 console.log(`Using ${warmUpQuestionsRaw.length} embedded warm-up questions`);
 
-import { Question } from './types/distinction-learning';
-
 // Type for raw questions from the database (using snake_case)
 interface RawQuestion {
   id: string;
@@ -534,15 +534,30 @@ export function getAllWarmUpQuestions(): Question[] {
  * @returns Array of randomly selected questions
  */
 export function getRandomWarmUpQuestions(count: number = 10): Question[] {
+  console.log(`getRandomWarmUpQuestions: Requesting ${count} random warm-up questions`);
+  
   const allQuestions = getAllWarmUpQuestions();
+  console.log(`getRandomWarmUpQuestions: Got ${allQuestions.length} total questions from getAllWarmUpQuestions`);
   
   // If we don't have enough questions, return all we have
   if (allQuestions.length <= count) {
+    console.log(`getRandomWarmUpQuestions: Returning all ${allQuestions.length} available questions (fewer than requested ${count})`);
     return allQuestions;
   }
   
   // Shuffle and take the first 'count' questions
   const shuffled = [...allQuestions].sort(() => 0.5 - Math.random());
+  console.log(`getRandomWarmUpQuestions: Returning ${count} randomly selected questions from pool of ${allQuestions.length}`);
+  
+  // Log first question for debugging
+  if (shuffled.length > 0) {
+    console.log('First question in selection:', {
+      id: shuffled[0].id,
+      text: shuffled[0].text,
+      correctAnswer: shuffled[0].correctAnswer
+    });
+  }
+  
   return shuffled.slice(0, count);
 }
 
@@ -553,6 +568,7 @@ export function getRandomWarmUpQuestions(count: number = 10): Question[] {
  */
 export function createWarmUpStitch(count: number = 10) {
   const questions = getRandomWarmUpQuestions(count);
+  console.log(`createWarmUpStitch: Created warm-up stitch with ${questions.length} questions`);
   
   return {
     id: 'warm-up-stitch',
@@ -560,6 +576,40 @@ export function createWarmUpStitch(count: number = 10) {
     position: 0, // Default position
     skipNumber: 3, // Default skip number
     distractorLevel: 'L1' // Default distractor level
+  };
+}
+
+/**
+ * Create a complete warm-up tube structure ready for the player
+ * @param count Number of questions to include (default: 10)
+ * @returns A complete tube data structure with embedded questions
+ */
+export function createWarmUpTube(count: number = 10) {
+  console.log(`createWarmUpTube: Creating complete warm-up tube with ${count} questions`);
+  const questions = getRandomWarmUpQuestions(count);
+  
+  // Create a complete self-contained tube structure that doesn't depend on Zustand
+  return {
+    1: { // Tube number 1 
+      currentStitchId: 'warm-up-stitch',
+      positions: {
+        0: { // Position 0
+          stitchId: 'warm-up-stitch',
+          skipNumber: 3,
+          distractorLevel: 'L1'
+        }
+      },
+      // Add questions directly to the stitch
+      stitches: [
+        {
+          id: 'warm-up-stitch',
+          position: 0,
+          skipNumber: 3,
+          distractorLevel: 'L1',
+          questions: questions // Directly embed the questions
+        }
+      ]
+    }
   };
 }
 

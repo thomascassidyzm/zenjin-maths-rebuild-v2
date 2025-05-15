@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getRandomWarmUpQuestions } from '../lib/warmUpQuestions';
+import { getRandomWarmUpQuestions, createWarmUpTube } from '../lib/warmUpQuestions';
 import { Question } from '../lib/types/distinction-learning';
 import MinimalDistinctionPlayer from './MinimalDistinctionPlayer';
 import BackgroundBubbles from './BackgroundBubbles';
@@ -23,52 +23,26 @@ const WarmUpMode: React.FC<WarmUpModeProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Load warm-up questions when component mounts
+  // Load warm-up questions when component mounts - directly use the embedded questions
   useEffect(() => {
-    try {
-      console.log(`Loading ${questionsCount} warm-up questions...`);
-      const questions = getRandomWarmUpQuestions(questionsCount);
-      
-      // Debug the questions
-      console.log(`Got ${questions.length} warm-up questions`);
-      if (questions.length > 0) {
-        console.log('First question sample:', {
-          id: questions[0].id,
-          text: questions[0].text,
-          correctAnswer: questions[0].correctAnswer
-        });
-      } else {
-        console.error('No warm-up questions were returned!');
-      }
-      
-      setWarmUpQuestions(questions);
-      setIsLoading(false);
-    } catch (error) {
-      console.error('Error loading warm-up questions:', error);
-      // Use sample questions as fallback
-      const sampleQuestions = [
-        {
-          id: 'warm-up-sample-1',
-          text: '3 + 5 =',
-          correctAnswer: '8',
-          distractors: { L1: '7', L2: '9', L3: '6' }
-        },
-        {
-          id: 'warm-up-sample-2',
-          text: '7 - 2 =',
-          correctAnswer: '5',
-          distractors: { L1: '4', L2: '6', L3: '3' }
-        },
-        {
-          id: 'warm-up-sample-3',
-          text: '4 × 3 =',
-          correctAnswer: '12',
-          distractors: { L1: '7', L2: '10', L3: '9' }
-        }
-      ];
-      setWarmUpQuestions(sampleQuestions);
-      setIsLoading(false);
+    console.log(`Loading ${questionsCount} warm-up questions directly...`);
+    
+    // Get warm-up questions directly from our embedded questions
+    const questions = getRandomWarmUpQuestions(questionsCount);
+    
+    // Debug the questions that were loaded
+    console.log(`Got ${questions.length} warm-up questions from our embedded collection`);
+    if (questions.length > 0) {
+      console.log('First question sample:', {
+        id: questions[0].id,
+        text: questions[0].text,
+        correctAnswer: questions[0].correctAnswer
+      });
     }
+    
+    // Set the questions and mark loading as complete
+    setWarmUpQuestions(questions);
+    setIsLoading(false);
   }, [questionsCount]);
 
   // When warm-up session is completed
@@ -86,6 +60,17 @@ const WarmUpMode: React.FC<WarmUpModeProps> = ({
   // Initialize tube data for MinimalDistinctionPlayer
   useEffect(() => {
     if (!isLoading && warmUpQuestions.length > 0 && !isInitialized) {
+      console.log(`WarmUpMode: Initializing with ${warmUpQuestions.length} questions - no Zustand lookups needed`);
+      
+      // Log the first question for debugging
+      if (warmUpQuestions.length > 0) {
+        console.log('WarmUpMode: First question in initialization:', {
+          id: warmUpQuestions[0].id,
+          text: warmUpQuestions[0].text,
+          correctAnswer: warmUpQuestions[0].correctAnswer
+        });
+      }
+      
       setIsInitialized(true);
     }
   }, [isLoading, warmUpQuestions, isInitialized]);
@@ -119,29 +104,9 @@ const WarmUpMode: React.FC<WarmUpModeProps> = ({
     );
   }
 
-  // Prepare tube data for MinimalDistinctionPlayer
-  const warmUpTubeData = {
-    1: { // Tube number 1 
-      currentStitchId: 'warm-up-stitch',
-      positions: {
-        0: { // Position 0
-          stitchId: 'warm-up-stitch',
-          skipNumber: 3,
-          distractorLevel: 'L1'
-        }
-      },
-      // Add warm-up questions directly to the stitch
-      stitches: [
-        {
-          id: 'warm-up-stitch',
-          position: 0,
-          skipNumber: 3,
-          distractorLevel: 'L1',
-          questions: warmUpQuestions
-        }
-      ]
-    }
-  };
+  // Prepare tube data for MinimalDistinctionPlayer using the createWarmUpTube helper
+  // This skips all Zustand lookups by creating a self-contained tube structure
+  const warmUpTubeData = createWarmUpTube(questionsCount);
 
   // Render the MinimalDistinctionPlayer with warm-up questions
   return (

@@ -170,7 +170,8 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
       tubeNumber,
       hasStitches: stitches.length > 0,
       stitchCount: stitches.length,
-      currentStitchId
+      currentStitchId,
+      isWarmUpMode
     });
 
     // Guard clause - don't proceed if we don't have stitches
@@ -226,147 +227,203 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     // Debug logging for stitch content
     console.log(`Initializing stitch ${stitch.id} in tube ${tubeNumber}`, {
       id: stitch.id,
-      position: stitch.position
+      position: stitch.position,
+      isWarmUpMode
     });
 
-    // Log cached content in Zustand store for debugging
-    const contentCollection = useZenjinStore.getState().contentCollection;
-    const cachedStitchCount = contentCollection?.stitches
-      ? Object.keys(contentCollection.stitches).length
-      : 0;
-    console.log(`Available cached stitches in Zustand store: ${cachedStitchCount}`);
-    if (cachedStitchCount > 0) {
-      console.log(`Cached stitch keys (first 5): ${Object.keys(contentCollection.stitches).slice(0, 5).join(', ')}`);
-    }
-
-    // Detailed analysis of stitch ID format to help with matching
-    const stitchFormatMatch = stitch.id.match(/stitch-T(\d+)-(\d+)-(\d+)/);
-    if (stitchFormatMatch) {
-      const [_, tubeNum, groupNum, posNum] = stitchFormatMatch;
-      console.log(`DEBUG: Stitch ID format analysis - Tube: ${tubeNum}, Group: ${groupNum}, Position: ${posNum}`);
-
-      // Check if any stitches with similar patterns exist in the Zustand store
-      const contentCollection = useZenjinStore.getState().contentCollection;
-      const stitchKeys = contentCollection?.stitches ? Object.keys(contentCollection.stitches) : [];
-      const similarPatternKeys = stitchKeys.filter(key =>
-        key.startsWith(`stitch-T${tubeNum}-`)
-      ).slice(0, 5);
-
-      if (similarPatternKeys.length > 0) {
-        console.log(`DEBUG: Similar pattern stitches found in store: ${similarPatternKeys.join(', ')}`);
-      } else {
-        console.log(`DEBUG: No similar pattern stitches found in store for T${tubeNum}`);
+    // Directly use tubeData questions in warm-up mode
+    if (isWarmUpMode) {
+      console.log(`WARM-UP MODE ACTIVE: Bypassing Zustand store for stitch ${stitch.id}`);
+      
+      // Initialize stitch's questions array if it doesn't exist
+      if (!stitch.questions) {
+        stitch.questions = [];
       }
-    }
-
-    // Simple debug logging to help understand issues
-    console.log(`DEBUG: Fetching stitch ${stitch.id} from Zustand store`);
-
-    // Get the fetchStitch function from Zustand store
-    const fetchStitch = useZenjinStore.getState().fetchStitch;
-
-    // Initialize stitch's questions array if it doesn't exist
-    if (!stitch.questions) {
-      stitch.questions = [];
-    }
-
-    // Check if the stitch already has questions
-    if (stitch.questions && stitch.questions.length > 0) {
-      console.log(`DEBUG: Stitch ${stitch.id} already has ${stitch.questions.length} questions`);
-
-      // Initialize session with existing questions
-      const allQuestions = [...stitch.questions];
-      const sessionQs = allQuestions.slice(0, Math.min(questionsPerSession, allQuestions.length));
-      setSessionQuestions(sessionQs);
-
-      // Start with the first question if available
-      if (sessionQs.length > 0) {
-        setIsInitialized(true);
-        loadQuestion(sessionQs[0], false);
+      
+      // Check if the stitch already has questions from tubeData
+      if (stitch.questions && stitch.questions.length > 0) {
+        console.log(`WARM-UP: Using ${stitch.questions.length} questions directly from tubeData`);
+        
+        // Use questions directly from tubeData
+        const allQuestions = [...stitch.questions];
+        const sessionQs = allQuestions.slice(0, Math.min(questionsPerSession, allQuestions.length));
+        setSessionQuestions(sessionQs);
+        
+        // Start with the first question if available
+        if (sessionQs.length > 0) {
+          setIsInitialized(true);
+          loadQuestion(sessionQs[0], false);
+        }
+      } else {
+        console.warn(`WARM-UP: No questions found in tubeData for stitch ${stitch.id}`);
+        validateContent(stitch);
       }
     } else {
-      try {
-        // Fetch the stitch from the Zustand store
-        fetchStitch(stitch.id).then(storeStitch => {
-          if (storeStitch && storeStitch.questions && storeStitch.questions.length > 0) {
-            console.log(`SUCCESS: Fetched ${storeStitch.questions.length} questions for stitch ${stitch.id} from Zustand store`);
+      // Normal mode - use Zustand store
+      // Log cached content in Zustand store for debugging
+      const contentCollection = useZenjinStore.getState().contentCollection;
+      const cachedStitchCount = contentCollection?.stitches
+        ? Object.keys(contentCollection.stitches).length
+        : 0;
+      console.log(`Available cached stitches in Zustand store: ${cachedStitchCount}`);
+      if (cachedStitchCount > 0) {
+        console.log(`Cached stitch keys (first 5): ${Object.keys(contentCollection.stitches).slice(0, 5).join(', ')}`);
+      }
 
-            // Create a local copy of the questions for this session
-            const questions = [...storeStitch.questions];
+      // Detailed analysis of stitch ID format to help with matching
+      const stitchFormatMatch = stitch.id.match(/stitch-T(\d+)-(\d+)-(\d+)/);
+      if (stitchFormatMatch) {
+        const [_, tubeNum, groupNum, posNum] = stitchFormatMatch;
+        console.log(`DEBUG: Stitch ID format analysis - Tube: ${tubeNum}, Group: ${groupNum}, Position: ${posNum}`);
 
-            // Update the stitch's questions
-            stitch.questions = questions;
+        // Check if any stitches with similar patterns exist in the Zustand store
+        const contentCollection = useZenjinStore.getState().contentCollection;
+        const stitchKeys = contentCollection?.stitches ? Object.keys(contentCollection.stitches) : [];
+        const similarPatternKeys = stitchKeys.filter(key =>
+          key.startsWith(`stitch-T${tubeNum}-`)
+        ).slice(0, 5);
 
-            // Initialize the session with these questions
-            const sessionQs = questions.slice(0, Math.min(questionsPerSession, questions.length));
-            setSessionQuestions(sessionQs);
+        if (similarPatternKeys.length > 0) {
+          console.log(`DEBUG: Similar pattern stitches found in store: ${similarPatternKeys.join(', ')}`);
+        } else {
+          console.log(`DEBUG: No similar pattern stitches found in store for T${tubeNum}`);
+        }
+      }
 
-            // Start with the first question
-            if (sessionQs.length > 0) {
-              setIsInitialized(true);
-              loadQuestion(sessionQs[0], false);
+      // Simple debug logging to help understand issues
+      console.log(`DEBUG: Fetching stitch ${stitch.id} from Zustand store`);
+
+      // Get the fetchStitch function from Zustand store
+      const fetchStitch = useZenjinStore.getState().fetchStitch;
+
+      // Initialize stitch's questions array if it doesn't exist
+      if (!stitch.questions) {
+        stitch.questions = [];
+      }
+
+      // Check if the stitch already has questions
+      if (stitch.questions && stitch.questions.length > 0) {
+        console.log(`DEBUG: Stitch ${stitch.id} already has ${stitch.questions.length} questions`);
+
+        // Initialize session with existing questions
+        const allQuestions = [...stitch.questions];
+        const sessionQs = allQuestions.slice(0, Math.min(questionsPerSession, allQuestions.length));
+        setSessionQuestions(sessionQs);
+
+        // Start with the first question if available
+        if (sessionQs.length > 0) {
+          setIsInitialized(true);
+          loadQuestion(sessionQs[0], false);
+        }
+      } else {
+        try {
+          // Fetch the stitch from the Zustand store
+          fetchStitch(stitch.id).then(storeStitch => {
+            if (storeStitch && storeStitch.questions && storeStitch.questions.length > 0) {
+              console.log(`SUCCESS: Fetched ${storeStitch.questions.length} questions for stitch ${stitch.id} from Zustand store`);
+
+              // Create a local copy of the questions for this session
+              const questions = [...storeStitch.questions];
+
+              // Update the stitch's questions
+              stitch.questions = questions;
+
+              // Initialize the session with these questions
+              const sessionQs = questions.slice(0, Math.min(questionsPerSession, questions.length));
+              setSessionQuestions(sessionQs);
+
+              // Start with the first question
+              if (sessionQs.length > 0) {
+                setIsInitialized(true);
+                loadQuestion(sessionQs[0], false);
+              }
+            } else {
+              console.warn(`ERROR: Failed to fetch valid questions for stitch ${stitch.id} from Zustand store`);
+              validateContent(stitch);
             }
-          } else {
-            console.warn(`ERROR: Failed to fetch valid questions for stitch ${stitch.id} from Zustand store`);
+          }).catch(error => {
+            console.error(`ERROR: Failed to fetch stitch ${stitch.id} from Zustand store:`, error);
             validateContent(stitch);
-          }
-        }).catch(error => {
-          console.error(`ERROR: Failed to fetch stitch ${stitch.id} from Zustand store:`, error);
+          });
+        } catch (error) {
+          console.error(`ERROR: Exception while fetching stitch ${stitch.id}:`, error);
           validateContent(stitch);
-        });
-      } catch (error) {
-        console.error(`ERROR: Exception while fetching stitch ${stitch.id}:`, error);
-        validateContent(stitch);
+        }
       }
     }
 
     // Helper function to check if the content is properly loaded
     function validateContent(stitchToUse = stitch) {
-      console.log(`DEBUG: Validating content for stitch ${stitchToUse.id}`);
+      console.log(`DEBUG: Validating content for stitch ${stitchToUse.id} (Warm-up mode: ${isWarmUpMode})`);
       
-      // Debug the content collection state
-      const contentCollection = useZenjinStore.getState().contentCollection;
-      console.log(`DEBUG: Content collection state:`, {
-        hasCollection: !!contentCollection,
-        stitchCount: contentCollection?.stitches ? Object.keys(contentCollection.stitches).length : 0,
-        hasStitchInStore: contentCollection?.stitches ? !!contentCollection.stitches[stitchToUse.id] : false,
-        questionsInStore: contentCollection?.stitches && contentCollection.stitches[stitchToUse.id]?.questions ? 
-          contentCollection.stitches[stitchToUse.id].questions.length : 0
-      });
-      
-      // If the stitch exists in store with questions, use them
-      if (contentCollection?.stitches && 
-          contentCollection.stitches[stitchToUse.id] && 
-          contentCollection.stitches[stitchToUse.id].questions &&
-          contentCollection.stitches[stitchToUse.id].questions.length > 0) {
+      // In warm-up mode, we only check the direct questions from tubeData
+      if (isWarmUpMode) {
+        console.log(`WARM-UP VALIDATION: Checking questions directly from tubeData for stitch ${stitchToUse.id}`);
         
-        console.log(`FOUND: ${contentCollection.stitches[stitchToUse.id].questions.length} questions in store for stitch ${stitchToUse.id}`);
-        stitchToUse.questions = [...contentCollection.stitches[stitchToUse.id].questions];
-        return true;
-      }
-      
-      // Initialize questions array if it doesn't exist
-      if (!stitchToUse.questions) {
-        stitchToUse.questions = [];
-      }
-      
-      // Check if the questions array has valid questions
-      const validQuestions = stitchToUse.questions.filter(q => (
-        q.text && q.correctAnswer && q.distractors &&
-        q.distractors.L1 && q.distractors.L2 && q.distractors.L3
-      ));
+        // Initialize questions array if it doesn't exist
+        if (!stitchToUse.questions) {
+          stitchToUse.questions = [];
+        }
+        
+        // Check if the questions array has valid questions
+        const validQuestions = stitchToUse.questions.filter(q => (
+          q.text && q.correctAnswer && q.distractors &&
+          q.distractors.L1 && (q.distractors.L2 || true) && (q.distractors.L3 || true)
+        ));
 
-      if (validQuestions.length > 0) {
-        console.log(`Using ${validQuestions.length} valid existing questions for stitch ${stitchToUse.id}`);
-        stitchToUse.questions = validQuestions;
-        return true;
+        if (validQuestions.length > 0) {
+          console.log(`WARM-UP: Using ${validQuestions.length} valid existing questions for stitch ${stitchToUse.id}`);
+          stitchToUse.questions = validQuestions;
+          return true;
+        }
+        
+        // No valid questions found in warm-up mode
+        console.error(`WARM-UP: No valid questions found for stitch ${stitchToUse.id} in tube ${tubeNumber}`);
+      } else {
+        // Standard mode - check Zustand store
+        // Debug the content collection state
+        const contentCollection = useZenjinStore.getState().contentCollection;
+        console.log(`DEBUG: Content collection state:`, {
+          hasCollection: !!contentCollection,
+          stitchCount: contentCollection?.stitches ? Object.keys(contentCollection.stitches).length : 0,
+          hasStitchInStore: contentCollection?.stitches ? !!contentCollection.stitches[stitchToUse.id] : false,
+          questionsInStore: contentCollection?.stitches && contentCollection.stitches[stitchToUse.id]?.questions ? 
+            contentCollection.stitches[stitchToUse.id].questions.length : 0
+        });
+        
+        // If the stitch exists in store with questions, use them
+        if (contentCollection?.stitches && 
+            contentCollection.stitches[stitchToUse.id] && 
+            contentCollection.stitches[stitchToUse.id].questions &&
+            contentCollection.stitches[stitchToUse.id].questions.length > 0) {
+          
+          console.log(`FOUND: ${contentCollection.stitches[stitchToUse.id].questions.length} questions in store for stitch ${stitchToUse.id}`);
+          stitchToUse.questions = [...contentCollection.stitches[stitchToUse.id].questions];
+          return true;
+        }
+        
+        // Initialize questions array if it doesn't exist
+        if (!stitchToUse.questions) {
+          stitchToUse.questions = [];
+        }
+        
+        // Check if the questions array has valid questions
+        const validQuestions = stitchToUse.questions.filter(q => (
+          q.text && q.correctAnswer && q.distractors &&
+          q.distractors.L1 && q.distractors.L2 && q.distractors.L3
+        ));
+
+        if (validQuestions.length > 0) {
+          console.log(`Using ${validQuestions.length} valid existing questions for stitch ${stitchToUse.id}`);
+          stitchToUse.questions = validQuestions;
+          return true;
+        }
+        
+        // No valid questions found
+        console.error(`No valid questions found for stitch ${stitchToUse.id} in tube ${tubeNumber}`);
       }
-      
-      // No valid questions found
-      console.error(`No valid questions found for stitch ${stitchToUse.id} in tube ${tubeNumber}`);
       
       // We'll use a single "loading" question to indicate content is missing
-      // The warm-up mode should prevent this from ever being shown to users
       const loadingQuestion = {
         id: `${stitchToUse.id}-loading-1`,
         text: 'Loading your personalized content...',
@@ -433,7 +490,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     } else {
       console.error("No questions available for this session!");
     }
-  }, [tubeNumber, currentStitchId, questionsPerSession, userId, sessionTotalPoints]);
+  }, [tubeNumber, currentStitchId, questionsPerSession, userId, sessionTotalPoints, isWarmUpMode]);
 
   // Track if timer initialization has been done for the current question
   const timerInitializedRef = useRef(false);
