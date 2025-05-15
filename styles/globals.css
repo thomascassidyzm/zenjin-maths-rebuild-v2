@@ -88,68 +88,6 @@ body::before {
   border: 2px solid rgba(191, 219, 254, 0.9);
 }
 
-/* ======== CRITICAL FIX: Answer buttons positioning ======== */
-/* Fixed answer button styling with absolute coordinates and z-index */
-.answer-button {
-  width: 110px !important; 
-  height: 70px !important;
-  min-height: 70px !important;
-  max-height: 70px !important;
-  position: absolute !important;
-  border-radius: 50% !important;
-  z-index: 10 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  transform: none !important; /* Prevent transform effects */
-  transition: background-color 0.3s, box-shadow 0.3s !important; /* Only allow color transitions */
-}
-
-/* Left answer button with absolute coordinates to prevent shifting */
-.answer-button:nth-child(1) {
-  left: 0 !important;
-  top: 5px !important;
-  right: auto !important; /* Explicitly override */
-  bottom: auto !important; /* Explicitly override */
-}
-
-/* Right answer button with absolute coordinates to prevent shifting */
-.answer-button:nth-child(2) {
-  right: 0 !important;
-  top: 5px !important;
-  left: auto !important; /* Explicitly override */
-  bottom: auto !important; /* Explicitly override */
-}
-
-/* Answer buttons container with fixed dimensions and explicit overflow handling */
-.buttons-container {
-  position: relative !important;
-  height: 80px !important;
-  margin: 0 auto 16px auto !important;
-  width: 240px !important;
-  overflow: visible !important; /* Ensure buttons aren't clipped */
-  z-index: 5 !important;
-  transform: none !important; /* Prevent transform effects */
-}
-
-/* Fixed footer styling with explicit height and padding */
-.question-footer {
-  height: 52px !important;
-  min-height: 52px !important;
-  max-height: 52px !important;
-  padding: 3px !important;
-  display: flex !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-}
-
-/* Question container with fixed height */
-.question-container {
-  min-height: 310px !important;
-  max-height: 310px !important;
-  height: 310px !important;
-  overflow: visible !important;
-}
 
 /* Animation classes */
 @keyframes fadeIn {

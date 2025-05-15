@@ -7,82 +7,46 @@ interface SimpleTransitionProps {
 }
 
 /**
- * A completely redesigned transition component with no card flip 
- * Uses simple fade transitions for maximum reliability with cleaner styling
+ * Simple transition component that fades between content
+ * No card flip animation - just a clean fade transition
  */
 const SimpleTransition: React.FC<SimpleTransitionProps> = ({
   onTransitionComplete,
-  duration = 1500, // Default duration: 1.5 seconds - even shorter for better UX
-  children // The actual player component to show after transition
+  duration = 1500, // 1.5 seconds default
+  children 
 }) => {
-  // Track animation progress
-  const [progress, setProgress] = useState(0);
-  const [showMessage, setShowMessage] = useState(true);
-  const [showContent, setShowContent] = useState(false);
+  const [stage, setStage] = useState<'message'|'transition'|'content'>('message');
   
   useEffect(() => {
-    const startTime = Date.now();
-    const midPoint = startTime + (duration / 2);
-    const endTime = startTime + duration;
-    let animationFrameId: number;
-    
-    // Function to update progress
-    const updateProgress = () => {
-      const now = Date.now();
-      const elapsed = now - startTime;
-      const newProgress = Math.min(100, (elapsed / duration) * 100);
+    // First phase - show message
+    const messageTimer = setTimeout(() => {
+      // Second phase - transition
+      setStage('transition');
       
-      // Update progress state
-      setProgress(newProgress);
+      // Final phase - show content and complete
+      const contentTimer = setTimeout(() => {
+        setStage('content');
+        
+        // Allow a moment for the animation to complete
+        setTimeout(onTransitionComplete, 200);
+      }, duration / 2);
       
-      // Update visibility states based on progress
-      if (now >= midPoint && showMessage) {
-        setShowMessage(false);
-        setTimeout(() => setShowContent(true), 100); // Very short delay for fade effect
-      }
-      
-      // Continue animation if not complete
-      if (now < endTime) {
-        animationFrameId = requestAnimationFrame(updateProgress);
-      } else {
-        // Animation complete - allow a short delay to ensure smooth transition
-        setTimeout(() => {
-          onTransitionComplete();
-        }, 100);
-      }
-    };
+      return () => clearTimeout(contentTimer);
+    }, duration / 2);
     
-    // Start animation
-    animationFrameId = requestAnimationFrame(updateProgress);
-    
-    // Cleanup function - properly cancel animation frame
-    return () => {
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-      }
-    };
-  }, [duration, onTransitionComplete, showMessage]);
+    return () => clearTimeout(messageTimer);
+  }, [duration, onTransitionComplete]);
   
   return (
-    <div 
-      className="flex items-center justify-center" 
-      style={{ 
-        width: '375px', 
-        height: '500px',
-        position: 'relative',
-        zIndex: 50
-      }}
-    >
-      {/* Ultra-simplified transition that just fades between views */}
+    <div className="flex items-center justify-center" style={{ width: '375px', height: '500px' }}>
       <div className="w-full h-full relative rounded-2xl shadow-xl overflow-hidden bg-gradient-to-b from-teal-800 to-teal-900">
-        {/* Loading message - shows first, then fades out */}
-        {showMessage && (
+        {/* Message view */}
+        {(stage === 'message' || stage === 'transition') && (
           <div 
             className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center"
             style={{
-              opacity: Math.max(0, 1 - progress / 45), // Fade out in first half
-              transition: 'opacity 0.25s ease-out',
-              zIndex: 60
+              opacity: stage === 'message' ? 1 : 0,
+              transition: 'opacity 0.5s ease'
             }}
           >
             <h2 className="text-2xl font-bold text-white mb-3">
@@ -97,14 +61,13 @@ const SimpleTransition: React.FC<SimpleTransitionProps> = ({
           </div>
         )}
         
-        {/* Main content - fades in after message fades out */}
-        {showContent && (
+        {/* Content view */}
+        {(stage === 'transition' || stage === 'content') && (
           <div 
             className="absolute inset-0"
             style={{
-              opacity: Math.min(1, (progress - 45) / 25), // Fade in during second half
-              transition: 'opacity 0.25s ease-out',
-              zIndex: 55
+              opacity: stage === 'content' ? 1 : 0,
+              transition: 'opacity 0.5s ease'
             }}
           >
             {children}

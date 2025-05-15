@@ -481,134 +481,60 @@ interface RawQuestion {
 }
 
 /**
- * Enhanced normalize question format function that handles any field format
- * Much more aggressive field normalization with detailed logging
+ * Normalize question format from database snake_case to camelCase
+ * This handles both existing and raw questions
  * @param questionData Question data in any format (RawQuestion or partially normalized)
  * @returns Question in the format expected by MinimalDistinctionPlayer
  */
 export function normalizeQuestionFormat(questionData: any): Question {
   // Create a normalized copy so we don't modify the original
   const normalized: any = {...questionData};
-  const originalId = normalized.id || 'unknown';
   
-  // Handle id - ensure it's always present
+  // Handle id
   if (!normalized.id) {
     normalized.id = `question-${Math.random().toString(36).substring(2, 9)}`;
-    console.log(`Added missing ID for question: ${normalized.id}`);
   }
   
-  // CRITICAL FIX: Handle ALL possible text field variants
-  if (!normalized.text) {
-    const possibleTextFields = ['text_content', 'textContent', 'question', 'question_text', 'questionText'];
-    for (const field of possibleTextFields) {
-      if (normalized[field]) {
-        normalized.text = normalized[field];
-        console.log(`Normalized text field from '${field}' for question ${originalId}`);
-        break;
-      }
-    }
+  // Handle text
+  if (!normalized.text && normalized.text_content) {
+    normalized.text = normalized.text_content;
   }
   
-  // CRITICAL FIX: Handle ALL possible correctAnswer field variants with detailed logging
-  if (!normalized.correctAnswer) {
-    const possibleAnswerFields = [
-      'correct_answer', 'correctanswer', 'correct', 'answer', 'right_answer', 'rightAnswer'
-    ];
-    
-    for (const field of possibleAnswerFields) {
-      if (normalized[field] !== undefined) {
-        normalized.correctAnswer = normalized[field];
-        console.log(`Normalized correctAnswer from '${field}' for question ${originalId}`);
-        break;
-      }
-    }
-    
-    // If still not found, check nested objects
-    if (!normalized.correctAnswer && normalized.correct && typeof normalized.correct === 'object') {
-      if (normalized.correct.answer) {
-        normalized.correctAnswer = normalized.correct.answer;
-        console.log(`Normalized correctAnswer from nested 'correct.answer' for question ${originalId}`);
-      }
-    }
+  // Handle correctAnswer - this is the most critical field to normalize
+  if (!normalized.correctAnswer && normalized.correct_answer !== undefined) {
+    normalized.correctAnswer = normalized.correct_answer;
+    console.log(`Normalized correctAnswer for question ${normalized.id}`);
   }
   
-  // CRITICAL FIX: Handle ALL possible distractor field variants
+  // Handle distractors
   if (!normalized.distractors) {
-    const possibleDistractorFields = [
-      'distractors', 'options', 'wrong_answers', 'wrongAnswers', 'incorrect', 'incorrect_answers'
-    ];
-    
-    for (const field of possibleDistractorFields) {
-      if (normalized[field] && typeof normalized[field] === 'object') {
-        normalized.distractors = normalized[field];
-        console.log(`Normalized distractors from '${field}' for question ${originalId}`);
-        break;
-      }
-    }
-    
-    // If distractors is an array, convert to object format
-    if (Array.isArray(normalized.distractors)) {
-      const distractorsArray = normalized.distractors;
-      normalized.distractors = {
-        L1: distractorsArray[0] || '',
-        L2: distractorsArray[1] || '',
-        L3: distractorsArray[2] || ''
-      };
-      console.log(`Converted distractors array to object for question ${originalId}`);
-    }
-    
-    // If still not found, create empty
-    if (!normalized.distractors) {
-      normalized.distractors = {};
-      console.log(`Created empty distractors object for question ${originalId}`);
-    }
+    normalized.distractors = {};
   }
   
-  // Always normalize distractor levels to ensure L1/L2/L3 exist
-  // First, copy any lowercase keys to uppercase
-  const allLevels = ['l1', 'l2', 'l3', 'L1', 'L2', 'L3', 'level1', 'level2', 'level3'];
-  for (const level of allLevels) {
-    const upperLevel = level.toUpperCase().replace('LEVEL', 'L');
-    if (level !== upperLevel && normalized.distractors[level] !== undefined) {
-      normalized.distractors[upperLevel] = normalized.distractors[level];
-    }
-  }
-  
-  // After normalizing, ensure standard L1/L2/L3 all exist with fallbacks
-  if (!normalized.distractors.L1 && normalized.distractors.l1) {
+  // If we have lowercase distractor fields, normalize them to uppercase
+  if (normalized.distractors.l1 && !normalized.distractors.L1) {
     normalized.distractors.L1 = normalized.distractors.l1;
   }
   
-  if (!normalized.distractors.L2 && normalized.distractors.l2) {
+  if (normalized.distractors.l2 && !normalized.distractors.L2) {
     normalized.distractors.L2 = normalized.distractors.l2;
   }
   
-  if (!normalized.distractors.L3 && normalized.distractors.l3) {
+  if (normalized.distractors.l3 && !normalized.distractors.L3) {
     normalized.distractors.L3 = normalized.distractors.l3;
   }
   
-  // Ensure all distractor levels exist even if empty
+  // Ensure distractors have all required levels
   if (!normalized.distractors.L1) {
-    normalized.distractors.L1 = normalized.distractors.L2 || normalized.distractors.L3 || '';
+    normalized.distractors.L1 = '';
   }
   
   if (!normalized.distractors.L2) {
-    normalized.distractors.L2 = normalized.distractors.L1 || normalized.distractors.L3 || '';
+    normalized.distractors.L2 = '';
   }
   
   if (!normalized.distractors.L3) {
-    normalized.distractors.L3 = normalized.distractors.L2 || normalized.distractors.L1 || '';
-  }
-  
-  // CRITICAL: Ensure the question is actually valid with a final check
-  if (!normalized.text) {
-    console.error(`Question ${originalId} is missing text after normalization!`);
-    normalized.text = 'Question text unavailable';
-  }
-  
-  if (!normalized.correctAnswer) {
-    console.error(`Question ${originalId} is missing correctAnswer after normalization!`);
-    normalized.correctAnswer = normalized.distractors.L1 || '?';
+    normalized.distractors.L3 = '';
   }
   
   return normalized as Question;
