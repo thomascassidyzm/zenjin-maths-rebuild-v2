@@ -85,7 +85,7 @@ const WarmUpTransition: React.FC<WarmUpTransitionProps> = ({
         >
           {/* Front of card (visible at start) */}
           <div 
-            className="card-front bg-gradient-to-b from-indigo-800 to-blue-900 rounded-2xl shadow-xl p-6"
+            className="card-front bg-gradient-to-b from-teal-800 to-teal-900 rounded-2xl shadow-xl p-6"
             style={{
               width: '100%',
               height: '100%',
@@ -98,6 +98,9 @@ const WarmUpTransition: React.FC<WarmUpTransitionProps> = ({
               flexDirection: 'column',
               justifyContent: 'center',
               alignItems: 'center',
+              // Hide contents when card is edge-on (between 70 and 110 degrees)
+              opacity: progress > 70 ? 0 : 1,
+              transition: 'opacity 0.2s ease-out',
             }}
           >
             <h2 className="text-2xl font-bold mb-6 text-white text-center">
@@ -107,7 +110,7 @@ const WarmUpTransition: React.FC<WarmUpTransitionProps> = ({
             {/* Progress bar */}
             <div className="w-full h-2 bg-white/20 rounded-full mt-4 mb-6 overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-teal-400 to-blue-500 rounded-full transition-all duration-300 ease-out"
+                className="h-full bg-gradient-to-r from-teal-400 to-teal-500 rounded-full transition-all duration-300 ease-out"
                 style={{ width: `${progress}%` }}
               ></div>
             </div>
@@ -115,7 +118,7 @@ const WarmUpTransition: React.FC<WarmUpTransitionProps> = ({
             {/* Simple card flipping animation */}
             <div className="my-6 relative w-20 h-24">
               <div 
-                className="absolute inset-0 bg-gradient-to-r from-teal-500 to-blue-500 rounded-lg shadow-lg flex items-center justify-center"
+                className="absolute inset-0 bg-gradient-to-r from-teal-500 to-teal-600 rounded-lg shadow-lg flex items-center justify-center"
                 style={{ 
                   transform: `rotateY(${progress * 3.6}deg)`, 
                   transformStyle: 'preserve-3d',
@@ -133,7 +136,7 @@ const WarmUpTransition: React.FC<WarmUpTransitionProps> = ({
           
           {/* Back of card (visible at end) */}
           <div 
-            className="card-back bg-gradient-to-b from-teal-800 to-emerald-900 rounded-2xl shadow-xl p-6"
+            className="card-back bg-gradient-to-b from-teal-800 to-teal-900 rounded-2xl shadow-xl p-6"
             style={{
               width: '100%',
               height: '100%',
@@ -146,7 +149,9 @@ const WarmUpTransition: React.FC<WarmUpTransitionProps> = ({
               flexDirection: 'column',
               justifyContent: 'center',
               alignItems: 'center',
-              opacity: progress > 50 ? (progress - 50) / 50 : 0, // Fade in
+              // Only show after we're past 110 degrees and fade in
+              opacity: progress > 110 ? (progress - 110) / 70 : 0,
+              transition: 'opacity 0.2s ease-out',
             }}
           >
             <div className="brain-icon mb-4">
@@ -154,19 +159,19 @@ const WarmUpTransition: React.FC<WarmUpTransitionProps> = ({
                 <path
                   d="M50,15 C30,15 15,30 15,50 C15,70 30,85 50,85 C70,85 85,70 85,50 C85,30 70,15 50,15 Z"
                   fill="none"
-                  stroke="white"
+                  stroke="#14b8a6" /* teal-500 */
                   strokeWidth="5"
                   strokeDasharray="252"
-                  strokeDashoffset={252 - (252 * (progress > 50 ? progress - 50 : 0)) / 50}
+                  strokeDashoffset={252 - (252 * (progress > 110 ? progress - 110 : 0)) / 70}
                   strokeLinecap="round"
                 />
                 <path
                   d="M40,35 C45,30 55,30 60,35 M35,50 C40,45 45,47 50,45 C55,43 60,45 65,50 M40,65 C45,70 55,70 60,65"
                   fill="none"
-                  stroke="white"
+                  stroke="#14b8a6" /* teal-500 */
                   strokeWidth="3"
                   strokeLinecap="round"
-                  style={{ opacity: progress > 75 ? (progress - 75) / 25 : 0 }}
+                  style={{ opacity: progress > 135 ? (progress - 135) / 45 : 0 }}
                 />
               </svg>
             </div>

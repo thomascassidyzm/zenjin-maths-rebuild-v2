@@ -150,12 +150,12 @@ const WarmUpMode: React.FC<WarmUpModeProps> = ({
       </div>
       
       {/* Warm-up banner */}
-      <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-r from-indigo-600 to-teal-500 text-white py-2 px-4 text-center font-medium shadow-lg">
+      <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-r from-teal-700 to-teal-500 text-white py-2 px-4 text-center font-medium shadow-lg">
         Warming Up Your Math Skills
       </div>
       
       {/* Use the standard MinimalDistinctionPlayer with our warm-up data */}
-      <div className="z-10" style={{ background: 'transparent', width: '375px', height: '500px' }}>
+      <div className="z-10 relative" style={{ background: 'transparent', width: '375px', height: '500px' }}>
         <MinimalDistinctionPlayer
           tubeNumber={1}
           tubeData={warmUpTubeData}
@@ -166,6 +166,16 @@ const WarmUpMode: React.FC<WarmUpModeProps> = ({
           userId={userId}
           isWarmUpMode={true}
         />
+        
+        {/* Skip button positioned at the bottom */}
+        <div className="absolute bottom-3 left-0 right-0 flex justify-center items-center">
+          <button
+            onClick={onWarmUpComplete}
+            className="bg-teal-600 hover:bg-teal-500 text-white font-medium py-1.5 px-4 rounded-lg transition-colors text-sm z-20"
+          >
+            I'm Ready!
+          </button>
+        </div>
       </div>
     </div>
   );

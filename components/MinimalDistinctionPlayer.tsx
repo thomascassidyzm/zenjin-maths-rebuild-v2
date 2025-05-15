@@ -1759,7 +1759,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
           </div>
           
           {/* Options - always in 2 columns */}
-          <div className="grid grid-cols-2 gap-4 mb-4 buttons-container">
+          <div className="grid grid-cols-2 gap-4 mb-4 buttons-container" style={{ position: 'relative' }}>
             {options.map((option, index) => (
               <button
                 key={`${currentQuestion.id}-${option}-${index}`}
@@ -1780,6 +1780,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
                   ${selectedOption === 'timeout' ? 'neutral-option' : ''}
                   ${selectedOption === null ? 'bg-white text-gray-800' : ''}
                 `}
+                style={{ height: '70px', minHeight: '70px', position: 'relative' }}
               >
                 {option}
               </button>

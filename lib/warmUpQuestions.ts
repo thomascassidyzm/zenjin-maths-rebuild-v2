@@ -531,34 +531,64 @@ export function getAllWarmUpQuestions(): Question[] {
 /**
  * Get a random subset of warm-up questions
  * @param count Number of questions to return (default: 10)
+ * @param easyOnly Whether to only include easier questions (default: true)
  * @returns Array of randomly selected questions
  */
-export function getRandomWarmUpQuestions(count: number = 10): Question[] {
-  console.log(`getRandomWarmUpQuestions: Requesting ${count} random warm-up questions`);
+export function getRandomWarmUpQuestions(count: number = 10, easyOnly: boolean = true): Question[] {
+  console.log(`getRandomWarmUpQuestions: Requesting ${count} random warm-up questions (easyOnly: ${easyOnly})`);
   
   const allQuestions = getAllWarmUpQuestions();
   console.log(`getRandomWarmUpQuestions: Got ${allQuestions.length} total questions from getAllWarmUpQuestions`);
   
-  // If we don't have enough questions, return all we have
-  if (allQuestions.length <= count) {
-    console.log(`getRandomWarmUpQuestions: Returning all ${allQuestions.length} available questions (fewer than requested ${count})`);
-    return allQuestions;
+  // For warm-up, prefer questions with simpler distractors
+  let questionPool = allQuestions;
+  
+  // Prioritize easier questions (the first half of our questions are generally easier)
+  if (easyOnly) {
+    // Take all questions but make sure easy questions are more common
+    const easyQuestions = allQuestions.slice(0, Math.ceil(allQuestions.length / 2));
+    const otherQuestions = allQuestions.slice(Math.ceil(allQuestions.length / 2));
+    
+    // 80% of questions should be easy, 20% can be harder
+    const easyCount = Math.floor(count * 0.8);
+    const otherCount = count - easyCount;
+    
+    // Shuffle both pools
+    const shuffledEasy = [...easyQuestions].sort(() => 0.5 - Math.random());
+    const shuffledOther = [...otherQuestions].sort(() => 0.5 - Math.random());
+    
+    // Take the required number from each pool
+    const selectedEasy = shuffledEasy.slice(0, Math.min(easyCount, shuffledEasy.length));
+    const selectedOther = shuffledOther.slice(0, Math.min(otherCount, shuffledOther.length));
+    
+    // Combine and shuffle again for final mix
+    questionPool = [...selectedEasy, ...selectedOther].sort(() => 0.5 - Math.random());
+    
+    console.log(`getRandomWarmUpQuestions: Selected ${selectedEasy.length} easy questions and ${selectedOther.length} other questions`);
+  } else {
+    // Just shuffle all questions
+    questionPool = [...allQuestions].sort(() => 0.5 - Math.random());
   }
   
-  // Shuffle and take the first 'count' questions
-  const shuffled = [...allQuestions].sort(() => 0.5 - Math.random());
-  console.log(`getRandomWarmUpQuestions: Returning ${count} randomly selected questions from pool of ${allQuestions.length}`);
+  // If we don't have enough questions, return all we have
+  if (questionPool.length <= count) {
+    console.log(`getRandomWarmUpQuestions: Returning all ${questionPool.length} available questions (fewer than requested ${count})`);
+    return questionPool;
+  }
+  
+  // Take the first 'count' questions from our pool
+  console.log(`getRandomWarmUpQuestions: Returning ${count} randomly selected questions from pool of ${questionPool.length}`);
   
   // Log first question for debugging
-  if (shuffled.length > 0) {
+  if (questionPool.length > 0) {
     console.log('First question in selection:', {
-      id: shuffled[0].id,
-      text: shuffled[0].text,
-      correctAnswer: shuffled[0].correctAnswer
+      id: questionPool[0].id,
+      text: questionPool[0].text,
+      correctAnswer: questionPool[0].correctAnswer
     });
   }
   
-  return shuffled.slice(0, count);
+  return questionPool.slice(0, count);
 }
 
 /**

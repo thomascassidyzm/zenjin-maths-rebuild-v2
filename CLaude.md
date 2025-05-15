@@ -12,28 +12,27 @@ The Zenjin Maths app is an educational application that uses a Triple Helix lear
 
 ## Warm-Up Mode Implementation (May 15, 2025)
 
-We've implemented a warm-up mode feature to address race conditions in content loading:
+We've implemented a simplified warm-up mode feature to address race conditions in content loading:
 
 1. **Warm-Up Questions**: Shows engaging warm-up questions while the main content loads
 2. **Transition Animation**: Provides a smooth transition from warm-up to personalized content
 3. **Eliminated Fallback Questions**: Replaced error-prone fallback question logic with the warm-up approach
-4. **Created Documentation**: Added `/docs/WARM-UP-MODE.md` with implementation details
+4. **Simple Implementation**: Used a straightforward, self-contained approach with no dependencies
 
 The implementation includes:
-- `/lib/warmUpQuestions.ts` - Module with 50 embedded math questions and helpers
-- `/components/WarmUpMode.tsx` - Component for displaying warm-up questions
-- `/components/WarmUpTransition.tsx` - Component for transition animation
+- `/components/SimpleWarmUpMode.tsx` - Standalone component with embedded questions
+- `/components/SimpleWarmUpTransition.tsx` - Simple transition animation component
 - Enhanced `PlayerWithLoader.tsx` with warm-up mode support
 
 Key improvements in our latest update:
-- **Embedded Questions**: Now contains 50 embedded math questions for reliability
+- **Embedded Questions**: Contains simple math questions directly in the component
 - **No External Dependencies**: Completely self-contained with no JSON file loading
 - **Skip Loading Screen**: Warm-up mode starts immediately without showing loading screen
 - **Transparent Background**: Allows bubble animations to be visible behind player
-- **No Finish Button**: Removed unnecessary Finish button from warm-up mode
-- **Bypass Zustand**: Directly uses embedded questions without Zustand store lookups
+- **Bypass Zustand**: Simple implementation with no store dependencies
+- **Smaller Code Footprint**: Significantly reduced code complexity
 
-This approach ensures users have immediate engagement with relevant content rather than seeing errors or loading screens, while completely eliminating the race condition issues previously encountered.
+This approach ensures users have immediate engagement with relevant content rather than seeing errors or loading screens, while completely eliminating the race condition issues previously encountered. The simplified implementation provides all the benefits without the complexity of the previous approach.
 
 ## MinimalDistinctionPlayer Integration (May 14, 2025)
 
