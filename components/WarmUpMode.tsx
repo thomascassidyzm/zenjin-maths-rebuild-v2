@@ -26,6 +26,7 @@ const WarmUpMode: React.FC<WarmUpModeProps> = ({
   const [warmUpQuestions, setWarmUpQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [currentTube, setCurrentTube] = useState(startingTube);
 
   // Load warm-up questions when component mounts - directly use the embedded questions
   useEffect(() => {
@@ -49,11 +50,21 @@ const WarmUpMode: React.FC<WarmUpModeProps> = ({
     setIsLoading(false);
   }, [questionsCount]);
 
-  // When warm-up session is completed
+  // When warm-up session is completed or needs to cycle tubes
   const handleWarmUpComplete = useCallback((results: any) => {
-    console.log('Warm-up session completed with results:', results);
+    console.log('Warm-up session completed or cycling:', results);
+    
+    // Check if this is a tube cycling request
+    if (results && results.cycleTube && results.nextTubeNumber) {
+      console.log(`Cycling to tube ${results.nextTubeNumber}`);
+      // Update the current tube number
+      setCurrentTube(results.nextTubeNumber);
+      return;
+    }
+    
+    // Otherwise, this is a normal completion - move to main content
     onWarmUpComplete();
-  }, [onWarmUpComplete]);
+  }, [onWarmUpComplete, currentTube]);
 
   // Handle manual end session
   const handleEndSession = useCallback((results: any) => {
@@ -158,7 +169,7 @@ const WarmUpMode: React.FC<WarmUpModeProps> = ({
       {/* Use the standard MinimalDistinctionPlayer with our warm-up data */}
       <div className="z-10 relative" style={{ background: 'transparent', width: '375px', height: '500px' }}>
         <MinimalDistinctionPlayer
-          tubeNumber={startingTube}
+          tubeNumber={currentTube}
           tubeData={warmUpTubeData}
           onComplete={handleWarmUpComplete}
           onEndSession={handleEndSession}
