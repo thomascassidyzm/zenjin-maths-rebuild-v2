@@ -8,6 +8,8 @@ interface WarmUpModeProps {
   questionsCount?: number;
   onWarmUpComplete: () => void;
   userId?: string;
+  contentIsReady?: boolean; // Whether the main content is ready to be shown
+  startingTube?: number; // Which tube to start with (1, 2, or 3)
 }
 
 /**
@@ -15,9 +17,11 @@ interface WarmUpModeProps {
  * while the main content loads in the background.
  */
 const WarmUpMode: React.FC<WarmUpModeProps> = ({
-  questionsCount = 10,
+  questionsCount = 8, // Reduced count per tube for faster cycling
   onWarmUpComplete,
-  userId
+  userId,
+  contentIsReady = false, // Whether the main content is loaded and ready to show
+  startingTube = 1 // Start with tube 1 by default
 }) => {
   const [warmUpQuestions, setWarmUpQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -108,37 +112,34 @@ const WarmUpMode: React.FC<WarmUpModeProps> = ({
   const warmUpQs = getRandomWarmUpQuestions(questionsCount);
   console.log(`WarmUpMode: Selected ${warmUpQs.length} questions for direct use in player`);
   
-  // Create a SUPER-SIMPLE tube data structure that doesn't involve Zustand at all
-  const warmUpTubeData = {
-    1: {
-      currentStitchId: 'warm-up-stitch',
-      positions: {
-        0: {
-          stitchId: 'warm-up-stitch',
-          skipNumber: 3,
-          distractorLevel: 'L1'
-        }
-      },
-      stitches: [
-        {
-          id: 'warm-up-stitch',
-          position: 0,
-          skipNumber: 3,
-          distractorLevel: 'L1',
-          questions: warmUpQs
-        }
-      ]
-    }
-  };
+  // Create a MULTI-TUBE data structure that doesn't involve Zustand at all
+  // This gives us three separate tubes for the player to cycle through
+  const warmUpTubeData = createWarmUpTube(questionsCount, startingTube);
   
-  // Log the first question to verify format
-  if (warmUpQs.length > 0) {
-    console.log('WarmUpMode: First question for player:', {
-      id: warmUpQs[0].id,
-      text: warmUpQs[0].text,
-      correctAnswer: warmUpQs[0].correctAnswer,
-      distractors: warmUpQs[0].distractors
+  // Log the first tube's questions to verify format
+  if (warmUpTubeData[startingTube].stitches[0].questions.length > 0) {
+    console.log(`WarmUpMode: First question for tube ${startingTube}:`, {
+      id: warmUpTubeData[startingTube].stitches[0].questions[0].id,
+      text: warmUpTubeData[startingTube].stitches[0].questions[0].text,
+      correctAnswer: warmUpTubeData[startingTube].stitches[0].questions[0].correctAnswer,
+      distractors: warmUpTubeData[startingTube].stitches[0].questions[0].distractors,
+      stitchId: warmUpTubeData[startingTube].stitches[0].id
     });
+    
+    // Also check tube 2 and 3 to verify we have distinct questions
+    if (warmUpTubeData[2] && warmUpTubeData[2].stitches[0].questions.length > 0) {
+      console.log('WarmUpMode: First question from tube 2 (for comparison):', {
+        text: warmUpTubeData[2].stitches[0].questions[0].text,
+        stitchId: warmUpTubeData[2].stitches[0].id
+      });
+    }
+    
+    if (warmUpTubeData[3] && warmUpTubeData[3].stitches[0].questions.length > 0) {
+      console.log('WarmUpMode: First question from tube 3 (for comparison):', {
+        text: warmUpTubeData[3].stitches[0].questions[0].text,
+        stitchId: warmUpTubeData[3].stitches[0].id
+      });
+    }
   }
 
   // Render the MinimalDistinctionPlayer with warm-up questions
@@ -157,7 +158,7 @@ const WarmUpMode: React.FC<WarmUpModeProps> = ({
       {/* Use the standard MinimalDistinctionPlayer with our warm-up data */}
       <div className="z-10 relative" style={{ background: 'transparent', width: '375px', height: '500px' }}>
         <MinimalDistinctionPlayer
-          tubeNumber={1}
+          tubeNumber={startingTube}
           tubeData={warmUpTubeData}
           onComplete={handleWarmUpComplete}
           onEndSession={handleEndSession}
@@ -167,15 +168,17 @@ const WarmUpMode: React.FC<WarmUpModeProps> = ({
           isWarmUpMode={true}
         />
         
-        {/* Skip button positioned at the bottom */}
-        <div className="absolute bottom-3 left-0 right-0 flex justify-center items-center">
-          <button
-            onClick={onWarmUpComplete}
-            className="bg-teal-600 hover:bg-teal-500 text-white font-medium py-1.5 px-4 rounded-lg transition-colors text-sm z-20"
-          >
-            I'm Ready!
-          </button>
-        </div>
+        {/* Skip button positioned at the bottom - only show when content is ready */}
+        {contentIsReady && (
+          <div className="absolute bottom-3 left-0 right-0 flex justify-center items-center">
+            <button
+              onClick={onWarmUpComplete}
+              className="bg-teal-600 hover:bg-teal-500 text-white font-medium py-1.5 px-4 rounded-lg transition-colors text-sm z-20 animate-fadeIn"
+            >
+              I'm ready to start!
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -396,11 +396,16 @@ const PlayerWithLoader: React.FC<PlayerWithLoaderProps> = ({
     );
   }
   
-  // If transition is showing, render the transition component
+  // If transition is showing, render the transition component with the actual player as children
   if (showTransition) {
     logWithTime('🚀 Showing transition animation from warm-up to main content');
     return (
-      <WarmUpTransition onTransitionComplete={handleTransitionComplete} duration={3000} />
+      <WarmUpTransition onTransitionComplete={handleTransitionComplete} duration={3000}>
+        {/* Pass the actual player component as children to show on the back of the card */}
+        <div className="player-content" style={{ width: '100%', height: '100%', position: 'relative', zIndex: 1 }}>
+          {children}
+        </div>
+      </WarmUpTransition>
     );
   }
   
@@ -413,6 +418,8 @@ const PlayerWithLoader: React.FC<PlayerWithLoaderProps> = ({
           questionsCount={warmUpQuestionsCount}
           onWarmUpComplete={handleWarmUpComplete}
           userId={user?.id}
+          contentIsReady={contentLoaded && questionsAvailable}
+          startingTube={1}
         />
       </div>
     );
