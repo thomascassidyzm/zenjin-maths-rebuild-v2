@@ -13,6 +13,7 @@ interface MinimalDistinctionPlayerProps {
   questionsPerSession?: number;
   sessionTotalPoints?: number; // Optional total points accumulated across the session
   userId?: string; // User ID for API authentication
+  isWarmUpMode?: boolean; // Whether this is being used in warm-up mode
 }
 
 // Helper function to shuffle an array
@@ -33,6 +34,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
   questionsPerSession = 10,
   sessionTotalPoints = 0,
   userId,
+  isWarmUpMode = false,
 }) => {
   // Extract stitches directly from the tube data
   const [stitches, setStitches] = useState<any[]>([]);
@@ -1666,16 +1668,18 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
           </div>
         </div>
         
-        {/* Footer area with enhanced Finish button */}
+        {/* Footer area with Finish button (hidden in warm-up mode) */}
         <div className="bg-white bg-opacity-10 p-3 flex justify-between items-center">
           <div className="w-24"></div> {/* Spacer for balance */}
           <div className="text-center">
-            <button
-              onClick={handleEndSession}
-              className="bg-teal-600 hover:bg-teal-500 text-white font-medium py-1.5 px-4 rounded-lg transition-colors text-sm focus:outline-none"
-            >
-              Finish
-            </button>
+            {!isWarmUpMode && onEndSession && (
+              <button
+                onClick={handleEndSession}
+                className="bg-teal-600 hover:bg-teal-500 text-white font-medium py-1.5 px-4 rounded-lg transition-colors text-sm focus:outline-none"
+              >
+                Finish
+              </button>
+            )}
           </div>
           <div className="w-24"></div> {/* Spacer for balance */}
         </div>

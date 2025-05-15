@@ -1,0 +1,2602 @@
+[
+  {
+    "id": "stitch-T3-001-04-q13",
+    "stitch_id": "stitch-T3-001-04",
+    "text": "25 + 4",
+    "correct_answer": "29",
+    "distractors": {
+      "L1": "254",
+      "L2": "30",
+      "L3": "28"
+    },
+    "created_at": "2025-04-16 23:31:54.763107+00",
+    "updated_at": "2025-04-16 23:31:54.763107+00"
+  },
+  {
+    "id": "stitch-T2-001-38-q05",
+    "stitch_id": "stitch-T2-001-38",
+    "text": "5 × ▢ = 475",
+    "correct_answer": "95",
+    "distractors": {
+      "L1": "47",
+      "L2": "105",
+      "L3": "94"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T2-001-37-q18",
+    "stitch_id": "stitch-T2-001-37",
+    "text": "20 × 48 =",
+    "correct_answer": "960",
+    "distractors": {
+      "L1": "480",
+      "L2": "970",
+      "L3": "965"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T2-001-13-q03",
+    "stitch_id": "stitch-T2-001-13",
+    "text": "7 × 9 =",
+    "correct_answer": "63",
+    "distractors": {
+      "L1": "79",
+      "L2": "72",
+      "L3": "65"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-17-q08",
+    "stitch_id": "stitch-T1-001-17",
+    "text": "4 × ▢ = 50",
+    "correct_answer": "12.5",
+    "distractors": {
+      "L1": "54",
+      "L2": "13",
+      "L3": "12"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-07-q15",
+    "stitch_id": "stitch-T1-001-07",
+    "text": "Double ▢ = 94",
+    "correct_answer": "47",
+    "distractors": {
+      "L1": "188",
+      "L2": "44",
+      "L3": "46"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T2-001-23-q07",
+    "stitch_id": "stitch-T2-001-23",
+    "text": "6 × ▢ = 360",
+    "correct_answer": "60",
+    "distractors": {
+      "L1": "54",
+      "L2": "70",
+      "L3": "59"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-18-q15",
+    "stitch_id": "stitch-T1-001-18",
+    "text": "80 ÷ 4 =",
+    "correct_answer": "20",
+    "distractors": {
+      "L1": "19",
+      "L2": "21",
+      "L3": "84"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-23-q07",
+    "stitch_id": "stitch-T1-001-23",
+    "text": "4 × what number = 330?",
+    "correct_answer": "82.5",
+    "distractors": {
+      "L1": "334",
+      "L2": "83",
+      "L3": "82"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T2-001-26-q02",
+    "stitch_id": "stitch-T2-001-26",
+    "text": "6 × 5 =",
+    "correct_answer": "30",
+    "distractors": {
+      "L1": "65",
+      "L2": "36",
+      "L3": "31"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T3-002-06-q13",
+    "stitch_id": "stitch-T3-002-06",
+    "text": "62 - 12",
+    "correct_answer": "50",
+    "distractors": {
+      "L1": "6212",
+      "L2": "54",
+      "L3": "40"
+    },
+    "created_at": "2025-04-16 23:36:39.438184+00",
+    "updated_at": "2025-04-16 23:36:39.438184+00"
+  },
+  {
+    "id": "stitch-T1-001-15-q01",
+    "stitch_id": "stitch-T1-001-15",
+    "text": "4 × 51 =",
+    "correct_answer": "204",
+    "distractors": {
+      "L1": "55",
+      "L2": "200",
+      "L3": "208"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-002-06-q09",
+    "stitch_id": "stitch-T3-002-06",
+    "text": "54 - 14",
+    "correct_answer": "40",
+    "distractors": {
+      "L1": "5414",
+      "L2": "38",
+      "L3": "44"
+    },
+    "created_at": "2025-04-16 23:36:39.438184+00",
+    "updated_at": "2025-04-16 23:36:39.438184+00"
+  },
+  {
+    "id": "stitch-T3-002-02-q02",
+    "stitch_id": "stitch-T3-002-02",
+    "text": "35 - 5",
+    "correct_answer": "30",
+    "distractors": {
+      "L1": "175",
+      "L2": "31",
+      "L3": "29"
+    },
+    "created_at": "2025-04-16 23:36:39.438184+00",
+    "updated_at": "2025-04-16 23:36:39.438184+00"
+  },
+  {
+    "id": "stitch-T1-001-02-q01",
+    "stitch_id": "stitch-T1-001-02",
+    "text": "Double 1",
+    "correct_answer": "2",
+    "distractors": {
+      "L1": "11",
+      "L2": "4",
+      "L3": "3"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T2-001-16-q05",
+    "stitch_id": "stitch-T2-001-16",
+    "text": "9 × ▢ = 855",
+    "correct_answer": "95",
+    "distractors": {
+      "L1": "86",
+      "L2": "105",
+      "L3": "94"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-20-q05",
+    "stitch_id": "stitch-T1-001-20",
+    "text": "4 × ▢ = 180",
+    "correct_answer": "45",
+    "distractors": {
+      "L1": "184",
+      "L2": "44",
+      "L3": "46"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-38-q11",
+    "stitch_id": "stitch-T1-001-38",
+    "text": "5 × 20 =",
+    "correct_answer": "100",
+    "distractors": {
+      "L1": "205",
+      "L2": "105",
+      "L3": "101"
+    },
+    "created_at": "2025-03-29 15:10:00+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-001-09-q13",
+    "stitch_id": "stitch-T3-001-09",
+    "text": "31 + 36",
+    "correct_answer": "67",
+    "distractors": {
+      "L1": "3136",
+      "L2": "57",
+      "L3": "66"
+    },
+    "created_at": "2025-04-16 23:31:54.763107+00",
+    "updated_at": "2025-04-16 23:31:54.763107+00"
+  },
+  {
+    "id": "stitch-T1-001-08-q03",
+    "stitch_id": "stitch-T1-001-08",
+    "text": "2 × 10 =",
+    "correct_answer": "20",
+    "distractors": {
+      "L1": "12",
+      "L2": "200",
+      "L3": "2"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T2-001-35-q14",
+    "stitch_id": "stitch-T2-001-35",
+    "text": "20 × ▢ = 340",
+    "correct_answer": "17",
+    "distractors": {
+      "L1": "34",
+      "L2": "27",
+      "L3": "16"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T3-001-06-q14",
+    "stitch_id": "stitch-T3-001-06",
+    "text": "33 + 34",
+    "correct_answer": "67",
+    "distractors": {
+      "L1": "3334",
+      "L2": "65",
+      "L3": "69"
+    },
+    "created_at": "2025-04-16 23:31:54.763107+00",
+    "updated_at": "2025-04-16 23:31:54.763107+00"
+  },
+  {
+    "id": "stitch-T2-001-08-q06",
+    "stitch_id": "stitch-T2-001-08",
+    "text": "12 × 6 =",
+    "correct_answer": "72",
+    "distractors": {
+      "L1": "78",
+      "L2": "12 + 6",
+      "L3": "60"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-22-q14",
+    "stitch_id": "stitch-T1-001-22",
+    "text": "260 ÷ 4 =",
+    "correct_answer": "65",
+    "distractors": {
+      "L1": "64",
+      "L2": "66",
+      "L3": "264"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-03-q10",
+    "stitch_id": "stitch-T1-001-03",
+    "text": "Double 27",
+    "correct_answer": "54",
+    "distractors": {
+      "L1": "277",
+      "L2": "56",
+      "L3": "52"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-37-q07",
+    "stitch_id": "stitch-T1-001-37",
+    "text": "8 × ▢ = 752",
+    "correct_answer": "94",
+    "distractors": {
+      "L1": "86",
+      "L2": "104",
+      "L3": "93"
+    },
+    "created_at": "2025-03-29 15:05:00+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-001-12-q01",
+    "stitch_id": "stitch-T3-001-12",
+    "text": "40 + 10",
+    "correct_answer": "50",
+    "distractors": {
+      "L1": "4010",
+      "L2": "40",
+      "L3": "49"
+    },
+    "created_at": "2025-04-16 23:31:54.763107+00",
+    "updated_at": "2025-04-16 23:31:54.763107+00"
+  },
+  {
+    "id": "stitch-T1-001-06-q02",
+    "stitch_id": "stitch-T1-001-06",
+    "text": "Double 11",
+    "correct_answer": "22",
+    "distractors": {
+      "L1": "110",
+      "L2": "21",
+      "L3": "24"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T2-001-03-q15",
+    "stitch_id": "stitch-T2-001-03",
+    "text": "17 × 15 =",
+    "correct_answer": "255",
+    "distractors": {
+      "L1": "32",
+      "L2": "253",
+      "L3": "257"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T2-001-37-q04",
+    "stitch_id": "stitch-T2-001-37",
+    "text": "20 × 4 =",
+    "correct_answer": "80",
+    "distractors": {
+      "L1": "40",
+      "L2": "90",
+      "L3": "85"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-07-q19",
+    "stitch_id": "stitch-T1-001-07",
+    "text": "Double ▢ = 76",
+    "correct_answer": "38",
+    "distractors": {
+      "L1": "152",
+      "L2": "35",
+      "L3": "37"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-002-12-q12",
+    "stitch_id": "stitch-T3-002-12",
+    "text": "43 - 16",
+    "correct_answer": "27",
+    "distractors": {
+      "L1": "4316",
+      "L2": "17",
+      "L3": "28"
+    },
+    "created_at": "2025-04-16 23:36:39.438184+00",
+    "updated_at": "2025-04-16 23:36:39.438184+00"
+  },
+  {
+    "id": "stitch-T1-001-05-q10",
+    "stitch_id": "stitch-T1-001-05",
+    "text": "5 × 10 =",
+    "correct_answer": "50",
+    "distractors": {
+      "L1": "15",
+      "L2": "105",
+      "L3": "45"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-002-12-q08",
+    "stitch_id": "stitch-T3-002-12",
+    "text": "47 - 17",
+    "correct_answer": "30",
+    "distractors": {
+      "L1": "4717",
+      "L2": "20",
+      "L3": "31"
+    },
+    "created_at": "2025-04-16 23:36:39.438184+00",
+    "updated_at": "2025-04-16 23:36:39.438184+00"
+  },
+  {
+    "id": "stitch-T1-001-32-q07",
+    "stitch_id": "stitch-T1-001-32",
+    "text": "What number times 8 equals 256?",
+    "correct_answer": "32",
+    "distractors": {
+      "L1": "264",
+      "L2": "33",
+      "L3": "31"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-05-q04",
+    "stitch_id": "stitch-T1-001-05",
+    "text": "5 × 4 =",
+    "correct_answer": "20",
+    "distractors": {
+      "L1": "9",
+      "L2": "45",
+      "L3": "25"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-23-q01",
+    "stitch_id": "stitch-T1-001-23",
+    "text": "What number times 4 equals 310?",
+    "correct_answer": "77.5",
+    "distractors": {
+      "L1": "306",
+      "L2": "78",
+      "L3": "77"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T2-001-32-q06",
+    "stitch_id": "stitch-T2-001-32",
+    "text": "3 × 16 =",
+    "correct_answer": "48",
+    "distractors": {
+      "L1": "136",
+      "L2": "51",
+      "L3": "47"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T3-001-07-q02",
+    "stitch_id": "stitch-T3-001-07",
+    "text": "34 + 3",
+    "correct_answer": "37",
+    "distractors": {
+      "L1": "343",
+      "L2": "44",
+      "L3": "36"
+    },
+    "created_at": "2025-04-16 23:31:54.763107+00",
+    "updated_at": "2025-04-16 23:31:54.763107+00"
+  },
+  {
+    "id": "stitch-T1-001-02-q04",
+    "stitch_id": "stitch-T1-001-02",
+    "text": "Double 4",
+    "correct_answer": "8",
+    "distractors": {
+      "L1": "44",
+      "L2": "10",
+      "L3": "7"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T2-001-26-q06",
+    "stitch_id": "stitch-T2-001-26",
+    "text": "6 × 16 =",
+    "correct_answer": "96",
+    "distractors": {
+      "L1": "166",
+      "L2": "102",
+      "L3": "97"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T2-001-32-q09",
+    "stitch_id": "stitch-T2-001-32",
+    "text": "3 × 26 =",
+    "correct_answer": "78",
+    "distractors": {
+      "L1": "236",
+      "L2": "81",
+      "L3": "77"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T3-001-11-q07",
+    "stitch_id": "stitch-T3-001-11",
+    "text": "46 + 2",
+    "correct_answer": "48",
+    "distractors": {
+      "L1": "462",
+      "L2": "38",
+      "L3": "49"
+    },
+    "created_at": "2025-04-16 23:31:54.763107+00",
+    "updated_at": "2025-04-16 23:31:54.763107+00"
+  },
+  {
+    "id": "stitch-T2-001-31-q10",
+    "stitch_id": "stitch-T2-001-31",
+    "text": "3 × 37 =",
+    "correct_answer": "111",
+    "distractors": {
+      "L1": "337",
+      "L2": "114",
+      "L3": "110"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-36-q11",
+    "stitch_id": "stitch-T1-001-36",
+    "text": "8 × ▢ = 688",
+    "correct_answer": "86",
+    "distractors": {
+      "L1": "78",
+      "L2": "96",
+      "L3": "85"
+    },
+    "created_at": "2025-03-29 15:00:00+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-39-q14",
+    "stitch_id": "stitch-T1-001-39",
+    "text": "5 × 28 =",
+    "correct_answer": "140",
+    "distractors": {
+      "L1": "285",
+      "L2": "145",
+      "L3": "141"
+    },
+    "created_at": "2025-03-29 15:15:00+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T2-001-12-q11",
+    "stitch_id": "stitch-T2-001-12",
+    "text": "What number multiplied by 7 equals 161?",
+    "correct_answer": "23",
+    "distractors": {
+      "L1": "2.3",
+      "L2": "13",
+      "L3": "22"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T3-001-08-q05",
+    "stitch_id": "stitch-T3-001-08",
+    "text": "31 + 15",
+    "correct_answer": "46",
+    "distractors": {
+      "L1": "3115",
+      "L2": "41",
+      "L3": "45"
+    },
+    "created_at": "2025-04-16 23:31:54.763107+00",
+    "updated_at": "2025-04-16 23:31:54.763107+00"
+  },
+  {
+    "id": "stitch-T1-001-23-q08",
+    "stitch_id": "stitch-T1-001-23",
+    "text": "4 × what number = 350?",
+    "correct_answer": "87.5",
+    "distractors": {
+      "L1": "354",
+      "L2": "88",
+      "L3": "87"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-21-q03",
+    "stitch_id": "stitch-T1-001-21",
+    "text": "What number times 4 equals 250?",
+    "correct_answer": "62.5",
+    "distractors": {
+      "L1": "246",
+      "L2": "63",
+      "L3": "62"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-24-q20",
+    "stitch_id": "stitch-T1-001-24",
+    "text": "380 ÷ 4 =",
+    "correct_answer": "95",
+    "distractors": {
+      "L1": "94",
+      "L2": "96",
+      "L3": "384"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-001-10-q06",
+    "stitch_id": "stitch-T3-001-10",
+    "text": "39 + 30",
+    "correct_answer": "69",
+    "distractors": {
+      "L1": "3930",
+      "L2": "59",
+      "L3": "68"
+    },
+    "created_at": "2025-04-16 23:31:54.763107+00",
+    "updated_at": "2025-04-16 23:31:54.763107+00"
+  },
+  {
+    "id": "stitch-T1-001-39-q04",
+    "stitch_id": "stitch-T1-001-39",
+    "text": "5 × 8 =",
+    "correct_answer": "40",
+    "distractors": {
+      "L1": "85",
+      "L2": "45",
+      "L3": "41"
+    },
+    "created_at": "2025-03-29 15:15:00+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-001-01-q01",
+    "stitch_id": "stitch-T3-001-01",
+    "text": "0 + 0",
+    "correct_answer": "0",
+    "distractors": {
+      "L1": "1",
+      "L2": "10",
+      "L3": "2"
+    },
+    "created_at": "2025-04-16 23:31:54.763107+00",
+    "updated_at": "2025-04-16 23:31:54.763107+00"
+  },
+  {
+    "id": "stitch-T1-001-25-q13",
+    "stitch_id": "stitch-T1-001-25",
+    "text": "8 × 65 =",
+    "correct_answer": "520",
+    "distractors": {
+      "L1": "73",
+      "L2": "510",
+      "L3": "525"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-39-q03",
+    "stitch_id": "stitch-T1-001-39",
+    "text": "5 × 7 =",
+    "correct_answer": "35",
+    "distractors": {
+      "L1": "75",
+      "L2": "40",
+      "L3": "36"
+    },
+    "created_at": "2025-03-29 15:15:00+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-18-q11",
+    "stitch_id": "stitch-T1-001-18",
+    "text": "0 ÷ 4 =",
+    "correct_answer": "0",
+    "distractors": {
+      "L1": "4",
+      "L2": "1",
+      "L3": "0.5"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-31-q19",
+    "stitch_id": "stitch-T1-001-31",
+    "text": "176 ÷ 8 =",
+    "correct_answer": "22",
+    "distractors": {
+      "L1": "21",
+      "L2": "23",
+      "L3": "184"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T2-001-29-q07",
+    "stitch_id": "stitch-T2-001-29",
+    "text": "3 × ▢ = 180",
+    "correct_answer": "60",
+    "distractors": {
+      "L1": "50",
+      "L2": "70",
+      "L3": "59"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T2-001-20-q15",
+    "stitch_id": "stitch-T2-001-20",
+    "text": "9 × 46 =",
+    "correct_answer": "414",
+    "distractors": {
+      "L1": "496",
+      "L2": "423",
+      "L3": "415"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-19-q01",
+    "stitch_id": "stitch-T1-001-19",
+    "text": "4 × ▢ = 110",
+    "correct_answer": "27.5",
+    "distractors": {
+      "L1": "106",
+      "L2": "28",
+      "L3": "27"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T2-001-17-q16",
+    "stitch_id": "stitch-T2-001-17",
+    "text": "9 × ▢ = 459",
+    "correct_answer": "51",
+    "distractors": {
+      "L1": "42",
+      "L2": "61",
+      "L3": "50"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T3-002-01-q02",
+    "stitch_id": "stitch-T3-002-01",
+    "text": "8 - 3",
+    "correct_answer": "5",
+    "distractors": {
+      "L1": "24",
+      "L2": "6",
+      "L3": "4"
+    },
+    "created_at": "2025-04-16 23:36:39.438184+00",
+    "updated_at": "2025-04-16 23:36:39.438184+00"
+  },
+  {
+    "id": "stitch-T3-001-07-q11",
+    "stitch_id": "stitch-T3-001-07",
+    "text": "34 + 5",
+    "correct_answer": "39",
+    "distractors": {
+      "L1": "345",
+      "L2": "44",
+      "L3": "40"
+    },
+    "created_at": "2025-04-16 23:31:54.763107+00",
+    "updated_at": "2025-04-16 23:31:54.763107+00"
+  },
+  {
+    "id": "stitch-T1-001-24-q11",
+    "stitch_id": "stitch-T1-001-24",
+    "text": "300 ÷ 4 =",
+    "correct_answer": "75",
+    "distractors": {
+      "L1": "74",
+      "L2": "76",
+      "L3": "304"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-21-q12",
+    "stitch_id": "stitch-T1-001-21",
+    "text": "230 ÷ 4 =",
+    "correct_answer": "57.5",
+    "distractors": {
+      "L1": "57",
+      "L2": "58",
+      "L3": "226"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-32-q01",
+    "stitch_id": "stitch-T1-001-32",
+    "text": "What number times 8 equals 208?",
+    "correct_answer": "26",
+    "distractors": {
+      "L1": "216",
+      "L2": "27",
+      "L3": "25"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-17-q05",
+    "stitch_id": "stitch-T1-001-17",
+    "text": "4 × ▢ = 90",
+    "correct_answer": "22.5",
+    "distractors": {
+      "L1": "86",
+      "L2": "23",
+      "L3": "22"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T2-001-39-q11",
+    "stitch_id": "stitch-T2-001-39",
+    "text": "5 × ▢ = 100",
+    "correct_answer": "20",
+    "distractors": {
+      "L1": "10",
+      "L2": "30",
+      "L3": "19"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-39-q08",
+    "stitch_id": "stitch-T1-001-39",
+    "text": "5 × 17 =",
+    "correct_answer": "85",
+    "distractors": {
+      "L1": "175",
+      "L2": "90",
+      "L3": "86"
+    },
+    "created_at": "2025-03-29 15:15:00+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-001-04-q20",
+    "stitch_id": "stitch-T3-001-04",
+    "text": "29 + 9",
+    "correct_answer": "38",
+    "distractors": {
+      "L1": "299",
+      "L2": "39",
+      "L3": "37"
+    },
+    "created_at": "2025-04-16 23:31:54.763107+00",
+    "updated_at": "2025-04-16 23:31:54.763107+00"
+  },
+  {
+    "id": "stitch-T1-001-03-q09",
+    "stitch_id": "stitch-T1-001-03",
+    "text": "Double 26",
+    "correct_answer": "52",
+    "distractors": {
+      "L1": "266",
+      "L2": "54",
+      "L3": "50"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-001-09-q20",
+    "stitch_id": "stitch-T3-001-09",
+    "text": "30 + 30",
+    "correct_answer": "60",
+    "distractors": {
+      "L1": "3030",
+      "L2": "50",
+      "L3": "61"
+    },
+    "created_at": "2025-04-16 23:31:54.763107+00",
+    "updated_at": "2025-04-16 23:31:54.763107+00"
+  },
+  {
+    "id": "stitch-T2-001-16-q03",
+    "stitch_id": "stitch-T2-001-16",
+    "text": "9 × ▢ = 882",
+    "correct_answer": "98",
+    "distractors": {
+      "L1": "89",
+      "L2": "108",
+      "L3": "97"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-33-q17",
+    "stitch_id": "stitch-T1-001-33",
+    "text": "352 ÷ 8 =",
+    "correct_answer": "44",
+    "distractors": {
+      "L1": "43",
+      "L2": "45",
+      "L3": "360"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-11-q07",
+    "stitch_id": "stitch-T1-001-11",
+    "text": "What is half of 130?",
+    "correct_answer": "65",
+    "distractors": {
+      "L1": "260",
+      "L2": "64",
+      "L3": "66"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-001-05-q15",
+    "stitch_id": "stitch-T3-001-05",
+    "text": "26 + 14",
+    "correct_answer": "40",
+    "distractors": {
+      "L1": "2614",
+      "L2": "41",
+      "L3": "39"
+    },
+    "created_at": "2025-04-16 23:31:54.763107+00",
+    "updated_at": "2025-04-16 23:31:54.763107+00"
+  },
+  {
+    "id": "stitch-T2-001-30-q14",
+    "stitch_id": "stitch-T2-001-30",
+    "text": "3 × ▢ = 60",
+    "correct_answer": "20",
+    "distractors": {
+      "L1": "10",
+      "L2": "30",
+      "L3": "19"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T2-001-09-q03",
+    "stitch_id": "stitch-T2-001-09",
+    "text": "11 × 3 =",
+    "correct_answer": "33",
+    "distractors": {
+      "L1": "36",
+      "L2": "30",
+      "L3": "113"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-39-q19",
+    "stitch_id": "stitch-T1-001-39",
+    "text": "5 × 38 =",
+    "correct_answer": "190",
+    "distractors": {
+      "L1": "385",
+      "L2": "195",
+      "L3": "191"
+    },
+    "created_at": "2025-03-29 15:15:00+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T2-001-14-q07",
+    "stitch_id": "stitch-T2-001-14",
+    "text": "7 × 24 =",
+    "correct_answer": "168",
+    "distractors": {
+      "L1": "247",
+      "L2": "158",
+      "L3": "176"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T2-001-09-q08",
+    "stitch_id": "stitch-T2-001-09",
+    "text": "11 × 8 =",
+    "correct_answer": "88",
+    "distractors": {
+      "L1": "96",
+      "L2": "80 + 8",
+      "L3": "87"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-16-q05",
+    "stitch_id": "stitch-T1-001-16",
+    "text": "4 × 66 =",
+    "correct_answer": "264",
+    "distractors": {
+      "L1": "70",
+      "L2": "260",
+      "L3": "268"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T2-001-28-q01",
+    "stitch_id": "stitch-T2-001-28",
+    "text": "3 × ▢ = 300",
+    "correct_answer": "100",
+    "distractors": {
+      "L1": "90",
+      "L2": "110",
+      "L3": "99"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T2-001-13-q08",
+    "stitch_id": "stitch-T2-001-13",
+    "text": "7 × 28 =",
+    "correct_answer": "196",
+    "distractors": {
+      "L1": "287",
+      "L2": "186",
+      "L3": "198"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T2-001-01-q17",
+    "stitch_id": "stitch-T2-001-01",
+    "text": "19 × 17 =",
+    "correct_answer": "323",
+    "distractors": {
+      "L1": "36",
+      "L2": "321",
+      "L3": "325"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-14-q18",
+    "stitch_id": "stitch-T1-001-14",
+    "text": "4 × 47 =",
+    "correct_answer": "188",
+    "distractors": {
+      "L1": "51",
+      "L2": "184",
+      "L3": "192"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-002-03-q18",
+    "stitch_id": "stitch-T3-002-03",
+    "text": "61 - 15",
+    "correct_answer": "46",
+    "distractors": {
+      "L1": "915",
+      "L2": "47",
+      "L3": "45"
+    },
+    "created_at": "2025-04-16 23:36:39.438184+00",
+    "updated_at": "2025-04-16 23:36:39.438184+00"
+  },
+  {
+    "id": "stitch-T3-002-08-q02",
+    "stitch_id": "stitch-T3-002-08",
+    "text": "52 - 2",
+    "correct_answer": "50",
+    "distractors": {
+      "L1": "54",
+      "L2": "52 - 20",
+      "L3": "42"
+    },
+    "created_at": "2025-04-16 23:36:39.438184+00",
+    "updated_at": "2025-04-16 23:36:39.438184+00"
+  },
+  {
+    "id": "stitch-T2-001-26-q01",
+    "stitch_id": "stitch-T2-001-26",
+    "text": "6 × 4 =",
+    "correct_answer": "24",
+    "distractors": {
+      "L1": "64",
+      "L2": "30",
+      "L3": "25"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T3-001-05-q17",
+    "stitch_id": "stitch-T3-001-05",
+    "text": "27 + 13",
+    "correct_answer": "40",
+    "distractors": {
+      "L1": "2713",
+      "L2": "41",
+      "L3": "39"
+    },
+    "created_at": "2025-04-16 23:31:54.763107+00",
+    "updated_at": "2025-04-16 23:31:54.763107+00"
+  },
+  {
+    "id": "stitch-T1-001-02-q10",
+    "stitch_id": "stitch-T1-001-02",
+    "text": "Double 22",
+    "correct_answer": "44",
+    "distractors": {
+      "L1": "222",
+      "L2": "46",
+      "L3": "42"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T2-001-25-q12",
+    "stitch_id": "stitch-T2-001-25",
+    "text": "6 × 39 =",
+    "correct_answer": "234",
+    "distractors": {
+      "L1": "369",
+      "L2": "240",
+      "L3": "233"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-34-q17",
+    "stitch_id": "stitch-T1-001-34",
+    "text": "456 ÷ 8 =",
+    "correct_answer": "57",
+    "distractors": {
+      "L1": "56",
+      "L2": "58",
+      "L3": "464"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-37-q16",
+    "stitch_id": "stitch-T1-001-37",
+    "text": "8 × ▢ = 744",
+    "correct_answer": "93",
+    "distractors": {
+      "L1": "85",
+      "L2": "103",
+      "L3": "92"
+    },
+    "created_at": "2025-03-29 15:05:00+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-22-q13",
+    "stitch_id": "stitch-T1-001-22",
+    "text": "240 ÷ 4 =",
+    "correct_answer": "60",
+    "distractors": {
+      "L1": "59",
+      "L2": "61",
+      "L3": "244"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-37-q19",
+    "stitch_id": "stitch-T1-001-37",
+    "text": "8 × ▢ = 712",
+    "correct_answer": "89",
+    "distractors": {
+      "L1": "81",
+      "L2": "99",
+      "L3": "88"
+    },
+    "created_at": "2025-03-29 15:05:00+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-08-q15",
+    "stitch_id": "stitch-T1-001-08",
+    "text": "10 × 4 =",
+    "correct_answer": "40",
+    "distractors": {
+      "L1": "14",
+      "L2": "4",
+      "L3": "400"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-17-q15",
+    "stitch_id": "stitch-T1-001-17",
+    "text": "90 ÷ 4 =",
+    "correct_answer": "22.5",
+    "distractors": {
+      "L1": "22",
+      "L2": "23",
+      "L3": "86"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-001-02-q18",
+    "stitch_id": "stitch-T3-001-02",
+    "text": "18 + 9",
+    "correct_answer": "27",
+    "distractors": {
+      "L1": "189",
+      "L2": "28",
+      "L3": "26"
+    },
+    "created_at": "2025-04-16 23:31:54.763107+00",
+    "updated_at": "2025-04-16 23:31:54.763107+00"
+  },
+  {
+    "id": "stitch-T3-002-05-q18",
+    "stitch_id": "stitch-T3-002-05",
+    "text": "51 - 21",
+    "correct_answer": "30",
+    "distractors": {
+      "L1": "5121",
+      "L2": "72",
+      "L3": "40"
+    },
+    "created_at": "2025-04-16 23:36:39.438184+00",
+    "updated_at": "2025-04-16 23:36:39.438184+00"
+  },
+  {
+    "id": "stitch-T3-001-11-q13",
+    "stitch_id": "stitch-T3-001-11",
+    "text": "44 + 7",
+    "correct_answer": "51",
+    "distractors": {
+      "L1": "447",
+      "L2": "41",
+      "L3": "52"
+    },
+    "created_at": "2025-04-16 23:31:54.763107+00",
+    "updated_at": "2025-04-16 23:31:54.763107+00"
+  },
+  {
+    "id": "stitch-T2-001-16-q13",
+    "stitch_id": "stitch-T2-001-16",
+    "text": "9 × ▢ = 720",
+    "correct_answer": "80",
+    "distractors": {
+      "L1": "71",
+      "L2": "90",
+      "L3": "79"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T3-002-10-q02",
+    "stitch_id": "stitch-T3-002-10",
+    "text": "38 - 31",
+    "correct_answer": "7",
+    "distractors": {
+      "L1": "3831",
+      "L2": "17",
+      "L3": "6"
+    },
+    "created_at": "2025-04-16 23:36:39.438184+00",
+    "updated_at": "2025-04-16 23:36:39.438184+00"
+  },
+  {
+    "id": "stitch-T3-001-04-q03",
+    "stitch_id": "stitch-T3-001-04",
+    "text": "20 + 9",
+    "correct_answer": "29",
+    "distractors": {
+      "L1": "209",
+      "L2": "30",
+      "L3": "28"
+    },
+    "created_at": "2025-04-16 23:31:54.763107+00",
+    "updated_at": "2025-04-16 23:31:54.763107+00"
+  },
+  {
+    "id": "stitch-T1-001-33-q05",
+    "stitch_id": "stitch-T1-001-33",
+    "text": "What number times 8 equals 336?",
+    "correct_answer": "42",
+    "distractors": {
+      "L1": "344",
+      "L2": "43",
+      "L3": "41"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-001-09-q03",
+    "stitch_id": "stitch-T3-001-09",
+    "text": "31 + 39",
+    "correct_answer": "70",
+    "distractors": {
+      "L1": "3139",
+      "L2": "60",
+      "L3": "71"
+    },
+    "created_at": "2025-04-16 23:31:54.763107+00",
+    "updated_at": "2025-04-16 23:31:54.763107+00"
+  },
+  {
+    "id": "stitch-T1-001-38-q16",
+    "stitch_id": "stitch-T1-001-38",
+    "text": "5 × 30 =",
+    "correct_answer": "150",
+    "distractors": {
+      "L1": "305",
+      "L2": "155",
+      "L3": "151"
+    },
+    "created_at": "2025-03-29 15:10:00+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T2-001-12-q20",
+    "stitch_id": "stitch-T2-001-12",
+    "text": "What number multiplied by 7 equals 63?",
+    "correct_answer": "9",
+    "distractors": {
+      "L1": "0.9",
+      "L2": "6",
+      "L3": "8"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-38-q04",
+    "stitch_id": "stitch-T1-001-38",
+    "text": "5 × 3 =",
+    "correct_answer": "15",
+    "distractors": {
+      "L1": "35",
+      "L2": "20",
+      "L3": "16"
+    },
+    "created_at": "2025-03-29 15:10:00+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-37-q13",
+    "stitch_id": "stitch-T1-001-37",
+    "text": "8 × ▢ = 800",
+    "correct_answer": "100",
+    "distractors": {
+      "L1": "92",
+      "L2": "110",
+      "L3": "99"
+    },
+    "created_at": "2025-03-29 15:05:00+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-38-q06",
+    "stitch_id": "stitch-T1-001-38",
+    "text": "5 × 10 =",
+    "correct_answer": "50",
+    "distractors": {
+      "L1": "105",
+      "L2": "55",
+      "L3": "51"
+    },
+    "created_at": "2025-03-29 15:10:00+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-12-q16",
+    "stitch_id": "stitch-T1-001-12",
+    "text": "25 × 4 =",
+    "correct_answer": "100",
+    "distractors": {
+      "L1": "29",
+      "L2": "125",
+      "L3": "99"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T2-001-18-q02",
+    "stitch_id": "stitch-T2-001-18",
+    "text": "9 × ▢ = 288",
+    "correct_answer": "32",
+    "distractors": {
+      "L1": "23",
+      "L2": "42",
+      "L3": "31"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T2-001-07-q03",
+    "stitch_id": "stitch-T2-001-07",
+    "text": "13 × 3 =",
+    "correct_answer": "39",
+    "distractors": {
+      "L1": "36",
+      "L2": "38",
+      "L3": "33"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-16-q17",
+    "stitch_id": "stitch-T1-001-16",
+    "text": "4 × 96 =",
+    "correct_answer": "384",
+    "distractors": {
+      "L1": "100",
+      "L2": "380",
+      "L3": "388"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-001-01-q19",
+    "stitch_id": "stitch-T3-001-01",
+    "text": "9 + 0",
+    "correct_answer": "9",
+    "distractors": {
+      "L1": "90",
+      "L2": "10",
+      "L3": "8"
+    },
+    "created_at": "2025-04-16 23:31:54.763107+00",
+    "updated_at": "2025-04-16 23:31:54.763107+00"
+  },
+  {
+    "id": "stitch-T1-001-23-q13",
+    "stitch_id": "stitch-T1-001-23",
+    "text": "350 ÷ 4 =",
+    "correct_answer": "87.5",
+    "distractors": {
+      "L1": "87",
+      "L2": "88",
+      "L3": "346"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-002-11-q18",
+    "stitch_id": "stitch-T3-002-11",
+    "text": "47 - 2",
+    "correct_answer": "45",
+    "distractors": {
+      "L1": "472",
+      "L2": "35",
+      "L3": "44"
+    },
+    "created_at": "2025-04-16 23:36:39.438184+00",
+    "updated_at": "2025-04-16 23:36:39.438184+00"
+  },
+  {
+    "id": "stitch-T2-001-21-q20",
+    "stitch_id": "stitch-T2-001-21",
+    "text": "9 × 93 =",
+    "correct_answer": "837",
+    "distractors": {
+      "L1": "939",
+      "L2": "838",
+      "L3": "836"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-18-q07",
+    "stitch_id": "stitch-T1-001-18",
+    "text": "4 × ▢ = 20",
+    "correct_answer": "5",
+    "distractors": {
+      "L1": "24",
+      "L2": "4",
+      "L3": "6"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T2-001-09-q07",
+    "stitch_id": "stitch-T2-001-09",
+    "text": "11 × 7 =",
+    "correct_answer": "77",
+    "distractors": {
+      "L1": "70 + 7",
+      "L2": "70",
+      "L3": "76"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T2-001-04-q02",
+    "stitch_id": "stitch-T2-001-04",
+    "text": "16 × 2 =",
+    "correct_answer": "32",
+    "distractors": {
+      "L1": "18",
+      "L2": "30",
+      "L3": "34"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T3-001-07-q17",
+    "stitch_id": "stitch-T3-001-07",
+    "text": "36 + 2",
+    "correct_answer": "38",
+    "distractors": {
+      "L1": "362",
+      "L2": "46",
+      "L3": "37"
+    },
+    "created_at": "2025-04-16 23:31:54.763107+00",
+    "updated_at": "2025-04-16 23:31:54.763107+00"
+  },
+  {
+    "id": "stitch-T1-001-31-q16",
+    "stitch_id": "stitch-T1-001-31",
+    "text": "144 ÷ 8 =",
+    "correct_answer": "18",
+    "distractors": {
+      "L1": "17",
+      "L2": "19",
+      "L3": "152"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T2-001-25-q05",
+    "stitch_id": "stitch-T2-001-25",
+    "text": "6 × 18 =",
+    "correct_answer": "108",
+    "distractors": {
+      "L1": "168",
+      "L2": "114",
+      "L3": "109"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-07-q01",
+    "stitch_id": "stitch-T1-001-07",
+    "text": "2 × ▢ = 10",
+    "correct_answer": "5",
+    "distractors": {
+      "L1": "20",
+      "L2": "2",
+      "L3": "4"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T2-001-11-q13",
+    "stitch_id": "stitch-T2-001-11",
+    "text": "What number multiplied by 7 equals 294?",
+    "correct_answer": "42",
+    "distractors": {
+      "L1": "4.2",
+      "L2": "32",
+      "L3": "41"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-32-q16",
+    "stitch_id": "stitch-T1-001-32",
+    "text": "248 ÷ 8 =",
+    "correct_answer": "31",
+    "distractors": {
+      "L1": "30",
+      "L2": "32",
+      "L3": "256"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-001-03-q11",
+    "stitch_id": "stitch-T3-001-03",
+    "text": "13 + 17",
+    "correct_answer": "30",
+    "distractors": {
+      "L1": "1317",
+      "L2": "31",
+      "L3": "29"
+    },
+    "created_at": "2025-04-16 23:31:54.763107+00",
+    "updated_at": "2025-04-16 23:31:54.763107+00"
+  },
+  {
+    "id": "stitch-T1-001-09-q12",
+    "stitch_id": "stitch-T1-001-09",
+    "text": "10 × 55 =",
+    "correct_answer": "550",
+    "distractors": {
+      "L1": "5500",
+      "L2": "65",
+      "L3": "505"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-001-03-q15",
+    "stitch_id": "stitch-T3-001-03",
+    "text": "15 + 19",
+    "correct_answer": "34",
+    "distractors": {
+      "L1": "1519",
+      "L2": "35",
+      "L3": "33"
+    },
+    "created_at": "2025-04-16 23:31:54.763107+00",
+    "updated_at": "2025-04-16 23:31:54.763107+00"
+  },
+  {
+    "id": "stitch-T2-001-33-q14",
+    "stitch_id": "stitch-T2-001-33",
+    "text": "3 × 42 =",
+    "correct_answer": "126",
+    "distractors": {
+      "L1": "423",
+      "L2": "129",
+      "L3": "125"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T2-001-36-q10",
+    "stitch_id": "stitch-T2-001-36",
+    "text": "20 × 95 =",
+    "correct_answer": "1900",
+    "distractors": {
+      "L1": "950",
+      "L2": "1910",
+      "L3": "1905"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-02-q19",
+    "stitch_id": "stitch-T1-001-02",
+    "text": "Double 43",
+    "correct_answer": "86",
+    "distractors": {
+      "L1": "433",
+      "L2": "88",
+      "L3": "84"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T2-001-38-q04",
+    "stitch_id": "stitch-T2-001-38",
+    "text": "5 × ▢ = 485",
+    "correct_answer": "97",
+    "distractors": {
+      "L1": "48",
+      "L2": "107",
+      "L3": "96"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-13-q16",
+    "stitch_id": "stitch-T1-001-13",
+    "text": "4 × 34 =",
+    "correct_answer": "136",
+    "distractors": {
+      "L1": "38",
+      "L2": "132",
+      "L3": "140"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T2-001-13-q15",
+    "stitch_id": "stitch-T2-001-13",
+    "text": "7 × 49 =",
+    "correct_answer": "343",
+    "distractors": {
+      "L1": "497",
+      "L2": "333",
+      "L3": "353"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-12-q14",
+    "stitch_id": "stitch-T1-001-12",
+    "text": "0 × 4 =",
+    "correct_answer": "0",
+    "distractors": {
+      "L1": "4",
+      "L2": "40",
+      "L3": "1"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-001-11-q03",
+    "stitch_id": "stitch-T3-001-11",
+    "text": "42 + 7",
+    "correct_answer": "49",
+    "distractors": {
+      "L1": "427",
+      "L2": "39",
+      "L3": "50"
+    },
+    "created_at": "2025-04-16 23:31:54.763107+00",
+    "updated_at": "2025-04-16 23:31:54.763107+00"
+  },
+  {
+    "id": "stitch-T1-001-10-q05",
+    "stitch_id": "stitch-T1-001-10",
+    "text": "What is half of 0?",
+    "correct_answer": "0",
+    "distractors": {
+      "L1": "10",
+      "L2": "1",
+      "L3": "0.5"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T2-001-39-q19",
+    "stitch_id": "stitch-T2-001-39",
+    "text": "5 × ▢ = 15",
+    "correct_answer": "3",
+    "distractors": {
+      "L1": "1",
+      "L2": "13",
+      "L3": "2"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T2-001-04-q07",
+    "stitch_id": "stitch-T2-001-04",
+    "text": "16 × 7 =",
+    "correct_answer": "112",
+    "distractors": {
+      "L1": "23",
+      "L2": "110",
+      "L3": "114"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-04-q19",
+    "stitch_id": "stitch-T1-001-04",
+    "text": "10 × 19 =",
+    "correct_answer": "190",
+    "distractors": {
+      "L1": "119",
+      "L2": "109",
+      "L3": "200"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T2-001-28-q15",
+    "stitch_id": "stitch-T2-001-28",
+    "text": "3 × ▢ = 216",
+    "correct_answer": "72",
+    "distractors": {
+      "L1": "62",
+      "L2": "82",
+      "L3": "71"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-28-q17",
+    "stitch_id": "stitch-T1-001-28",
+    "text": "8 × 91 =",
+    "correct_answer": "728",
+    "distractors": {
+      "L1": "99",
+      "L2": "726",
+      "L3": "730"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-002-02-q13",
+    "stitch_id": "stitch-T3-002-02",
+    "text": "85 - 5",
+    "correct_answer": "80",
+    "distractors": {
+      "L1": "425",
+      "L2": "81",
+      "L3": "79"
+    },
+    "created_at": "2025-04-16 23:36:39.438184+00",
+    "updated_at": "2025-04-16 23:36:39.438184+00"
+  },
+  {
+    "id": "stitch-T2-001-32-q01",
+    "stitch_id": "stitch-T2-001-32",
+    "text": "3 × 4 =",
+    "correct_answer": "12",
+    "distractors": {
+      "L1": "34",
+      "L2": "15",
+      "L3": "11"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-11-q17",
+    "stitch_id": "stitch-T1-001-11",
+    "text": "What is half of 130?",
+    "correct_answer": "65",
+    "distractors": {
+      "L1": "260",
+      "L2": "66",
+      "L3": "64"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-21-q08",
+    "stitch_id": "stitch-T1-001-21",
+    "text": "4 × what number = 250?",
+    "correct_answer": "62.5",
+    "distractors": {
+      "L1": "254",
+      "L2": "63",
+      "L3": "62"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-10-q01",
+    "stitch_id": "stitch-T1-001-10",
+    "text": "What is half of 20?",
+    "correct_answer": "10",
+    "distractors": {
+      "L1": "40",
+      "L2": "15",
+      "L3": "11"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-001-09-q01",
+    "stitch_id": "stitch-T3-001-09",
+    "text": "32 + 37",
+    "correct_answer": "69",
+    "distractors": {
+      "L1": "3237",
+      "L2": "59",
+      "L3": "68"
+    },
+    "created_at": "2025-04-16 23:31:54.763107+00",
+    "updated_at": "2025-04-16 23:31:54.763107+00"
+  },
+  {
+    "id": "stitch-T2-001-03-q03",
+    "stitch_id": "stitch-T2-001-03",
+    "text": "17 × 3 =",
+    "correct_answer": "51",
+    "distractors": {
+      "L1": "20",
+      "L2": "49",
+      "L3": "53"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-10-q06",
+    "stitch_id": "stitch-T1-001-10",
+    "text": "What is half of 120?",
+    "correct_answer": "60",
+    "distractors": {
+      "L1": "240",
+      "L2": "65",
+      "L3": "59"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-02-q05",
+    "stitch_id": "stitch-T1-001-02",
+    "text": "Double 11",
+    "correct_answer": "22",
+    "distractors": {
+      "L1": "111",
+      "L2": "24",
+      "L3": "21"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-04-q08",
+    "stitch_id": "stitch-T1-001-04",
+    "text": "10 × 8 =",
+    "correct_answer": "80",
+    "distractors": {
+      "L1": "18",
+      "L2": "88",
+      "L3": "70"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-001-12-q08",
+    "stitch_id": "stitch-T3-001-12",
+    "text": "47 + 17",
+    "correct_answer": "64",
+    "distractors": {
+      "L1": "4717",
+      "L2": "54",
+      "L3": "63"
+    },
+    "created_at": "2025-04-16 23:31:54.763107+00",
+    "updated_at": "2025-04-16 23:31:54.763107+00"
+  },
+  {
+    "id": "stitch-T1-001-39-q17",
+    "stitch_id": "stitch-T1-001-39",
+    "text": "5 × 36 =",
+    "correct_answer": "180",
+    "distractors": {
+      "L1": "365",
+      "L2": "185",
+      "L3": "181"
+    },
+    "created_at": "2025-03-29 15:15:00+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-11-q01",
+    "stitch_id": "stitch-T1-001-11",
+    "text": "What is half of 10?",
+    "correct_answer": "5",
+    "distractors": {
+      "L1": "20",
+      "L2": "4",
+      "L3": "6"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-35-q02",
+    "stitch_id": "stitch-T1-001-35",
+    "text": "What number times 8 equals 512?",
+    "correct_answer": "64",
+    "distractors": {
+      "L1": "520",
+      "L2": "65",
+      "L3": "63"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-31-q09",
+    "stitch_id": "stitch-T1-001-31",
+    "text": "What number times 8 equals 168?",
+    "correct_answer": "21",
+    "distractors": {
+      "L1": "176",
+      "L2": "22",
+      "L3": "20"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-22-q11",
+    "stitch_id": "stitch-T1-001-22",
+    "text": "200 ÷ 4 =",
+    "correct_answer": "50",
+    "distractors": {
+      "L1": "49",
+      "L2": "51",
+      "L3": "204"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-22-q05",
+    "stitch_id": "stitch-T1-001-22",
+    "text": "What number times 4 equals 280?",
+    "correct_answer": "70",
+    "distractors": {
+      "L1": "284",
+      "L2": "69",
+      "L3": "71"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-002-05-q20",
+    "stitch_id": "stitch-T3-002-05",
+    "text": "50 - 20",
+    "correct_answer": "30",
+    "distractors": {
+      "L1": "5020",
+      "L2": "70",
+      "L3": "20"
+    },
+    "created_at": "2025-04-16 23:36:39.438184+00",
+    "updated_at": "2025-04-16 23:36:39.438184+00"
+  },
+  {
+    "id": "stitch-T2-001-27-q11",
+    "stitch_id": "stitch-T2-001-27",
+    "text": "6 × 32 =",
+    "correct_answer": "192",
+    "distractors": {
+      "L1": "326",
+      "L2": "198",
+      "L3": "191"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-04-q04",
+    "stitch_id": "stitch-T1-001-04",
+    "text": "10 × 4 =",
+    "correct_answer": "40",
+    "distractors": {
+      "L1": "14",
+      "L2": "44",
+      "L3": "50"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-002-12-q16",
+    "stitch_id": "stitch-T3-002-12",
+    "text": "47 - 10",
+    "correct_answer": "37",
+    "distractors": {
+      "L1": "4710",
+      "L2": "27",
+      "L3": "38"
+    },
+    "created_at": "2025-04-16 23:36:39.438184+00",
+    "updated_at": "2025-04-16 23:36:39.438184+00"
+  },
+  {
+    "id": "stitch-T3-002-08-q16",
+    "stitch_id": "stitch-T3-002-08",
+    "text": "52 - 22",
+    "correct_answer": "30",
+    "distractors": {
+      "L1": "74",
+      "L2": "52 - 2",
+      "L3": "50 - 20"
+    },
+    "created_at": "2025-04-16 23:36:39.438184+00",
+    "updated_at": "2025-04-16 23:36:39.438184+00"
+  },
+  {
+    "id": "stitch-T1-001-10-q14",
+    "stitch_id": "stitch-T1-001-10",
+    "text": "What is half of 140?",
+    "correct_answer": "70",
+    "distractors": {
+      "L1": "280",
+      "L2": "76",
+      "L3": "69"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T2-001-06-q06",
+    "stitch_id": "stitch-T2-001-06",
+    "text": "14 × 6 =",
+    "correct_answer": "84",
+    "distractors": {
+      "L1": "146",
+      "L2": "80",
+      "L3": "88"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T2-001-01-q04",
+    "stitch_id": "stitch-T2-001-01",
+    "text": "19 × 4 =",
+    "correct_answer": "76",
+    "distractors": {
+      "L1": "23",
+      "L2": "74",
+      "L3": "78"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T2-001-34-q01",
+    "stitch_id": "stitch-T2-001-34",
+    "text": "20 × ▢ = 2000",
+    "correct_answer": "100",
+    "distractors": {
+      "L1": "200",
+      "L2": "110",
+      "L3": "99"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-22-q16",
+    "stitch_id": "stitch-T1-001-22",
+    "text": "200 ÷ 4 =",
+    "correct_answer": "50",
+    "distractors": {
+      "L1": "49",
+      "L2": "51",
+      "L3": "204"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-002-07-q09",
+    "stitch_id": "stitch-T3-002-07",
+    "text": "42 - 12",
+    "correct_answer": "30",
+    "distractors": {
+      "L1": "54",
+      "L2": "40 - 10",
+      "L3": "42 - 10"
+    },
+    "created_at": "2025-04-16 23:36:39.438184+00",
+    "updated_at": "2025-04-16 23:36:39.438184+00"
+  },
+  {
+    "id": "stitch-T1-001-16-q02",
+    "stitch_id": "stitch-T1-001-16",
+    "text": "4 × 57 =",
+    "correct_answer": "228",
+    "distractors": {
+      "L1": "61",
+      "L2": "224",
+      "L3": "232"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-002-05-q05",
+    "stitch_id": "stitch-T3-002-05",
+    "text": "49 - 29",
+    "correct_answer": "20",
+    "distractors": {
+      "L1": "4929",
+      "L2": "30",
+      "L3": "19"
+    },
+    "created_at": "2025-04-16 23:36:39.438184+00",
+    "updated_at": "2025-04-16 23:36:39.438184+00"
+  },
+  {
+    "id": "stitch-T2-001-05-q09",
+    "stitch_id": "stitch-T2-001-05",
+    "text": "15 × 9 =",
+    "correct_answer": "135",
+    "distractors": {
+      "L1": "24",
+      "L2": "133",
+      "L3": "137"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-18-q04",
+    "stitch_id": "stitch-T1-001-18",
+    "text": "4 × ▢ = 60",
+    "correct_answer": "15",
+    "distractors": {
+      "L1": "64",
+      "L2": "14",
+      "L3": "16"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-001-05-q06",
+    "stitch_id": "stitch-T3-001-05",
+    "text": "22 + 11",
+    "correct_answer": "33",
+    "distractors": {
+      "L1": "2211",
+      "L2": "34",
+      "L3": "32"
+    },
+    "created_at": "2025-04-16 23:31:54.763107+00",
+    "updated_at": "2025-04-16 23:31:54.763107+00"
+  },
+  {
+    "id": "stitch-T3-002-05-q15",
+    "stitch_id": "stitch-T3-002-05",
+    "text": "59 - 29",
+    "correct_answer": "30",
+    "distractors": {
+      "L1": "5929",
+      "L2": "40",
+      "L3": "20"
+    },
+    "created_at": "2025-04-16 23:36:39.438184+00",
+    "updated_at": "2025-04-16 23:36:39.438184+00"
+  },
+  {
+    "id": "stitch-T1-001-20-q18",
+    "stitch_id": "stitch-T1-001-20",
+    "text": "140 ÷ 4 =",
+    "correct_answer": "35",
+    "distractors": {
+      "L1": "34",
+      "L2": "36",
+      "L3": "144"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-14-q02",
+    "stitch_id": "stitch-T1-001-14",
+    "text": "4 × 7 =",
+    "correct_answer": "28",
+    "distractors": {
+      "L1": "11",
+      "L2": "24",
+      "L3": "32"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-01-q09",
+    "stitch_id": "stitch-T1-001-01",
+    "text": "Double 45",
+    "correct_answer": "90",
+    "distractors": {
+      "L1": "450",
+      "L2": "80",
+      "L3": "92"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-39-q18",
+    "stitch_id": "stitch-T1-001-39",
+    "text": "5 × 37 =",
+    "correct_answer": "185",
+    "distractors": {
+      "L1": "375",
+      "L2": "190",
+      "L3": "186"
+    },
+    "created_at": "2025-03-29 15:15:00+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T3-002-06-q19",
+    "stitch_id": "stitch-T3-002-06",
+    "text": "64 - 14",
+    "correct_answer": "50",
+    "distractors": {
+      "L1": "6414",
+      "L2": "48",
+      "L3": "54"
+    },
+    "created_at": "2025-04-16 23:36:39.438184+00",
+    "updated_at": "2025-04-16 23:36:39.438184+00"
+  },
+  {
+    "id": "stitch-T2-001-33-q06",
+    "stitch_id": "stitch-T2-001-33",
+    "text": "3 × 13 =",
+    "correct_answer": "39",
+    "distractors": {
+      "L1": "133",
+      "L2": "42",
+      "L3": "38"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T2-001-25-q14",
+    "stitch_id": "stitch-T2-001-25",
+    "text": "6 × 48 =",
+    "correct_answer": "288",
+    "distractors": {
+      "L1": "468",
+      "L2": "294",
+      "L3": "287"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T2-001-30-q02",
+    "stitch_id": "stitch-T2-001-30",
+    "text": "3 × ▢ = 96",
+    "correct_answer": "32",
+    "distractors": {
+      "L1": "22",
+      "L2": "42",
+      "L3": "31"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T2-001-36-q05",
+    "stitch_id": "stitch-T2-001-36",
+    "text": "20 × 70 =",
+    "correct_answer": "1400",
+    "distractors": {
+      "L1": "700",
+      "L2": "1410",
+      "L3": "1405"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T3-002-01-q14",
+    "stitch_id": "stitch-T3-002-01",
+    "text": "16 - 9",
+    "correct_answer": "7",
+    "distractors": {
+      "L1": "144",
+      "L2": "8",
+      "L3": "6"
+    },
+    "created_at": "2025-04-16 23:36:39.438184+00",
+    "updated_at": "2025-04-16 23:36:39.438184+00"
+  },
+  {
+    "id": "stitch-T1-001-15-q14",
+    "stitch_id": "stitch-T1-001-15",
+    "text": "4 × 82 =",
+    "correct_answer": "328",
+    "distractors": {
+      "L1": "86",
+      "L2": "324",
+      "L3": "332"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-22-q01",
+    "stitch_id": "stitch-T1-001-22",
+    "text": "What number times 4 equals 200?",
+    "correct_answer": "50",
+    "distractors": {
+      "L1": "204",
+      "L2": "49",
+      "L3": "51"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T1-001-15-q05",
+    "stitch_id": "stitch-T1-001-15",
+    "text": "4 × 61 =",
+    "correct_answer": "244",
+    "distractors": {
+      "L1": "65",
+      "L2": "240",
+      "L3": "248"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  },
+  {
+    "id": "stitch-T2-001-36-q03",
+    "stitch_id": "stitch-T2-001-36",
+    "text": "20 × 60 =",
+    "correct_answer": "1200",
+    "distractors": {
+      "L1": "600",
+      "L2": "1210",
+      "L3": "1205"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T2-001-38-q17",
+    "stitch_id": "stitch-T2-001-38",
+    "text": "5 × ▢ = 290",
+    "correct_answer": "58",
+    "distractors": {
+      "L1": "29",
+      "L2": "68",
+      "L3": "57"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T3-002-05-q13",
+    "stitch_id": "stitch-T3-002-05",
+    "text": "52 - 22",
+    "correct_answer": "30",
+    "distractors": {
+      "L1": "5222",
+      "L2": "40",
+      "L3": "34"
+    },
+    "created_at": "2025-04-16 23:36:39.438184+00",
+    "updated_at": "2025-04-16 23:36:39.438184+00"
+  },
+  {
+    "id": "stitch-T3-002-08-q04",
+    "stitch_id": "stitch-T3-002-08",
+    "text": "56 - 6",
+    "correct_answer": "50",
+    "distractors": {
+      "L1": "62",
+      "L2": "46",
+      "L3": "56 - 60"
+    },
+    "created_at": "2025-04-16 23:36:39.438184+00",
+    "updated_at": "2025-04-16 23:36:39.438184+00"
+  },
+  {
+    "id": "stitch-T2-001-13-q07",
+    "stitch_id": "stitch-T2-001-13",
+    "text": "7 × 27 =",
+    "correct_answer": "189",
+    "distractors": {
+      "L1": "277",
+      "L2": "179",
+      "L3": "193"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T2-001-11-q16",
+    "stitch_id": "stitch-T2-001-11",
+    "text": "What number multiplied by 7 equals 252?",
+    "correct_answer": "36",
+    "distractors": {
+      "L1": "3.6",
+      "L2": "26",
+      "L3": "35"
+    },
+    "created_at": "2025-04-16 23:31:32.860976+00",
+    "updated_at": "2025-04-16 23:31:32.860976+00"
+  },
+  {
+    "id": "stitch-T1-001-14-q19",
+    "stitch_id": "stitch-T1-001-14",
+    "text": "4 × 48 =",
+    "correct_answer": "192",
+    "distractors": {
+      "L1": "52",
+      "L2": "188",
+      "L3": "196"
+    },
+    "created_at": "2025-04-16 23:31:04.764314+00",
+    "updated_at": "2025-04-16 23:31:04.764314+00"
+  }
+]

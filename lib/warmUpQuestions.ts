@@ -5,7 +5,464 @@
  * questions that are shown to users while the main content loads.
  */
 
-import warmUpQuestionsRaw from '../Warm-up Questions.json';
+// Embed the warm-up questions directly in the code for reliability
+// This also eliminates the need for file loading and error handling
+const warmUpQuestionsRaw = [
+  {
+    "id": "warm-up-q1",
+    "stitch_id": "warm-up-stitch",
+    "text": "25 + 4",
+    "correct_answer": "29",
+    "distractors": { "L1": "31", "L2": "24", "L3": "35" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q2",
+    "stitch_id": "warm-up-stitch",
+    "text": "17 + 8",
+    "correct_answer": "25",
+    "distractors": { "L1": "15", "L2": "27", "L3": "24" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q3",
+    "stitch_id": "warm-up-stitch",
+    "text": "36 - 9",
+    "correct_answer": "27",
+    "distractors": { "L1": "25", "L2": "28", "L3": "45" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q4",
+    "stitch_id": "warm-up-stitch",
+    "text": "42 - 7",
+    "correct_answer": "35",
+    "distractors": { "L1": "36", "L2": "37", "L3": "49" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q5",
+    "stitch_id": "warm-up-stitch",
+    "text": "8 × 6",
+    "correct_answer": "48",
+    "distractors": { "L1": "42", "L2": "54", "L3": "14" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q6",
+    "stitch_id": "warm-up-stitch",
+    "text": "7 × 9",
+    "correct_answer": "63",
+    "distractors": { "L1": "56", "L2": "72", "L3": "16" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q7",
+    "stitch_id": "warm-up-stitch",
+    "text": "56 ÷ 8",
+    "correct_answer": "7",
+    "distractors": { "L1": "6", "L2": "8", "L3": "9" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q8",
+    "stitch_id": "warm-up-stitch",
+    "text": "45 ÷ 9",
+    "correct_answer": "5",
+    "distractors": { "L1": "4", "L2": "6", "L3": "7" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q9",
+    "stitch_id": "warm-up-stitch",
+    "text": "13 + 28",
+    "correct_answer": "41",
+    "distractors": { "L1": "31", "L2": "38", "L3": "51" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q10",
+    "stitch_id": "warm-up-stitch",
+    "text": "47 - 19",
+    "correct_answer": "28",
+    "distractors": { "L1": "26", "L2": "29", "L3": "38" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q11",
+    "stitch_id": "warm-up-stitch",
+    "text": "3 × 12",
+    "correct_answer": "36",
+    "distractors": { "L1": "30", "L2": "33", "L3": "39" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q12",
+    "stitch_id": "warm-up-stitch",
+    "text": "50 ÷ 10",
+    "correct_answer": "5",
+    "distractors": { "L1": "4", "L2": "6", "L3": "40" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q13",
+    "stitch_id": "warm-up-stitch",
+    "text": "16 + 27",
+    "correct_answer": "43",
+    "distractors": { "L1": "33", "L2": "42", "L3": "44" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q14",
+    "stitch_id": "warm-up-stitch",
+    "text": "63 - 37",
+    "correct_answer": "26",
+    "distractors": { "L1": "24", "L2": "27", "L3": "36" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q15",
+    "stitch_id": "warm-up-stitch",
+    "text": "5 × 11",
+    "correct_answer": "55",
+    "distractors": { "L1": "45", "L2": "50", "L3": "56" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q16",
+    "stitch_id": "warm-up-stitch",
+    "text": "72 ÷ 9",
+    "correct_answer": "8",
+    "distractors": { "L1": "7", "L2": "9", "L3": "10" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q17",
+    "stitch_id": "warm-up-stitch",
+    "text": "35 + 47",
+    "correct_answer": "82",
+    "distractors": { "L1": "72", "L2": "81", "L3": "92" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q18",
+    "stitch_id": "warm-up-stitch",
+    "text": "91 - 38",
+    "correct_answer": "53",
+    "distractors": { "L1": "43", "L2": "51", "L3": "57" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q19",
+    "stitch_id": "warm-up-stitch",
+    "text": "7 × 7",
+    "correct_answer": "49",
+    "distractors": { "L1": "42", "L2": "48", "L3": "56" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q20",
+    "stitch_id": "warm-up-stitch",
+    "text": "64 ÷ 8",
+    "correct_answer": "8",
+    "distractors": { "L1": "6", "L2": "7", "L3": "9" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q21",
+    "stitch_id": "warm-up-stitch",
+    "text": "57 + 26",
+    "correct_answer": "83",
+    "distractors": { "L1": "73", "L2": "82", "L3": "87" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q22",
+    "stitch_id": "warm-up-stitch",
+    "text": "85 - 42",
+    "correct_answer": "43",
+    "distractors": { "L1": "37", "L2": "44", "L3": "47" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q23",
+    "stitch_id": "warm-up-stitch",
+    "text": "9 × 8",
+    "correct_answer": "72",
+    "distractors": { "L1": "63", "L2": "64", "L3": "81" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q24",
+    "stitch_id": "warm-up-stitch",
+    "text": "100 ÷ 20",
+    "correct_answer": "5",
+    "distractors": { "L1": "4", "L2": "10", "L3": "20" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q25",
+    "stitch_id": "warm-up-stitch",
+    "text": "32 + 59",
+    "correct_answer": "91",
+    "distractors": { "L1": "81", "L2": "89", "L3": "92" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q26",
+    "stitch_id": "warm-up-stitch",
+    "text": "75 - 36",
+    "correct_answer": "39",
+    "distractors": { "L1": "38", "L2": "41", "L3": "49" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q27",
+    "stitch_id": "warm-up-stitch",
+    "text": "6 × 6",
+    "correct_answer": "36",
+    "distractors": { "L1": "30", "L2": "42", "L3": "46" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q28",
+    "stitch_id": "warm-up-stitch",
+    "text": "81 ÷ 9",
+    "correct_answer": "9",
+    "distractors": { "L1": "8", "L2": "10", "L3": "11" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q29",
+    "stitch_id": "warm-up-stitch",
+    "text": "26 + 39",
+    "correct_answer": "65",
+    "distractors": { "L1": "55", "L2": "64", "L3": "75" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q30",
+    "stitch_id": "warm-up-stitch",
+    "text": "94 - 67",
+    "correct_answer": "27",
+    "distractors": { "L1": "23", "L2": "26", "L3": "33" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q31",
+    "stitch_id": "warm-up-stitch",
+    "text": "4 × 15",
+    "correct_answer": "60",
+    "distractors": { "L1": "45", "L2": "55", "L3": "75" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q32",
+    "stitch_id": "warm-up-stitch",
+    "text": "60 ÷ 12",
+    "correct_answer": "5",
+    "distractors": { "L1": "4", "L2": "6", "L3": "48" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q33",
+    "stitch_id": "warm-up-stitch",
+    "text": "48 + 35",
+    "correct_answer": "83",
+    "distractors": { "L1": "73", "L2": "82", "L3": "87" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q34",
+    "stitch_id": "warm-up-stitch",
+    "text": "67 - 29",
+    "correct_answer": "38",
+    "distractors": { "L1": "36", "L2": "37", "L3": "48" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q35",
+    "stitch_id": "warm-up-stitch",
+    "text": "8 × 9",
+    "correct_answer": "72",
+    "distractors": { "L1": "63", "L2": "71", "L3": "81" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q36",
+    "stitch_id": "warm-up-stitch",
+    "text": "96 ÷ 8",
+    "correct_answer": "12",
+    "distractors": { "L1": "10", "L2": "11", "L3": "14" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q37",
+    "stitch_id": "warm-up-stitch",
+    "text": "125 + 75",
+    "correct_answer": "200",
+    "distractors": { "L1": "190", "L2": "195", "L3": "210" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q38",
+    "stitch_id": "warm-up-stitch",
+    "text": "150 - 75",
+    "correct_answer": "75",
+    "distractors": { "L1": "65", "L2": "70", "L3": "85" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q39",
+    "stitch_id": "warm-up-stitch",
+    "text": "11 × 4",
+    "correct_answer": "44",
+    "distractors": { "L1": "40", "L2": "42", "L3": "48" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q40",
+    "stitch_id": "warm-up-stitch",
+    "text": "90 ÷ 6",
+    "correct_answer": "15",
+    "distractors": { "L1": "14", "L2": "16", "L3": "84" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q41",
+    "stitch_id": "warm-up-stitch",
+    "text": "33 + 48",
+    "correct_answer": "81",
+    "distractors": { "L1": "71", "L2": "79", "L3": "91" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q42",
+    "stitch_id": "warm-up-stitch",
+    "text": "82 - 35",
+    "correct_answer": "47",
+    "distractors": { "L1": "43", "L2": "46", "L3": "57" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q43",
+    "stitch_id": "warm-up-stitch",
+    "text": "7 × 8",
+    "correct_answer": "56",
+    "distractors": { "L1": "48", "L2": "54", "L3": "64" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q44",
+    "stitch_id": "warm-up-stitch",
+    "text": "54 ÷ 6",
+    "correct_answer": "9",
+    "distractors": { "L1": "8", "L2": "10", "L3": "48" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q45",
+    "stitch_id": "warm-up-stitch",
+    "text": "75 + 48",
+    "correct_answer": "123",
+    "distractors": { "L1": "113", "L2": "122", "L3": "133" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q46",
+    "stitch_id": "warm-up-stitch",
+    "text": "120 - 45",
+    "correct_answer": "75",
+    "distractors": { "L1": "65", "L2": "70", "L3": "85" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q47",
+    "stitch_id": "warm-up-stitch",
+    "text": "9 × 9",
+    "correct_answer": "81",
+    "distractors": { "L1": "72", "L2": "79", "L3": "90" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q48",
+    "stitch_id": "warm-up-stitch",
+    "text": "72 ÷ 8",
+    "correct_answer": "9",
+    "distractors": { "L1": "7", "L2": "8", "L3": "10" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q49",
+    "stitch_id": "warm-up-stitch",
+    "text": "45 + 67",
+    "correct_answer": "112",
+    "distractors": { "L1": "102", "L2": "111", "L3": "122" },
+    "created_at": "",
+    "updated_at": ""
+  },
+  {
+    "id": "warm-up-q50",
+    "stitch_id": "warm-up-stitch",
+    "text": "89 - 24",
+    "correct_answer": "65",
+    "distractors": { "L1": "55", "L2": "63", "L3": "75" },
+    "created_at": "",
+    "updated_at": ""
+  }
+];
+
+// Log the number of warm-up questions available
+console.log(`Using ${warmUpQuestionsRaw.length} embedded warm-up questions`);
+
 import { Question } from './types/distinction-learning';
 
 // Type for raw questions from the database (using snake_case)
@@ -43,7 +500,32 @@ export function normalizeQuestionFormat(dbQuestion: RawQuestion): Question {
  * @returns Array of all warm-up questions
  */
 export function getAllWarmUpQuestions(): Question[] {
-  return (warmUpQuestionsRaw as RawQuestion[]).map(normalizeQuestionFormat);
+  try {
+    if (!Array.isArray(warmUpQuestionsRaw)) {
+      console.error('Warm-up questions is not an array:', warmUpQuestionsRaw);
+      return sampleWarmUpQuestions;
+    }
+    
+    if (warmUpQuestionsRaw.length === 0) {
+      console.error('Warm-up questions array is empty');
+      return sampleWarmUpQuestions;
+    }
+    
+    const normalizedQuestions = (warmUpQuestionsRaw as RawQuestion[]).map(normalizeQuestionFormat);
+    console.log(`Normalized ${normalizedQuestions.length} warm-up questions`);
+    
+    // Validate the normalized questions
+    if (!validateQuestions(normalizedQuestions)) {
+      console.error('Some warm-up questions failed validation');
+      return sampleWarmUpQuestions;
+    }
+    
+    return normalizedQuestions;
+  } catch (error) {
+    console.error('Error processing warm-up questions:', error);
+    // Fall back to sample questions
+    return sampleWarmUpQuestions;
+  }
 }
 
 /**

@@ -12,6 +12,16 @@ const nextConfig = {
     // your project has type errors.
     ignoreBuildErrors: true,
   },
+  webpack(config) {
+    // Configure webpack to handle JSON files with spaces in their names
+    config.module.rules.push({
+      test: /\.json$/,
+      type: 'javascript/auto',
+      loader: 'json-loader',
+    });
+    
+    return config;
+  },
 }
 
 module.exports = nextConfig;

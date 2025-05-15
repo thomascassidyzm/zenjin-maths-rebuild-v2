@@ -26,11 +26,47 @@ const WarmUpMode: React.FC<WarmUpModeProps> = ({
   // Load warm-up questions when component mounts
   useEffect(() => {
     try {
+      console.log(`Loading ${questionsCount} warm-up questions...`);
       const questions = getRandomWarmUpQuestions(questionsCount);
+      
+      // Debug the questions
+      console.log(`Got ${questions.length} warm-up questions`);
+      if (questions.length > 0) {
+        console.log('First question sample:', {
+          id: questions[0].id,
+          text: questions[0].text,
+          correctAnswer: questions[0].correctAnswer
+        });
+      } else {
+        console.error('No warm-up questions were returned!');
+      }
+      
       setWarmUpQuestions(questions);
       setIsLoading(false);
     } catch (error) {
       console.error('Error loading warm-up questions:', error);
+      // Use sample questions as fallback
+      const sampleQuestions = [
+        {
+          id: 'warm-up-sample-1',
+          text: '3 + 5 =',
+          correctAnswer: '8',
+          distractors: { L1: '7', L2: '9', L3: '6' }
+        },
+        {
+          id: 'warm-up-sample-2',
+          text: '7 - 2 =',
+          correctAnswer: '5',
+          distractors: { L1: '4', L2: '6', L3: '3' }
+        },
+        {
+          id: 'warm-up-sample-3',
+          text: '4 × 3 =',
+          correctAnswer: '12',
+          distractors: { L1: '7', L2: '10', L3: '9' }
+        }
+      ];
+      setWarmUpQuestions(sampleQuestions);
       setIsLoading(false);
     }
   }, [questionsCount]);
@@ -130,6 +166,7 @@ const WarmUpMode: React.FC<WarmUpModeProps> = ({
           questionsPerSession={questionsCount}
           sessionTotalPoints={0}
           userId={userId}
+          isWarmUpMode={true}
         />
       </div>
     </div>
