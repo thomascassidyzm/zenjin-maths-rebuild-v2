@@ -753,8 +753,24 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
     const answerTime = Date.now() - questionStartTime;
     setTimeToAnswer(answerTime);
     
-    // Simple field normalization for correctAnswer - handle both common formats
-    const correctAnswer = currentQuestion.correctAnswer || (currentQuestion as any).correct_answer;
+    // CRITICAL FIX: Enhanced field normalization for correctAnswer
+    // Check all possible field variations to ensure we find the answer
+    let correctAnswer;
+    
+    // First check standard camelCase and snake_case fields
+    if (currentQuestion.correctAnswer !== undefined) {
+      correctAnswer = currentQuestion.correctAnswer;
+    } else if ((currentQuestion as any).correct_answer !== undefined) {
+      correctAnswer = (currentQuestion as any).correct_answer;
+    } else if ((currentQuestion as any).correct !== undefined) {
+      correctAnswer = (currentQuestion as any).correct;
+    } else if ((currentQuestion as any).answer !== undefined) {
+      correctAnswer = (currentQuestion as any).answer;
+    } else {
+      // Default to first option as a last resort (should never happen)
+      console.error('No correct answer field found! Using fallback');
+      correctAnswer = option;
+    }
     
     // Log the answer format for debugging
     console.log(`Answer check: option=${option}, correctAnswer format:`, {
@@ -1781,7 +1797,7 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
             )}
           </div>
           
-          {/* Options */}
+          {/* Options - using CSS class-based absolute positioning for consistency */}
           <div className="buttons-container">
             {options.map((option, index) => (
               <button
@@ -1789,9 +1805,9 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
                 onClick={() => handleOptionSelect(option)}
                 disabled={selectedOption !== null}
                 className={`
-                  answer-button
+                  option-button answer-button
                   text-3xl font-bold
-                  transition-all duration-300
+                  transition-colors duration-300
                   option-hover
                   ${buttonToShake === option && isButtonShaking ? 'animate-shudder' : ''}
                   ${selectedOption === option && isCorrect ? 'bg-green-500 text-white glow-green' : ''}
@@ -1801,7 +1817,6 @@ const MinimalDistinctionPlayer: React.FC<MinimalDistinctionPlayerProps> = ({
                   ${selectedOption === 'timeout' ? 'neutral-option' : ''}
                   ${selectedOption === null ? 'bg-white text-gray-800' : ''}
                 `}
-                style={{left: index === 0 ? '0px' : 'auto', right: index === 1 ? '0px' : 'auto'}}
               >
                 {option}
               </button>
