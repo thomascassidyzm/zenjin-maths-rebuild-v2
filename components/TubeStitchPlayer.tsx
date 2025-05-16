@@ -1526,18 +1526,14 @@ const TubeStitchPlayer: React.FC<TubeStitchPlayerProps> = ({
           </div>
         </div>
         
-        {/* Footer area with enhanced Finish button */}
-        <div className="bg-white bg-opacity-10 p-3 flex justify-between items-center">
-          <div className="w-24"></div> {/* Spacer for balance */}
-          <div className="text-center">
-            <button
-              onClick={handleEndSession}
-              className="bg-teal-600 hover:bg-teal-500 text-white font-medium py-1.5 px-4 rounded-lg transition-colors text-sm focus:outline-none"
-            >
-              Finish
-            </button>
-          </div>
-          <div className="w-24"></div> {/* Spacer for balance */}
+        {/* Footer area with enhanced Finish button - fixed height to prevent layout shifts */}
+        <div className="bg-white bg-opacity-10 h-12 flex justify-center items-center">
+          <button
+            onClick={handleEndSession}
+            className="bg-teal-600 hover:bg-teal-500 text-white font-medium py-1.5 px-4 rounded-lg transition-colors text-sm focus:outline-none"
+          >
+            Finish
+          </button>
         </div>
       </div>
     </div>
