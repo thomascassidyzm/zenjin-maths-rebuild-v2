@@ -32,6 +32,8 @@ body::before {
 @import './dashboard.css';
 /* Import z-index management system */
 @import './zindex.css';
+/* Import player comparison styles */
+@import './player-comparison.css';
 
 .player-bg {
   background-color: #1e3a5f;

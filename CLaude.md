@@ -384,6 +384,63 @@ The improved implementation:
 8. Consider adding loading progress indicators to the loading screen
 9. Extend the clean start player approach to other testing scenarios
 
+## Player Component Showcase (May 16, 2025)
+
+We've created a comprehensive player showcase page that addresses the component duplication issue:
+
+1. **Centralized Comparison**: Created `/pages/player-showcase.tsx` to:
+   - Display all player component variants in one place
+   - Use consistent sample content for direct comparison
+   - Show key features and capabilities of each player
+   - Allow both grid and side-by-side comparison views
+
+2. **Components Included**:
+   - `TubeStitchPlayer`: Position-based player with minimal dependencies
+   - `MinimalDistinctionPlayer`: Streamlined player with warm-up mode support
+   - `ZustandDistinctionPlayer`: Store-integrated player with server-first fetching
+   - `DistinctionPlayer`: Original thread-based player with animations
+   - `PlayerComponent`: Classic player with subscription awareness
+   - `PlayerComponentZustand`: Global state management variant
+   - `PlayerWithLoader`: Loading-aware player with error handling
+   - `MinimalDistinctionPlayerWithUpgrade`: Subscription prompt integration
+   - `SequentialPlayer`: Sequential question flow player
+
+3. **Usage**:
+   - Access via `/player-showcase` URL path in production
+   - Compare appearance, behavior, and features side-by-side
+   - View individual players in full-size mode for detailed testing
+   - Use as a reference when implementing new features
+
+This showcase serves as both a practical tool for component selection and a living documentation of our player components, helping prevent further duplication by making all variants visible and comparable.
+
+## Cross-Session Context Management (May 16, 2025)
+
+We've identified a critical architectural concern related to how Claude Code sessions interact with the codebase:
+
+1. **Context Loss Between Sessions**: Each Claude Code session operates in isolation without knowledge of previous sessions, leading to:
+   - Duplication of components with similar functionality
+   - Loss of architectural context and design decisions
+   - Multiple implementations of the same feature with different approaches
+
+2. **Example of Impact**: The player component has been reimplemented multiple times:
+   - We've identified at least 11 different player components in the codebase
+   - Each implementation has slightly different behavior and styling
+   - This leads to inconsistent user experience and maintenance challenges
+
+3. **Mitigation Strategies**:
+   - Maintain this CLAUDE.md file with detailed architectural decisions
+   - Use extensive comments in code to explain component relationships
+   - Create a component inventory in the documentation
+   - Before creating new components, search for and extend existing ones
+   - Document component hierarchy and relationships
+
+4. **Practical Implementation**:
+   - Always begin with a thorough search for existing components
+   - Use the `PlayerWithLoader` as the primary player wrapper
+   - Extend existing components rather than creating new ones
+   - Update this document when adding significant features
+   - Use the Player Component Showcase to understand existing options
+
 ## Important Instructions for Claude
 
 1. ALWAYS discuss any proposed changes with the developer before implementing them
@@ -391,3 +448,4 @@ The improved implementation:
 3. When suggesting improvements, present a clear plan and wait for feedback before proceeding
 4. For complex features, break down the implementation into smaller, reviewable steps
 5. Prioritize understanding the existing code patterns before suggesting new approaches
+6. SEARCH FOR EXISTING COMPONENTS before creating new ones to avoid duplication
