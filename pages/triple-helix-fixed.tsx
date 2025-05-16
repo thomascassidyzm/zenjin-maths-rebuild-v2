@@ -624,7 +624,7 @@ export default function TripleHelixFixed() {
                       ${selectedOption === option && !isCorrect ? 'bg-red-500 text-white shadow-lg shadow-red-500/30' : ''}
                       ${selectedOption !== null && selectedOption !== option ? 'bg-white bg-opacity-10 text-white text-opacity-50' : ''}
                       ${selectedOption !== null && option === currentQuestion?.correctAnswer && !isCorrect ? 'bg-green-500 text-white shadow-lg shadow-green-500/30' : ''}
-                      ${selectedOption === null ? 'bg-white text-gray-800 hover:shadow-lg hover:-translate-y-1' : ''}
+                      ${selectedOption === null ? 'bg-white text-gray-800 hover:shadow-lg' : ''}
                     `}
                   >
                     {option}

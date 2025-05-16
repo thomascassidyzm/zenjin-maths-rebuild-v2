@@ -8,6 +8,7 @@ interface WarmUpModeProps {
   questionsCount?: number;
   onWarmUpComplete: () => void;
   userId?: string;
+  contentIsReady?: boolean; // Whether the main content is ready to be shown
 }
 
 /**
@@ -17,7 +18,8 @@ interface WarmUpModeProps {
 const WarmUpMode: React.FC<WarmUpModeProps> = ({
   questionsCount = 10,
   onWarmUpComplete,
-  userId
+  userId,
+  contentIsReady = false // Default to false until content is confirmed ready
 }) => {
   const [warmUpQuestions, setWarmUpQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -167,15 +169,17 @@ const WarmUpMode: React.FC<WarmUpModeProps> = ({
           isWarmUpMode={true}
         />
         
-        {/* Skip button positioned at the bottom */}
-        <div className="absolute bottom-3 left-0 right-0 flex justify-center items-center">
-          <button
-            onClick={onWarmUpComplete}
-            className="bg-teal-600 hover:bg-teal-500 text-white font-medium py-1.5 px-4 rounded-lg transition-colors text-sm z-20"
-          >
-            I'm Ready!
-          </button>
-        </div>
+        {/* Skip button positioned at the bottom - only show when content is ready */}
+        {contentIsReady && (
+          <div className="absolute bottom-3 left-0 right-0 flex justify-center items-center">
+            <button
+              onClick={onWarmUpComplete}
+              className="bg-teal-600 hover:bg-teal-500 text-white font-medium py-1.5 px-4 rounded-lg transition-colors text-sm z-20 animate-fadeIn"
+            >
+              I'm Ready!
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

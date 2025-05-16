@@ -84,7 +84,7 @@ body::before {
 }
 
 .option-hover:hover:not(:disabled) {
-  box-shadow: 0 0 12px rgba(147, 197, 253, 0.7);
+  /* Keeping only the border highlight but no motion */
   border: 2px solid rgba(191, 219, 254, 0.9);
 }
 
