@@ -49,151 +49,81 @@ export default function Home() {
     );
   }
   
-  // Show authenticated player start
+  // For authenticated users, automatically redirect to the player
+  useEffect(() => {
+    if (isAuthenticated && userData && !loading) {
+      // Automatically redirect to minimal-player
+      console.log('User is authenticated, redirecting to player page');
+      router.push('/minimal-player');
+    }
+  }, [isAuthenticated, userData, loading, router]);
+
+  // If authenticated but still loading user data, show loading state
   if (isAuthenticated && userData) {
     return (
-      <div className="min-h-screen flex flex-col dashboard-bg">
+      <div className="min-h-screen flex flex-col items-center justify-center dashboard-bg">
         <Head>
-          <title>Zenjin Maths | Welcome</title>
-          <meta name="description" content="Start your Zenjin Maths learning journey" />
+          <title>Zenjin Maths | Loading</title>
+          <meta name="description" content="Loading your Zenjin Maths learning journey" />
         </Head>
         
-        {/* Simple header */}
-        <header className="py-4 px-6 flex justify-between items-center border-b border-white/10">
-          <div className="text-white font-bold text-xl">Zenjin Maths</div>
-          <div>
-            <UserWelcomeButton user={user} isAuthenticated={isAuthenticated} />
-          </div>
-        </header>
-        
-        {/* Main content */}
-        <main className="flex-1 flex items-center justify-center p-6">
-          <div className="bg-white/10 backdrop-blur-lg p-8 rounded-xl shadow-xl max-w-lg w-full">
-            <h1 className="text-3xl font-bold text-white text-center mb-6">Welcome to Zenjin Maths</h1>
-            
-            <p className="text-white/80 mb-8 text-center">
-              Choose the right answer to each question.
-              {userData.progressData?.totalPoints > 0 && 
-                ` You've earned ${userData.progressData.totalPoints} points so far!`}
-            </p>
-            
-            <div className="space-y-4">
-              <button
-                onClick={() => router.push('/minimal-player')}
-                className="w-full py-4 bg-gradient-to-r from-teal-600 to-emerald-500 hover:from-teal-500 hover:to-emerald-400 text-white font-bold rounded-xl shadow-lg transition-all"
-              >
-                Start Learning
-              </button>
-              
-              <Link href="/dashboard" className="w-full py-4 bg-white/20 hover:bg-white/30 text-white font-medium rounded-xl shadow-lg transition-all block text-center">
-                View Dashboard
-              </Link>
-              
-              <div className="flex space-x-2">
-                <Link href="/state-inspector" className="w-1/2 py-3 bg-amber-700/40 hover:bg-amber-700/60 text-white font-medium rounded-xl shadow-lg transition-all block text-center text-sm">
-                  State Inspector
-                </Link>
-                
-                <button
-                  onClick={async () => {
-                    try {
-                      if (confirm('Create/repair database tables?')) {
-                        const response = await fetch('/api/create-user-state-table', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          credentials: 'include'
-                        });
-                        
-                        const result = await response.json();
-                        if (result.success) {
-                          alert('Success: ' + result.message);
-                        } else {
-                          alert('Error: ' + result.error);
-                        }
-                      }
-                    } catch (e) {
-                      console.error('Error creating table:', e);
-                      alert('Unexpected error: ' + e);
-                    }
-                  }}
-                  className="w-1/2 py-3 bg-yellow-700/40 hover:bg-yellow-700/60 text-white font-medium rounded-xl shadow-lg transition-all text-sm"
-                >
-                  Create/Repair Tables
-                </button>
-              </div>
-            </div>
-          </div>
-        </main>
-        
+        <div className="bg-white/10 backdrop-blur-lg p-8 rounded-xl shadow-xl text-center max-w-lg">
+          <div className="animate-spin mb-6 h-12 w-12 border-4 border-t-teal-500 border-teal-200 rounded-full mx-auto"></div>
+          <h1 className="text-2xl font-bold text-white mb-4">Preparing Your Content</h1>
+          <p className="text-white/80">Loading your personalized learning experience...</p>
+          {userData.progressData?.totalPoints > 0 && (
+            <p className="text-white/70 mt-4">You've earned {userData.progressData.totalPoints} points so far!</p>
+          )}
+        </div>
       </div>
     );
   }
   
-  // Show unauthenticated home page with sign-in option
+  // Skip the choice and automatically create an anonymous account and redirect to the player
+  useEffect(() => {
+    const autoStartAnonymously = async () => {
+      // Set the flag for anonymous state creation
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('zenjin_create_anonymous_state', 'true');
+        console.log('Setting flag to create anonymous state on player load');
+      }
+      
+      console.log('DEBUGGING: Auto-starting with anonymous account');
+      try {
+        // Create anonymous account using the context method
+        const result = await signInAnonymously();
+        if (result.success) {
+          console.log('DEBUGGING: Created anonymous account on server with TTL:', result);
+        } else {
+          console.error('DEBUGGING: Failed to create anonymous account:', result.error);
+        }
+      } catch (error) {
+        console.error('Error creating anonymous account:', error);
+      }
+      
+      // Always redirect to the player, even if account creation fails
+      router.push('/minimal-player');
+    };
+    
+    // If not authenticated, start the anonymous flow automatically
+    if (!isAuthenticated && !loading) {
+      autoStartAnonymously();
+    }
+  }, [isAuthenticated, loading, signInAnonymously, router]);
+  
+  // Show a simple loading state while automatic redirection is happening
   return (
-    <div className="min-h-screen flex flex-col dashboard-bg">
+    <div className="min-h-screen flex flex-col items-center justify-center dashboard-bg">
       <Head>
-        <title>Zenjin Maths | Welcome</title>
-        <meta name="description" content="Start your Zenjin Maths learning journey" />
+        <title>Zenjin Maths | Loading</title>
+        <meta name="description" content="Starting your Zenjin Maths learning journey" />
       </Head>
       
-      {/* Simple header */}
-      <header className="py-4 px-6 border-b border-white/10">
-        <div className="text-white font-bold text-xl">Zenjin Maths</div>
-      </header>
-      
-      {/* Main content */}
-      <main className="flex-1 flex items-center justify-center p-6">
-        <div className="bg-white/10 backdrop-blur-lg p-8 rounded-xl shadow-xl max-w-lg w-full">
-          <h1 className="text-3xl font-bold text-white text-center mb-6">Welcome to Zenjin Maths</h1>
-          
-          <p className="text-white/80 mb-8 text-center">
-            Choose the right answer to each question to improve your mathematical skills.
-          </p>
-          
-          <div className="space-y-4">
-            <Link 
-              href="/signin" 
-              className="w-full py-4 bg-gradient-to-r from-teal-600 to-emerald-500 hover:from-teal-500 hover:to-emerald-400 text-white font-bold rounded-xl shadow-lg transition-all block text-center"
-            >
-              Sign In
-            </Link>
-            
-            <button
-              onClick={() => {
-                // Set the flag for anonymous state creation
-                if (typeof window !== 'undefined') {
-                  localStorage.setItem('zenjin_create_anonymous_state', 'true');
-                  console.log('Setting flag to create anonymous state on player load');
-                }
-                
-                // Create anonymous account using the context method
-                // Add extra debugging info
-                console.log('DEBUGGING: About to call signInAnonymously()');
-                signInAnonymously()
-                  .then(result => {
-                    if (result.success) {
-                      console.log('DEBUGGING: Created anonymous account on server with TTL:', result);
-                    } else {
-                      console.error('DEBUGGING: Failed to create anonymous account:', result.error);
-                    }
-                  })
-                  .catch(error => {
-                    console.error('Error creating anonymous account:', error);
-                  })
-                  .finally(() => {
-                    // Always redirect to the player, even if account creation fails
-                    router.push('/minimal-player');
-                  });
-              }}
-              className="w-full py-4 bg-white/20 hover:bg-white/30 text-white font-medium rounded-xl shadow-lg transition-all"
-            >
-              Try Without Signing Up
-            </button>
-          </div>
-        </div>
-      </main>
-      
+      <div className="bg-white/10 backdrop-blur-lg p-8 rounded-xl shadow-xl text-center max-w-lg">
+        <div className="animate-spin mb-6 h-12 w-12 border-4 border-t-teal-500 border-teal-200 rounded-full mx-auto"></div>
+        <h1 className="text-2xl font-bold text-white mb-4">Starting Zenjin Maths</h1>
+        <p className="text-white/80">Preparing your learning experience...</p>
+      </div>
     </div>
   );
 }
