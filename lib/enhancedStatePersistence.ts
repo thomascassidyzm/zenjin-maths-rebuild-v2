@@ -14,7 +14,7 @@ export async function saveStateWithRetry(
   state: any, // Should be the UserState object: { userInformation, tubeState, learningProgress }
   maxRetries: number = 3
 ): Promise<boolean> {
-  console.log(`🔄 Saving state for user ${userId} with enhanced retry logic using /api/sync-user-state...`);
+  console.log(`🔄 Saving state for user ${userId} with enhanced retry logic using /api/core_state_sync_v1...`);
   
   let lastError: Error | null = null;
   
@@ -34,7 +34,7 @@ export async function saveStateWithRetry(
     try {
       console.log(`Attempt ${attempt}/${maxRetries} to save state for user ${userId}`);
       
-      const response = await fetch('/api/sync-user-state', {
+      const response = await fetch('/api/core_state_sync_v1', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -59,7 +59,7 @@ export async function saveStateWithRetry(
       } else {
         const data = await response.json();
         if (data.success) {
-          console.log(`✅ Attempt ${attempt}: Successfully saved state for user ${userId} via /api/sync-user-state.`);
+          console.log(`✅ Attempt ${attempt}: Successfully saved state for user ${userId} via /api/core_state_sync_v1.`);
           return true;
         } else {
           console.error(`Attempt ${attempt}: Server reported save was not successful. Response:`, data);

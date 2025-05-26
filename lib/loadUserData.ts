@@ -13,9 +13,9 @@ export async function loadUserData(userId?: string) { // userId might be optiona
   console.log(`🚀 Loading user data for user: ${userId || 'current session user'}`);
 
   try {
-    // Make a single GET request to /api/sync-user-state
+    // Make a single GET request to /api/core_state_sync_v1
     // Assumes that the browser will send the necessary authentication cookies.
-    const response = await fetch('/api/sync-user-state', {
+    const response = await fetch('/api/core_state_sync_v1', {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -26,7 +26,7 @@ export async function loadUserData(userId?: string) { // userId might be optiona
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Failed to load user state from /api/sync-user-state: ${response.status}`, errorText);
+      console.error(`Failed to load user state from /api/core_state_sync_v1: ${response.status}`, errorText);
       // Depending on status, different actions can be taken.
       // e.g. 401 might mean user is not logged in.
       if (response.status === 401) {
@@ -38,7 +38,7 @@ export async function loadUserData(userId?: string) { // userId might be optiona
     }
 
     const loadedState = (await response.json()) as UserState; // Cast to UserState
-    console.log('✅ User state loaded successfully from /api/sync-user-state:', loadedState);
+    console.log('✅ User state loaded successfully from /api/core_state_sync_v1:', loadedState);
 
     // Hydrate the Zustand store with the loaded state
     if (loadedState) {

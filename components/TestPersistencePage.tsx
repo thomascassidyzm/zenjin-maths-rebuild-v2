@@ -191,19 +191,16 @@ const TestPersistencePage: React.FC = () => {
     if (typeof window !== 'undefined' && !isSimulatingOffline) {
       originalFetch = window.fetch;
       window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-        if (typeof input === 'string' && input.includes('/api/sync-user-state')) {
-          console.warn('SIMULATING OFFLINE: Blocking fetch to /api/sync-user-state');
+        const urlString = typeof input === 'string' ? input : input.url;
+        if (urlString.includes('/api/core_state_sync_v1')) {
+          console.warn('SIMULATING OFFLINE: Blocking fetch to /api/core_state_sync_v1');
           throw new Error('Simulated network error: You are offline.');
-        }
-        if (typeof input === 'object' && 'url' in input && input.url.includes('/api/sync-user-state')) {
-            console.warn('SIMULATING OFFLINE: Blocking fetch to /api/sync-user-state (Request object)');
-            throw new Error('Simulated network error: You are offline.');
         }
         return originalFetch!(input, init);
       };
       setIsSimulatingOffline(true);
-      setStatusMessage('OFFLINE mode simulated for /api/sync-user-state.');
-      console.log('OFFLINE mode simulated.');
+      setStatusMessage('OFFLINE mode simulated for /api/core_state_sync_v1.');
+      console.log('OFFLINE mode simulated for /api/core_state_sync_v1.');
     }
   };
 

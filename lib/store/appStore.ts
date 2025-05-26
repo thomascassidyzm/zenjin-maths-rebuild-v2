@@ -220,7 +220,7 @@ export const useAppStore = create<
         console.log('Syncing state to server with payload:', payload);
 
         try {
-          const response = await fetch('/api/sync-user-state', {
+          const response = await fetch('/api/core_state_sync_v1', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
