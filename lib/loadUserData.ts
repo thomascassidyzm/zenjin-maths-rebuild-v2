@@ -1,201 +1,139 @@
+import { useAppStore } from './store/appStore'; // Import the Zustand store
+import type { UserState } from './store/types'; // Import UserState type, assuming it's defined in store/types
+
 /**
  * User data loading utility
  * 
- * This centralizes the loading of all user-specific data needed for the application.
- * It ensures that tube configurations, active stitches, and progress data are all
- * loaded in a clean, predictable sequence.
+ * This centralizes the loading of user-specific data using the new /api/sync-user-state endpoint.
+ * It fetches the complete user state and initializes the Zustand store.
  */
+export async function loadUserData(userId?: string) { // userId might be optional or used for logging
+  // The API /api/sync-user-state derives user from session, so explicit userId passing is not strictly for the API call.
+  // It can be useful for logging or if client context about the user is needed before the call.
+  console.log(`🚀 Loading user data for user: ${userId || 'current session user'}`);
 
-export async function loadUserData(userId: string) {
   try {
-    // CRITICAL FIX: Safety check and recovery for empty userId
-    if (!userId || userId === '') {
-      console.error('CRITICAL ERROR: Empty userId provided to loadUserData');
-      
-      // Try to recover from localStorage
-      if (typeof window !== 'undefined') {
-        const storedUserId = localStorage.getItem('zenjin_user_id');
-        if (storedUserId && storedUserId !== '') {
-          console.log(`CRITICAL RECOVERY: Using userId ${storedUserId} from localStorage instead of empty value`);
-          userId = storedUserId;
-          
-          // Save to window.__CURRENT_USER_ID__
-          (window as any).__CURRENT_USER_ID__ = userId;
-        } else {
-          // Check Supabase token as a fallback
-          try {
-            const supabaseToken = localStorage.getItem('sb-ggwoupzaruiaaliylxga-auth-token');
-            if (supabaseToken) {
-              const parsedToken = JSON.parse(supabaseToken);
-              if (parsedToken?.user?.id) {
-                userId = parsedToken.user.id;
-                console.log(`CRITICAL RECOVERY: Using userId ${userId} from Supabase token`);
-                
-                // Save to localStorage
-                localStorage.setItem('zenjin_user_id', userId);
-                
-                // Save to window.__CURRENT_USER_ID__
-                (window as any).__CURRENT_USER_ID__ = userId;
-              }
-            }
-          } catch (e) {
-            console.error('Error parsing Supabase token:', e);
-          }
-        }
-        
-        // If still no userId, generate an anonymous one as last resort
-        if (!userId || userId === '') {
-          userId = `anonymous-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
-          console.log(`CRITICAL RECOVERY: Generated new anonymous ID ${userId} as last resort`);
-          
-          // Save to localStorage
-          localStorage.setItem('zenjin_user_id', userId);
-          
-          // Save to window.__CURRENT_USER_ID__
-          (window as any).__CURRENT_USER_ID__ = userId;
-        }
-      }
-    }
-    
-    console.log(`Loading essential data for user ${userId}`);
-    
-    // Import our authUtils helper functions
-    const { withAuthHeaders, callAuthenticatedApi } = await import('./authUtils');
-    
-    // For authenticated users, ensure we're not sending the isAnonymous flag
-    const authState = localStorage.getItem('zenjin_auth_state');
-    
-    // Load tube configurations
-    console.log('Step 1: Loading tube configuration (lightweight version)');
-    
-    // Create query parameters - NO NEED for prefetch parameter anymore
-    // The API has been simplified to only return position data for free tier users
-    const queryParams = new URLSearchParams();
-    
-    if (userId) {
-      queryParams.append('userId', userId);
-      // Only include isAnonymous flag if we're actually anonymous
-      if (authState === 'anonymous' || userId.startsWith('anonymous-')) {
-        queryParams.append('isAnonymous', 'true');
-      }
-    }
-    
-    // Log the API request for debugging
-    console.log(`API Request: /api/user-stitches?${queryParams.toString()}`);
-    
-    // Use our helper function that ensures relative URLs and adds cache busting
-    const tubeConfigRes = await callAuthenticatedApi(`/api/user-stitches?${queryParams.toString()}`, {
-      method: 'GET'
+    // Make a single GET request to /api/sync-user-state
+    // Assumes that the browser will send the necessary authentication cookies.
+    const response = await fetch('/api/sync-user-state', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        // Supabase client SDK usually handles Authorization header if this fetch is wrapped or configured.
+        // For direct fetch to a Next.js API route using auth-helpers, cookies are the primary auth mechanism.
+      },
     });
-    
-    if (!tubeConfigRes.ok) {
-      console.error('Failed to load tube configuration:', tubeConfigRes.status);
-      throw new Error('Failed to load tube configuration');
-    }
-    
-    const tubeConfigData = await tubeConfigRes.json();
-    console.log('Tube configuration loaded successfully (lightweight version)');
-    
-    // Load user progress data
-    console.log('Step 2: Loading user progress data');
-    
-    // Create query params for progress API
-    const progressQueryParams = new URLSearchParams();
-    
-    if (userId) {
-      progressQueryParams.append('userId', userId);
-      // Only include isAnonymous flag if we're actually anonymous
-      if (authState === 'anonymous' || userId.startsWith('anonymous-')) {
-        progressQueryParams.append('isAnonymous', 'true');
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Failed to load user state from /api/sync-user-state: ${response.status}`, errorText);
+      // Depending on status, different actions can be taken.
+      // e.g. 401 might mean user is not logged in.
+      if (response.status === 401) {
+        console.warn('User is not authenticated. Cannot load data.');
+        // Potentially clear store or redirect to login
+        // useAppStore.getState().resetState(); // Example if a reset action exists
       }
+      throw new Error(`Failed to load user data: ${response.status} ${errorText}`);
     }
-    
-    // Log the API request for debugging
-    console.log(`API Request: /api/user-progress?${progressQueryParams.toString()}`);
-    
-    // Use our helper function that ensures relative URLs
-    const progressRes = await callAuthenticatedApi(`/api/user-progress?${progressQueryParams.toString()}`, {
-      method: 'GET'
-    });
-    
-    let progressData = null;
-    if (progressRes.ok) {
-      progressData = await progressRes.json();
-      console.log('User progress loaded successfully');
-    } else {
-      console.warn('No existing progress data found, using defaults');
-      progressData = {
-        totalPoints: 0,
-        blinkSpeed: 0,
-        evolution: {
-          level: 1,
-          name: 'Mind Spark',
-          progress: 0
-        }
+
+    const loadedState = (await response.json()) as UserState; // Cast to UserState
+    console.log('✅ User state loaded successfully from /api/sync-user-state:', loadedState);
+
+    // Hydrate the Zustand store with the loaded state
+    if (loadedState) {
+      // Ensure the structure of loadedState is compatible with what initializeState expects.
+      // The initializeState in appStore.ts takes Partial<AppState>.
+      // UserState from API should map to { userInformation, tubeState, learningProgress }
+      const appStateToInitialize = {
+        userInformation: loadedState.userInformation,
+        tubeState: loadedState.tubeState,
+        learningProgress: loadedState.learningProgress,
+        // lastUpdated and isInitialized will be set by initializeState or store logic
       };
+      useAppStore.getState().initializeState(appStateToInitialize);
+      console.log('🔄 Zustand store initialized with loaded user state.');
+    } else {
+      // This case should ideally not be hit if API guarantees a default state.
+      console.warn('No state data received from API, or data was null. Initializing with default state.');
+      useAppStore.getState().initializeState({}); // Initialize with empty/default if needed
     }
     
-    // Store in localStorage for offline use
-    console.log('Step 3: Storing data in localStorage for offline use');
-    localStorage.setItem('zenjin_tube_data', JSON.stringify(tubeConfigData));
-    localStorage.setItem('zenjin_user_progress', JSON.stringify(progressData));
-    localStorage.setItem('zenjin_data_timestamp', Date.now().toString());
-    
-    // Store user ID for offline mode
-    localStorage.setItem('zenjin_user_id', userId);
-    localStorage.setItem('zenjin_auth_state', 'authenticated');
-    
-    console.log('All user data loaded and cached successfully');
-    
-    return { 
-      tubeData: tubeConfigData,
-      progressData,
-      dataTimestamp: Date.now()
-    };
+    // The old logic for saving individual items to localStorage (zenjin_tube_data, etc.)
+    // is now handled by the Zustand persist middleware configured in appStore.ts.
+    // Calling initializeState will update the store, and persist middleware will save 'zenjin-app-state'.
+
+    // The function can return the loaded state or a success status.
+    return { success: true, data: loadedState };
+
   } catch (error) {
-    console.error('Error loading user data:', error);
-    throw error;
+    console.error('❌ Error in loadUserData:', error);
+    // It might be useful to dispatch an action to the store indicating that loading failed
+    // useAppStore.getState().setLoadingError(error); // Example
+    throw error; // Re-throw for the caller to handle if necessary
   }
 }
 
 /**
- * Check if cached user data is available
+ * Check if cached user data is available (checks Zustand store's persisted state).
+ * This is a conceptual change: instead of checking disparate localStorage items,
+ * we check if the store considers itself initialized, potentially after rehydration.
  */
 export function hasLocalUserData(): boolean {
-  const tubeData = localStorage.getItem('zenjin_tube_data');
-  const progressData = localStorage.getItem('zenjin_user_progress');
-  return !!tubeData && !!progressData;
+  // The store's `isInitialized` flag or presence of userInformation can indicate this.
+  // This depends on how `isInitialized` is managed by useAppStore.
+  // If useAppStore.persist.rehydrate() is asynchronous, this might not be immediately accurate on startup.
+  const store = useAppStore.getState();
+  // A simple check could be if userInformation is present after store hydration.
+  return store.isInitialized && store.userInformation != null;
 }
 
 /**
- * Get cached user data from localStorage
+ * Get cached user data from Zustand store.
+ * The primary way to access state should be through store selectors/hooks in components.
+ * This function might be for specific non-component scenarios.
  */
-export function getLocalUserData() {
-  try {
-    const tubeData = localStorage.getItem('zenjin_tube_data');
-    const progressData = localStorage.getItem('zenjin_user_progress');
-    const dataTimestamp = localStorage.getItem('zenjin_data_timestamp');
-    
-    if (!tubeData || !progressData) {
-      return null;
-    }
-    
+export function getLocalUserData(): UserState | null {
+  const storeState = useAppStore.getState();
+  if (storeState.isInitialized && storeState.userInformation) {
     return {
-      tubeData: JSON.parse(tubeData),
-      progressData: JSON.parse(progressData),
-      dataTimestamp: dataTimestamp ? parseInt(dataTimestamp) : Date.now()
+      userInformation: storeState.userInformation,
+      tubeState: storeState.tubeState!, // Assuming tubeState is non-null if userInformation is present
+      learningProgress: storeState.learningProgress!, // Same assumption
+      // Note: This constructs a UserState object. The store itself is AppState.
     };
-  } catch (error) {
-    console.error('Error retrieving local user data:', error);
-    return null;
   }
+  return null;
 }
 
 /**
- * Clear user data from localStorage
+ * Clear user data from Zustand store and its persisted storage.
  */
 export function clearUserData() {
-  localStorage.removeItem('zenjin_tube_data');
-  localStorage.removeItem('zenjin_user_progress');
-  localStorage.removeItem('zenjin_data_timestamp');
+  // Option 1: Call a reset action in the store if it exists and handles clearing persisted state.
+  // e.g., useAppStore.getState().resetToInitialStateAndClearPersistence();
+
+  // Option 2: Manually clear the specific localStorage item used by persist middleware.
+  // This is generally not recommended as it's an internal detail of the store.
+  // The key is 'zenjin-app-state' as defined in appStore.ts.
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('zenjin-app-state');
+    // Also clear any other related localStorage items if necessary, e.g., old ones.
+    localStorage.removeItem('zenjin_user_id'); // From old logic
+    localStorage.removeItem('zenjin_auth_state'); // From old logic
+    localStorage.removeItem('zenjin_tube_data'); // Old
+    localStorage.removeItem('zenjin_user_progress'); // Old
+    localStorage.removeItem('zenjin_data_timestamp'); // Old
+  }
+  
+  // Reset the store's in-memory state to initial values.
+  // This requires an action in the store, e.g., initializeState with empty/initial values.
+  useAppStore.getState().initializeState({
+    userInformation: null,
+    tubeState: null,
+    learningProgress: null,
+    // lastUpdated: new Date().toISOString(), // Let initializeState handle this
+    // isInitialized: false // Let initializeState handle this
+  });
+  console.log('User data cleared from localStorage and store reset (conceptually).');
 }

@@ -192,56 +192,61 @@ export const useAppStore = create<
 
       // Server synchronization
       syncToServer: async () => {
-        const state = get();
+        const { userInformation, tubeState, learningProgress, lastUpdated, isInitialized, ...rest } = get();
 
-        // First make sure it's saved to localStorage
-        try {
-          get().saveToLocalStorage();
-        } catch (e) {
-          console.warn('Error saving to localStorage during server sync:', e);
-        }
-
-        if (!state.userInformation?.userId) {
-          console.error('Cannot sync to server: No user ID available');
+        if (!userInformation?.userId) {
+          console.error('Cannot sync to server: No user ID or userInformation available.');
           return false;
         }
+        
+        // Construct the payload according to UserState interface for /api/sync-user-state
+        // Ensure all necessary top-level properties are included.
+        // The API expects: UserInformation, TubeState, LearningProgress.
+        // If any of these are null in the store, send them as such or as empty objects
+        // if the backend expects non-null objects. The API types suggest they can be objects or null/undefined.
+        // The SQL functions are designed to handle potentially missing parts of the payload.
+        const payload = {
+          userInformation: userInformation || {}, // Send empty object if null
+          tubeState: tubeState || { tubes: [], activeTube: null }, // Send default structure if null
+          learningProgress: learningProgress || {}, // Send empty object if null
+          // Include any other top-level properties that are part of the UserState definition
+          // and are directly available in the store (e.g. lastUpdated if it's part of UserState)
+          // For now, assuming UserState only contains the three main properties.
+        };
+
+        // The `lastUpdated` and `isInitialized` fields from AppState are not part of the UserState interface for the backend.
+        // The backend will set its own `last_updated` timestamp.
+
+        console.log('Syncing state to server with payload:', payload);
 
         try {
-          // Prepare the data for server sync
-          const syncData = {
-            state: {
-              userId: state.userInformation.userId,
-              tubes: state.tubeState?.tubes || {},
-              activeTube: state.tubeState?.activeTube || 1,
-              activeTubeNumber: state.tubeState?.activeTubeNumber || 1,
-              points: state.learningProgress?.points || { session: 0, lifetime: 0 },
-              cycleCount: state.tubeState?.cycleCount || 0,
-              lastUpdated: state.lastUpdated
-            }
-          };
-
-          console.log('Syncing state to server:', syncData);
-
-          // Send to server - using existing API endpoint for compatibility
-          const response = await fetch('/api/user-state', {
+          const response = await fetch('/api/sync-user-state', {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/json',
+              // Authorization header will be handled by Supabase client-side SDK if session exists
             },
-            body: JSON.stringify(syncData)
+            body: JSON.stringify(payload)
           });
 
           if (!response.ok) {
-            console.error(`Server returned error ${response.status} during sync`);
-            console.error('Response text:', await response.text());
-            throw new Error(`Server returned ${response.status}`);
+            const errorText = await response.text();
+            console.error(`Server returned error ${response.status} during sync: ${errorText}`);
+            throw new Error(`Server returned ${response.status}: ${errorText}`);
           }
 
           const data = await response.json();
           console.log('Server sync response:', data);
-          return data.success === true;
-        } catch (error) {
-          console.error('Error syncing state to server:', error);
+          
+          if (data.success) {
+            set({ lastUpdated: new Date().toISOString() }); // Update local lastUpdated on successful sync
+            return true;
+          } else {
+            console.error('Server sync was not successful:', data.error, data.details);
+            return false;
+          }
+        } catch (error: any) {
+          console.error('Error syncing state to server:', error.message || error);
           return false;
         }
       }

@@ -20,161 +20,6 @@ export const supabase = typeof window !== 'undefined'
   : createBrowserClient(supabaseUrl, supabaseKey);
 
 /**
- * Transfer anonymous session data to new authenticated user
- * @param {string} userId - The authenticated user ID
- * @returns {Promise<boolean>} Success status
- * @deprecated No longer needed - anonymous users are now TTL accounts and don't need migration
- */
-export async function transferAnonymousData(userId: string) {
-  try {
-    if (typeof window === 'undefined') {
-      return false;
-    }
-
-    // Anonymous users are now TTL accounts that don't require data migration
-    console.log('Anonymous data transfer is deprecated - TTL accounts do not require migration');
-    console.log('Anonymous users maintain their data through Supabase auth with TTL settings');
-
-    // Return success to avoid breaking existing code that still calls this function
-    return true;
-    
-    /* TEMPORARILY DISABLED CODE - Will be restored once server issues are fixed
-    
-    // Set a flag that a transfer is in progress - this prevents
-    // the StateMachine from clearing localStorage state during authentication
-    console.log('Setting transfer flag before anonymous data migration');
-    localStorage.setItem('zenjin_auth_transfer_in_progress', 'true');
-    localStorage.setItem('zenjin_auth_transfer_start_time', Date.now().toString());
-    
-    // Get anonymous session data from localStorage - try multiple key patterns
-    // since different parts of the app might use different patterns
-    let anonymousId = localStorage.getItem('anonymousId');
-    let anonymousData = null;
-    
-    // Try different possible storage locations/patterns
-    const possibleKeys = [
-      'zenjin_anonymous_state',
-      anonymousId ? `zenjin_state_${anonymousId}` : null,
-      anonymousId ? `triple_helix_state_${anonymousId}` : null,
-      'zenjin_state_anonymous'
-    ].filter(Boolean);
-    
-    console.log('Checking for anonymous data in these keys:', possibleKeys);
-    
-    // Try each possible key until we find data
-    for (const key of possibleKeys) {
-      const data = localStorage.getItem(key);
-      if (data) {
-        try {
-          const parsed = JSON.parse(data);
-          if (parsed && (parsed.tubes || (parsed.state && parsed.state.tubes))) {
-            anonymousData = data;
-            console.log(`Found anonymous data in key: ${key}`);
-            break;
-          }
-        } catch (e) {
-          console.warn(`Error parsing data from key ${key}:`, e);
-        }
-      }
-    }
-    
-    if (!anonymousData) {
-      console.log('No anonymous data found in any storage location');
-      return false;
-    }
-    
-    // Try to parse the data, handling both direct state and wrapped state formats
-    let parsedData;
-    try {
-      parsedData = JSON.parse(anonymousData);
-      
-      // Handle case where data is wrapped in a "state" property
-      if (parsedData.state && parsedData.state.tubes) {
-        parsedData = parsedData;
-      }
-      // Handle case where state is directly stored
-      else if (parsedData.tubes) {
-        parsedData = { state: parsedData };
-      }
-      else {
-        console.log('Invalid anonymous data format - no tubes found');
-        return false;
-      }
-    } catch (e) {
-      console.error('Error parsing anonymous data:', e);
-      return false;
-    }
-    
-    console.log('Transferring anonymous session data to user:', userId);
-    
-    // We will handle this transfer through an API call since it requires database access
-    const response = await fetch('/api/transfer-anonymous-data', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        userId,
-        anonymousData: parsedData
-      })
-    });
-    
-    if (!response.ok) {
-      console.error('Failed to transfer anonymous data:', response.statusText);
-      return false;
-    }
-    
-    // Only clear anonymous data after successful transfer
-    if (response.ok) {
-      // Clear all formats of anonymous data to ensure clean state
-      localStorage.removeItem('zenjin_anonymous_state');
-      
-      // Clear anonymousId-based keys if they exist
-      if (anonymousId) {
-        localStorage.removeItem(`zenjin_state_${anonymousId}`);
-        localStorage.removeItem(`triple_helix_state_${anonymousId}`);
-        localStorage.removeItem(`sessionData_${anonymousId}`);
-        localStorage.removeItem(`progressData_${anonymousId}`);
-      }
-      
-      // Clear the anonymousId itself
-      localStorage.removeItem('anonymousId');
-      
-      console.log('Anonymous data transferred successfully and cleared from localStorage');
-      
-      // IMPORTANT: Clear the transfer flag now that we're done
-      localStorage.removeItem('zenjin_auth_transfer_in_progress');
-      localStorage.removeItem('zenjin_auth_transfer_start_time');
-      console.log('Cleared transfer-in-progress flag');
-    } else {
-      console.warn('Transfer API call succeeded but returned non-200 status - keeping anonymous data as backup');
-      // Clear the transfer flag even on failure to prevent getting stuck
-      localStorage.removeItem('zenjin_auth_transfer_in_progress');
-      localStorage.removeItem('zenjin_auth_transfer_start_time');
-    }
-    
-    return true;
-    */
-  } catch (error) {
-    console.error('Error transferring anonymous data:', error);
-    
-    // Clear the transfer flag in case of error to prevent getting stuck
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.removeItem('zenjin_auth_transfer_in_progress');
-        localStorage.removeItem('zenjin_auth_transfer_start_time');
-        console.log('Cleared transfer flag due to error');
-      } catch (err) {
-        console.warn('Could not clear transfer flag:', err);
-      }
-    }
-    
-    // TEMPORARY FIX: Return success despite the error to avoid blocking auth flow
-    return true;
-  }
-}
-
-/**
  * Check if the user is authenticated
  * @returns {Promise<object>} Authentication status
  */
@@ -247,10 +92,9 @@ export async function signInWithEmail(email: string, password?: string) {
         localStorage.setItem('zenjin_user_email', cleanEmail);
       }
       
-      // If we have a user, transfer any anonymous data
-      if (data.user?.id) {
-        await transferAnonymousData(data.user.id);
-      }
+      // If we have a user, data transfer for anonymous users is now handled by TTL accounts in Supabase.
+      // No explicit client-side transfer call needed.
+      // console.log('User signed in with password. Anonymous data transfer (if any) handled by backend/Supabase TTL.');
       
       return { success: true, user: data.user, session: data.session };
     }
@@ -332,10 +176,9 @@ export async function verifyOtp(code: string) {
       // Clear the temporary auth email
       localStorage.removeItem('auth_email');
       
-      // If we have a user, transfer any anonymous data
-      if (data.user?.id) {
-        await transferAnonymousData(data.user.id);
-      }
+      // If we have a user, data transfer for anonymous users is now handled by TTL accounts in Supabase.
+      // No explicit client-side transfer call needed.
+      // console.log('OTP verified. Anonymous data transfer (if any) handled by backend/Supabase TTL.');
     }
     
     return { success: true, user: data.user, session: data.session };

@@ -1,559 +1,351 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useAppStore } from '../lib/store/appStore';
+import type { UserInformation, TubeState, LearningProgress, UserState } from '../lib/store/types'; // Ensure UserState is exported or defined
+import { loadUserData } from '../lib/loadUserData';
+import { saveStateWithRetry } from '../lib/enhancedStatePersistence';
 
 const TestPersistencePage: React.FC = () => {
-  // State manager and content manager
-  const [stateManager, setStateManager] = useState<any>(null);
-  const [contentManager, setContentManager] = useState<any>(null);
+  // Zustand store selectors
+  const storeUserInformation = useAppStore((state) => state.userInformation);
+  const storeTubeState = useAppStore((state) => state.tubeState);
+  const storeLearningProgress = useAppStore((state) => state.learningProgress);
+  const storeLastUpdated = useAppStore((state) => state.lastUpdated);
+  const storeIsInitialized = useAppStore((state) => state.isInitialized);
 
-  // State for test metadata
-  const [userId, setUserId] = useState<string>('test-user-001');
-  const [isInitialized, setIsInitialized] = useState<boolean>(false);
-  
-  // State status indicators
-  const [persistenceStatus, setPersistenceStatus] = useState<{
-    localStorage: boolean;
-    sessionStorage: boolean;
-    indexedDB: boolean;
-    server: boolean;
-    serviceWorker: boolean;
-  }>({
-    localStorage: false,
-    sessionStorage: false,
-    indexedDB: false,
-    server: false,
-    serviceWorker: false,
-  });
-  
-  // Connection status
-  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
-  const [syncStatus, setSyncStatus] = useState<string>('Not started');
-  
-  // Current state snapshot
-  const [currentState, setCurrentState] = useState<any>(null);
-  
-  // Content cache status
-  const [cacheStatus, setCacheStatus] = useState<any>(null);
+  // Zustand store actions
+  const {
+    setUserInformation,
+    setTubeState,
+    setActiveTube, // Assuming tubeId is string
+    setLearningProgress,
+    incrementPoints,
+    initializeState,
+    syncToServer,
+  } = useAppStore.getState();
 
-  // Load managers
+  // Local component state
+  const [inputUserId, setInputUserId] = useState<string>(storeUserInformation?.userId || 'test-user-001');
+  const [statusMessage, setStatusMessage] = useState<string>('Page loaded.');
+  const [isSimulatingOffline, setIsSimulatingOffline] = useState<boolean>(false);
+  
+  // Keep inputUserId in sync with store's userId if store changes from outside
   useEffect(() => {
-    // Import on the client side only
-    Promise.all([
-      import('../lib/state/stateManager'),
-      import('../lib/content/contentManager')
-    ]).then(([stateModule, contentModule]) => {
-      setStateManager(stateModule.stateManager);
-      setContentManager(contentModule.contentManager);
-    });
-  }, []);
+    setInputUserId(storeUserInformation?.userId || 'test-user-001');
+  }, [storeUserInformation?.userId]);
+
+  const handleUserIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputUserId(e.target.value);
+  };
+
+  const handleSetUserInStore = () => {
+    console.log(`Setting user ID in store: ${inputUserId}`);
+    // Basic example: Assumes UserInformation structure
+    setUserInformation({ userId: inputUserId, name: `Test User ${inputUserId}`, email: `${inputUserId}@example.com` });
+    setStatusMessage(`User ID set in store to: ${inputUserId}`);
+  };
   
-  // Initialize
-  useEffect(() => {
-    // Only proceed if managers are loaded
-    if (!stateManager || !contentManager) return;
-    
-    // Check browser features
-    checkBrowserFeatures();
-    
-    // Initialize state manager
-    if (!isInitialized) {
-      stateManager.initialize(userId).then(() => {
-        console.log('State manager initialized');
-        setIsInitialized(true);
-        
-        // Subscribe to state changes
-        stateManager.subscribe((newState: any) => {
-          setCurrentState(newState);
-        });
-        
-        // Get initial state
-        setCurrentState(stateManager.getState());
-      });
-      
-      // Register page events for state persistence
-      stateManager.registerPageEvents();
+  // --- Updated Test Actions ---
+
+  const handleUpdatePoints = () => {
+    const pointsToAdd = 10;
+    console.log(`Adding ${pointsToAdd} points.`);
+    incrementPoints(pointsToAdd);
+    setStatusMessage(`${pointsToAdd} points added.`);
+  };
+
+  const handleCycleTube = () => {
+    // Example: Cycle to a tube named 'tube-next' or a predefined ID
+    const newActiveTubeId = `tube-${Math.floor(Math.random() * 3) + 1}`;
+    console.log(`Cycling to tube: ${newActiveTubeId}`);
+    setActiveTube(newActiveTubeId); // Ensure setActiveTube can handle string IDs
+    setStatusMessage(`Cycled to tube: ${newActiveTubeId}`);
+  };
+  
+  const handleForceSync = async () => {
+    setStatusMessage('Syncing current store state to server...');
+    console.log('Forcing sync of current store state...');
+    try {
+      const success = await syncToServer();
+      setStatusMessage(success ? 'Sync successful!' : 'Sync failed.');
+      console.log('Sync attempt finished. Success:', success);
+    } catch (error: any) {
+      setStatusMessage(`Sync error: ${error.message}`);
+      console.error('Sync error:', error);
     }
-    
-    // Setup online/offline listeners
-    window.addEventListener('online', handleOnlineStatusChange);
-    window.addEventListener('offline', handleOnlineStatusChange);
-    
-    // Listen for service worker events
-    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-      navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
-    }
-    
-    // Setup the page beforeunload event
-    window.addEventListener('beforeunload', () => {
-      // Force sync state before unloading
-      stateManager.forceSyncToServer();
-    });
-    
-    // Get content cache status
-    updateCacheStatus();
-    
-    // Cleanup
-    return () => {
-      window.removeEventListener('online', handleOnlineStatusChange);
-      window.removeEventListener('offline', handleOnlineStatusChange);
-      
-      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage);
-      }
+  };
+
+  const handleSaveWithRetry = async () => {
+    setStatusMessage('Attempting to save state with retry logic...');
+    console.log('Saving state with retry logic...');
+    const currentState = useAppStore.getState();
+    const payload: UserState = {
+        userInformation: currentState.userInformation || { userId: inputUserId, name: 'Default Name' },
+        tubeState: currentState.tubeState || { tubes: [], activeTube: null },
+        learningProgress: currentState.learningProgress || { points: { session: 0, lifetime: 0 } },
     };
-  }, [stateManager, contentManager, userId, isInitialized]);
-  
-  // Check browser features
-  const checkBrowserFeatures = () => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-    
-    const status = {
-      localStorage: false,
-      sessionStorage: false,
-      indexedDB: false,
-      server: false,
-      serviceWorker: false,
-    };
-    
-    // Check localStorage
     try {
-      localStorage.setItem('test', 'test');
-      localStorage.removeItem('test');
-      status.localStorage = true;
-    } catch (e) {
-      status.localStorage = false;
+      const success = await saveStateWithRetry(payload.userInformation.userId || 'unknown-user', payload);
+      setStatusMessage(success ? 'saveStateWithRetry successful!' : 'saveStateWithRetry failed. Check console for backup status.');
+      console.log('saveStateWithRetry attempt finished. Success:', success);
+    } catch (error: any) {
+      setStatusMessage(`saveStateWithRetry error: ${error.message}`);
+      console.error('saveStateWithRetry error:', error);
     }
-    
-    // Check sessionStorage
+  };
+  
+  const handleLoadUserData = async () => {
+    setStatusMessage('Loading user data from server...');
+    console.log('Loading user data...');
     try {
-      sessionStorage.setItem('test', 'test');
-      sessionStorage.removeItem('test');
-      status.sessionStorage = true;
-    } catch (e) {
-      status.sessionStorage = false;
-    }
-    
-    // Check IndexedDB
-    status.indexedDB = 'indexedDB' in window;
-    
-    // Check service worker
-    status.serviceWorker = 'serviceWorker' in navigator;
-    
-    // Check server connection
-    fetch('/api/health-check').then(response => {
-      status.server = response.ok;
-      setPersistenceStatus(status);
-    }).catch(() => {
-      status.server = false;
-      setPersistenceStatus(status);
-    });
-  };
-  
-  // Handle online/offline status changes
-  const handleOnlineStatusChange = () => {
-    if (typeof navigator === 'undefined') return;
-    
-    setIsOnline(navigator.onLine);
-    
-    // Trigger sync if coming back online
-    if (navigator.onLine) {
-      triggerSync();
+      // loadUserData now hydrates the store directly.
+      // The userId parameter for loadUserData is optional, as API uses session.
+      const result = await loadUserData(storeUserInformation?.userId); 
+      setStatusMessage(result.success ? 'User data loaded and store hydrated.' : 'Failed to load user data.');
+      console.log('Load user data result:', result);
+    } catch (error: any) {
+      setStatusMessage(`Error loading user data: ${error.message}`);
+      console.error('Error loading user data:', error);
     }
   };
-  
-  // Handle service worker messages
-  const handleServiceWorkerMessage = (event: MessageEvent) => {
-    if (typeof navigator === 'undefined') return;
+
+  // --- New Test Scenarios ---
+
+  const handleFullSaveReloadCycle = async () => {
+    setStatusMessage('Starting full save & reload cycle...');
+    console.log('--- Test Full Save & Reload Cycle ---');
     
-    if (event.data && event.data.type === 'STATE_SYNCED') {
-      const { successCount, failureCount, totalCount } = event.data.detail;
-      setSyncStatus(`Sync completed: ${successCount}/${totalCount} succeeded, ${failureCount} failed`);
-    }
-  };
-  
-  // Update cache status
-  const updateCacheStatus = async () => {
-    if (!contentManager) {
+    // 1. Modify state
+    const pointsToAdd = 5;
+    incrementPoints(pointsToAdd);
+    console.log('State modified (points incremented by 5). Current store state:', useAppStore.getState());
+    setStatusMessage(`State modified (+${pointsToAdd}pts). Saving...`);
+    await new Promise(r => setTimeout(r, 100)); // UI update
+
+    // 2. Sync to server
+    const syncSuccess = await syncToServer();
+    if (!syncSuccess) {
+      setStatusMessage('Full cycle aborted: Sync failed.');
+      console.error('Full cycle: Sync to server failed.');
       return;
     }
-    
+    console.log('State synced to server. Current store state:', useAppStore.getState());
+    setStatusMessage('Sync successful. Clearing store...');
+    await new Promise(r => setTimeout(r, 100));
+
+    // 3. Clear store (simulate app close/reopen or user switch)
+    initializeState({ 
+        userInformation: null, 
+        tubeState: null, 
+        learningProgress: null, 
+        isInitialized: false 
+    });
+    console.log('Store cleared. Current store state:', useAppStore.getState());
+    setStatusMessage('Store cleared. Reloading data...');
+    await new Promise(r => setTimeout(r, 100));
+
+    // 4. Load data
     try {
-      const status = await contentManager.getCacheStatus();
-      setCacheStatus(status);
-    } catch (error) {
-      console.error('Error getting cache status:', error);
+      await loadUserData(storeUserInformation?.userId); // Use original user's ID for loading
+      setStatusMessage('Full cycle: User data reloaded. Verify state.');
+      console.log('User data reloaded. Final store state:', useAppStore.getState());
+    } catch (error: any) {
+      setStatusMessage(`Full cycle failed: Error reloading data: ${error.message}`);
+      console.error('Full cycle: Error reloading data:', error);
     }
+    console.log('--- End Test Full Save & Reload Cycle ---');
+  };
+
+  const handleAnonymousToAuthTransition = async () => {
+    setStatusMessage('Starting anonymous to auth transition test...');
+    console.log('--- Test Anonymous to Auth Transition ---');
+    const originalUserId = storeUserInformation?.userId;
+
+    // 1. Simulate anonymous session & modify state
+    setUserInformation(null); // Or a specific anonymous user structure if your app uses one
+    incrementPoints(20);
+    console.log('Simulating anonymous session, added 20 points. Store state:', useAppStore.getState());
+    setStatusMessage('Anonymous session: +20pts. Simulating login...');
+    await new Promise(r => setTimeout(r, 100));
+
+    // 2. Simulate login
+    const authUserId = `authed-user-${Date.now().toString().slice(-5)}`;
+    setUserInformation({ userId: authUserId, name: 'Authenticated User' });
+    console.log(`Simulated login for user: ${authUserId}. Store state:`, useAppStore.getState());
+    setStatusMessage(`Logged in as ${authUserId}. Syncing...`);
+    await new Promise(r => setTimeout(r, 100));
+    
+    // 3. Sync to server
+    const syncSuccess = await syncToServer();
+    setStatusMessage(syncSuccess ? `Transition: Synced for ${authUserId}.` : `Transition: Sync failed for ${authUserId}.`);
+    console.log(`Sync after transition to ${authUserId}. Success: ${syncSuccess}. Store state:`, useAppStore.getState());
+    
+    // Note: Verification would involve checking DB that state is associated with authUserId
+    // Optionally, restore original user for further testing
+    // if (originalUserId) setUserInformation({ userId: originalUserId, name: 'Original User' });
+    console.log('--- End Test Anonymous to Auth Transition ---');
   };
   
-  // Update state with new values
-  const updateState = () => {
-    if (!stateManager) {
-      alert('State manager not yet loaded');
-      return;
-    }
-    
-    // Create a state update action
-    stateManager.dispatch({
-      type: 'UPDATE_POINTS',
-      payload: {
-        sessionPoints: Math.floor(Math.random() * 100),
-        lifetimePoints: Math.floor(Math.random() * 1000)
-      }
-    });
-    
-    // Check local storage to verify
-    if (typeof window !== 'undefined') {
-      const localState = localStorage.getItem(`zenjin_state_${userId}`);
-      if (localState) {
-        console.log('State saved to localStorage');
-      }
-    }
-  };
-  
-  // Simulate tube cycling
-  const simulateTubeCycle = () => {
-    if (!stateManager || !currentState) {
-      alert('State manager not yet loaded or no current state');
-      return;
-    }
-    
-    const currentTube = currentState.activeTube;
-    const nextTube = currentTube < 3 ? currentTube + 1 : 1;
-    
-    stateManager.dispatch({
-      type: 'CYCLE_TUBE',
-      payload: {
-        fromTube: currentTube,
-        toTube: nextTube
-      }
-    });
-  };
-  
-  // Complete a stitch in the current tube
-  const simulateStitchCompletion = () => {
-    if (!stateManager || !currentState) {
-      alert('State manager not yet loaded or no current state');
-      return;
-    }
-    
-    const currentTube = currentState.activeTube;
-    const currentTubeState = currentState.tubes[currentTube];
-    
-    stateManager.dispatch({
-      type: 'COMPLETE_STITCH',
-      payload: {
-        tubeNumber: currentTube,
-        threadId: currentTubeState.threadId || 'thread-123',
-        nextStitchId: `stitch-${Date.now().toString(36)}`,
-        score: Math.floor(Math.random() * 5), // Random score between 0-5
-        totalQuestions: 5
-      }
-    });
-  };
-  
-  // Force a sync to the server
-  const forceSyncToServer = async () => {
-    if (!stateManager) {
-      alert('State manager not yet loaded');
-      return;
-    }
-    
-    setSyncStatus('Syncing...');
-    const result = await stateManager.forceSyncToServer();
-    setSyncStatus(result ? 'Sync succeeded' : 'Sync failed');
-  };
-  
-  // Trigger a background sync via service worker
-  const triggerSync = () => {
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
-      setSyncStatus('Triggering background sync...');
-      
-      navigator.serviceWorker.controller.postMessage({
-        type: 'TRIGGER_SYNC'
-      });
-    } else {
-      setSyncStatus('Service worker not available');
-    }
-  };
-  
-  // Clear service worker caches (for testing)
-  const clearCaches = () => {
-    if (!contentManager) {
-      alert('Content manager not yet loaded');
-      return;
-    }
-    
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
-      navigator.serviceWorker.controller.postMessage({
-        type: 'CLEAR_CACHES'
-      });
-      
-      // Also clear content manager cache
-      contentManager.clearOldCache();
-      
-      setTimeout(updateCacheStatus, 500);
-    } else {
-      alert('Service worker not available');
-    }
-  };
-  
-  // Toggle offline mode (for testing)
-  const toggleOfflineMode = () => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-    
-    // Declare originalFetch in the context of the event handler
-    let originalFetch = window.fetch;
-    
-    // Can't really toggle navigator.onLine directly, but we can simulate it
-    if (isOnline) {
-      // Force the fetch requests to fail by using a non-existent server
-      // This is a hack for testing, but it should work for our purposes
-      window.fetch = async (url, options) => {
-        // Only block API requests, allow other requests
-        if (typeof url === 'string' && url.includes('/api/')) {
-          throw new Error('Network error - offline simulation');
+  let originalFetch: typeof window.fetch | null = null;
+
+  const simulateOffline = () => {
+    if (typeof window !== 'undefined' && !isSimulatingOffline) {
+      originalFetch = window.fetch;
+      window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+        if (typeof input === 'string' && input.includes('/api/sync-user-state')) {
+          console.warn('SIMULATING OFFLINE: Blocking fetch to /api/sync-user-state');
+          throw new Error('Simulated network error: You are offline.');
         }
-        return originalFetch(url, options);
+        if (typeof input === 'object' && 'url' in input && input.url.includes('/api/sync-user-state')) {
+            console.warn('SIMULATING OFFLINE: Blocking fetch to /api/sync-user-state (Request object)');
+            throw new Error('Simulated network error: You are offline.');
+        }
+        return originalFetch!(input, init);
       };
-      setIsOnline(false);
-      window.dispatchEvent(new Event('offline'));
-    } else {
-      // Restore fetch
-      window.fetch = originalFetch;
-      setIsOnline(true);
-      window.dispatchEvent(new Event('online'));
+      setIsSimulatingOffline(true);
+      setStatusMessage('OFFLINE mode simulated for /api/sync-user-state.');
+      console.log('OFFLINE mode simulated.');
     }
   };
+
+  const simulateOnline = () => {
+    if (typeof window !== 'undefined' && originalFetch && isSimulatingOffline) {
+      window.fetch = originalFetch;
+      originalFetch = null;
+      setIsSimulatingOffline(false);
+      setStatusMessage('ONLINE mode restored.');
+      console.log('ONLINE mode restored.');
+    }
+  };
+
+  const handleOfflineSyncAttempt = async () => {
+    if (!isSimulatingOffline) {
+      setStatusMessage('Warning: Not in simulated offline mode. Test might not be effective.');
+      console.warn('Attempting offline sync test, but not in simulated offline mode.');
+    }
+    setStatusMessage('Attempting sync with retry (expecting backup)...');
+    console.log('--- Test Offline Sync Attempt & Backup ---');
+    incrementPoints(30); // Modify state
+    console.log('State modified (+30 points). Attempting saveStateWithRetry...');
+    
+    const currentUserId = useAppStore.getState().userInformation?.userId || 'unknown-offline-user';
+    const currentState = useAppStore.getState();
+    const payload: UserState = {
+        userInformation: currentState.userInformation || { userId: currentUserId, name: 'Default Name' },
+        tubeState: currentState.tubeState || { tubes: [], activeTube: null },
+        learningProgress: currentState.learningProgress || { points: { session: 0, lifetime: 0 } },
+    };
+
+    const success = await saveStateWithRetry(currentUserId, payload);
+    console.log('saveStateWithRetry finished. Success:', success);
+
+    if (!success) {
+      const backupKey = `zenjin_state_backup_${currentUserId}`;
+      const backupData = localStorage.getItem(backupKey);
+      if (backupData) {
+        setStatusMessage('Offline sync failed as expected. Backup found in localStorage.');
+        console.log('Backup found in localStorage:', backupKey, JSON.parse(backupData));
+      } else {
+        setStatusMessage('Offline sync failed. NO BACKUP FOUND in localStorage.');
+        console.error('NO BACKUP FOUND in localStorage for key:', backupKey);
+      }
+    } else {
+      setStatusMessage('Offline sync unexpectedly succeeded. Check simulation.');
+      console.warn('Offline sync test unexpectedly succeeded.');
+    }
+    console.log('--- End Test Offline Sync Attempt & Backup ---');
+  };
   
+  // --- UI Rendering ---
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-6">State Persistence Test</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        <div className="bg-gray-100 rounded p-4">
-          <h2 className="text-lg font-semibold mb-2">Browser Features</h2>
-          <ul className="list-disc pl-5">
-            <li className={persistenceStatus.localStorage ? 'text-green-600' : 'text-red-600'}>
-              localStorage: {persistenceStatus.localStorage ? 'Available' : 'Not Available'}
-            </li>
-            <li className={persistenceStatus.sessionStorage ? 'text-green-600' : 'text-red-600'}>
-              sessionStorage: {persistenceStatus.sessionStorage ? 'Available' : 'Not Available'}
-            </li>
-            <li className={persistenceStatus.indexedDB ? 'text-green-600' : 'text-red-600'}>
-              IndexedDB: {persistenceStatus.indexedDB ? 'Available' : 'Not Available'}
-            </li>
-            <li className={persistenceStatus.serviceWorker ? 'text-green-600' : 'text-red-600'}>
-              Service Worker: {persistenceStatus.serviceWorker ? 'Available' : 'Not Available'}
-            </li>
-            <li className={persistenceStatus.server ? 'text-green-600' : 'text-red-600'}>
-              Server Connection: {persistenceStatus.server ? 'Available' : 'Not Available'}
-            </li>
-          </ul>
-        </div>
-        
-        <div className="bg-gray-100 rounded p-4">
-          <h2 className="text-lg font-semibold mb-2">Connection Status</h2>
-          <div className="mb-2">
-            <div className={`inline-block w-3 h-3 rounded-full mr-2 ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
-            <span>{isOnline ? 'Online' : 'Offline'}</span>
-          </div>
-          <div className="mb-2">
-            <strong>Sync Status:</strong> {syncStatus}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button 
-              onClick={toggleOfflineMode}
-              className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              {isOnline ? 'Simulate Offline' : 'Simulate Online'}
-            </button>
-            <button 
-              onClick={checkBrowserFeatures}
-              className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600"
-            >
-              Refresh Status
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        <div className="bg-gray-100 rounded p-4">
-          <h2 className="text-lg font-semibold mb-2">Test User</h2>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              User ID:
-            </label>
-            <input
-              type="text"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              className="w-full p-2 border rounded"
-            />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button 
-              onClick={() => stateManager && stateManager.initialize(userId)}
-              className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
-              disabled={!userId || !stateManager}
-            >
-              Initialize State
-            </button>
-          </div>
-        </div>
-        
-        <div className="bg-gray-100 rounded p-4">
-          <h2 className="text-lg font-semibold mb-2">Content Cache Status</h2>
-          {cacheStatus ? (
-            <div>
-              <p><strong>Worker Available:</strong> {cacheStatus.workerAvailable ? 'Yes' : 'No'}</p>
-              <p><strong>Memory Cache Size:</strong> {cacheStatus.memCacheSize} items</p>
-              <p><strong>Worker Cache Size:</strong> {cacheStatus.cacheSize || 'N/A'} items</p>
-              <p><strong>Queue Length:</strong> {cacheStatus.queueLength || 0} items</p>
-              <p><strong>Is Fetching:</strong> {cacheStatus.isFetching ? 'Yes' : 'No'}</p>
-            </div>
-          ) : (
-            <p>Loading cache status...</p>
-          )}
-          <div className="mt-2">
-            <button 
-              onClick={updateCacheStatus}
-              className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 mr-2"
-            >
-              Refresh
-            </button>
-            <button 
-              onClick={clearCaches}
-              className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-            >
-              Clear Caches
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      <div className="mb-8">
-        <h2 className="text-lg font-semibold mb-2">Test Actions</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
-          <button 
-            onClick={updateState}
-            className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            disabled={!isInitialized}
-          >
-            Update Points
-          </button>
-          <button 
-            onClick={simulateTubeCycle}
-            className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            disabled={!isInitialized}
-          >
-            Cycle Tube
-          </button>
-          <button 
-            onClick={simulateStitchCompletion}
-            className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            disabled={!isInitialized}
-          >
-            Complete Stitch
-          </button>
-          <button 
-            onClick={forceSyncToServer}
-            className="px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-            disabled={!isInitialized || !isOnline}
-          >
-            Force Sync
-          </button>
-          <button 
-            onClick={triggerSync}
-            className="px-3 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
-            disabled={!persistenceStatus.serviceWorker || !isOnline}
-          >
-            Trigger Background Sync
+      <h1 className="text-2xl font-bold mb-6">New State Persistence Test Page</h1>
+      <p className="mb-4 text-sm text-gray-600">Status: {statusMessage}</p>
+
+      {/* User ID Management */}
+      <div className="bg-gray-100 p-4 rounded mb-4">
+        <h2 className="text-lg font-semibold">User Management</h2>
+        <div className="flex items-center gap-2 mt-2">
+          <input
+            type="text"
+            value={inputUserId}
+            onChange={handleUserIdChange}
+            placeholder="Enter User ID"
+            className="p-2 border rounded w-1/2"
+          />
+          <button onClick={handleSetUserInStore} className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600">
+            Set User in Store
           </button>
         </div>
       </div>
-      
-      {currentState && (
-        <div className="mb-8">
-          <h2 className="text-lg font-semibold mb-2">Current State</h2>
-          <div className="bg-gray-100 rounded p-4 mb-2">
-            <p><strong>User ID:</strong> {currentState.userId}</p>
-            <p><strong>Active Tube:</strong> {currentState.activeTube}</p>
-            <p><strong>Cycle Count:</strong> {currentState.cycleCount}</p>
-            <p><strong>Session Points:</strong> {currentState.points.session}</p>
-            <p><strong>Lifetime Points:</strong> {currentState.points.lifetime}</p>
-            <p><strong>Last Updated:</strong> {new Date(currentState.lastUpdated).toLocaleString()}</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {Object.entries(currentState.tubes).map(([tubeNumber, tubeState]: [string, any]) => (
-              <div key={tubeNumber} className={`rounded p-3 ${parseInt(tubeNumber) === currentState.activeTube ? 'bg-blue-200' : 'bg-gray-200'}`}>
-                <h3 className="font-medium mb-1">Tube {tubeNumber}</h3>
-                <p><strong>Thread ID:</strong> {tubeState.threadId || 'None'}</p>
-                <p><strong>Current Stitch:</strong> {tubeState.currentStitchId || 'None'}</p>
-                <p><strong>Position:</strong> {tubeState.position}</p>
-              </div>
-            ))}
-          </div>
+
+      {/* Current State Display */}
+      <div className="bg-gray-50 p-4 rounded mb-4">
+        <h2 className="text-lg font-semibold">Current Store State</h2>
+        <p>Initialized: {storeIsInitialized ? 'Yes' : 'No'}</p>
+        <p>User ID: {storeUserInformation?.userId || 'N/A'}</p>
+        <p>User Name: {storeUserInformation?.name || 'N/A'}</p>
+        <p>Points (Session): {storeLearningProgress?.points?.session ?? 'N/A'}</p>
+        <p>Points (Lifetime): {storeLearningProgress?.points?.lifetime ?? 'N/A'}</p>
+        <p>Active Tube ID: {storeTubeState?.activeTube || 'N/A'}</p>
+        <p>Last Updated (Store): {storeLastUpdated ? new Date(storeLastUpdated).toLocaleString() : 'N/A'}</p>
+        <details className="text-xs cursor-pointer">
+            <summary>Raw State Objects</summary>
+            <pre className="bg-white p-2 rounded mt-1 overflow-x-auto">
+                UserInformation: {JSON.stringify(storeUserInformation, null, 2) || 'null'}{'\n'}
+                TubeState: {JSON.stringify(storeTubeState, null, 2) || 'null'}{'\n'}
+                LearningProgress: {JSON.stringify(storeLearningProgress, null, 2) || 'null'}
+            </pre>
+        </details>
+      </div>
+
+      {/* Basic Actions */}
+      <div className="bg-blue-50 p-4 rounded mb-4">
+        <h2 className="text-lg font-semibold">Basic Actions</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+          <button onClick={handleUpdatePoints} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Update Points (+10)</button>
+          <button onClick={handleCycleTube} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Cycle Active Tube</button>
+          <button onClick={handleForceSync} className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Force Sync (Store)</button>
+          <button onClick={handleSaveWithRetry} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Save with Retry</button>
+          <button onClick={handleLoadUserData} className="px-4 py-2 bg-teal-500 text-white rounded hover:bg-teal-600">Load User Data (to Store)</button>
+          <button onClick={() => initializeState({})} className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">Clear Store (Initialize Empty)</button>
         </div>
-      )}
+      </div>
+
+      {/* Advanced Test Scenarios */}
+      <div className="bg-purple-50 p-4 rounded mb-4">
+        <h2 className="text-lg font-semibold">Advanced Test Scenarios</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
+          <button onClick={handleFullSaveReloadCycle} className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600">Test Full Save & Reload Cycle</button>
+          <button onClick={handleAnonymousToAuthTransition} className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600">Test Anonymous to Auth Transition</button>
+        </div>
+      </div>
+
+      {/* Offline Simulation */}
+      <div className="bg-red-50 p-4 rounded mb-4">
+        <h2 className="text-lg font-semibold">Offline Simulation</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
+          <button onClick={simulateOffline} disabled={isSimulatingOffline} className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50">Simulate Offline</button>
+          <button onClick={simulateOnline} disabled={!isSimulatingOffline} className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50">Simulate Online</button>
+          <button onClick={handleOfflineSyncAttempt} className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600">Test Offline Sync (saveStateWithRetry)</button>
+        </div>
+         <p className="text-sm mt-2">Current simulated status: {isSimulatingOffline ? 'OFFLINE' : 'ONLINE'}</p>
+      </div>
       
-      <div className="mb-8">
-        <h2 className="text-lg font-semibold mb-2">Storage Debug</h2>
-        <div className="bg-gray-100 rounded p-4">
-          <div className="mb-4">
-            <h3 className="font-medium mb-1">LocalStorage</h3>
-            <button 
-              onClick={() => {
-                try {
-                  const state = localStorage.getItem(`zenjin_state_${userId}`);
-                  console.log('LocalStorage state:', state ? JSON.parse(state) : null);
-                  alert(`LocalStorage state found: ${state ? 'Yes' : 'No'}`);
-                } catch (e) {
-                  console.error('Error reading localStorage:', e);
-                  alert(`Error reading localStorage: ${e.message}`);
-                }
-              }}
-              className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 mr-2"
-            >
-              Check LocalStorage
-            </button>
-            <button 
-              onClick={() => {
-                try {
-                  localStorage.removeItem(`zenjin_state_${userId}`);
-                  alert('LocalStorage state cleared');
-                } catch (e) {
-                  console.error('Error clearing localStorage:', e);
-                  alert(`Error clearing localStorage: ${e.message}`);
-                }
-              }}
-              className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-            >
-              Clear LocalStorage
-            </button>
-          </div>
-          
-          <div className="mb-4">
-            <h3 className="font-medium mb-1">Service Worker</h3>
-            <button 
-              onClick={() => {
-                if ('serviceWorker' in navigator) {
-                  navigator.serviceWorker.getRegistrations().then(registrations => {
-                    alert(`Service Worker registrations: ${registrations.length}`);
-                    console.log('Service Worker registrations:', registrations);
-                  });
-                } else {
-                  alert('Service Worker API not available');
-                }
-              }}
-              className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              Check Service Worker
-            </button>
-          </div>
+      {/* Debug LocalStorage */}
+      <div className="bg-yellow-50 p-4 rounded">
+        <h2 className="text-lg font-semibold">LocalStorage Debug</h2>
+        <div className="flex gap-2 mt-2">
+            <button onClick={() => {
+                const appState = localStorage.getItem('zenjin-app-state');
+                console.log('Zustand Persisted State (zenjin-app-state):', appState ? JSON.parse(appState) : null);
+                alert(`Zustand state (zenjin-app-state) ${appState ? 'found' : 'NOT found'}. Check console.`);
+            }} className="px-4 py-2 bg-yellow-500 text-black rounded hover:bg-yellow-600">Check 'zenjin-app-state'</button>
+            <button onClick={() => {
+                const backupKey = `zenjin_state_backup_${storeUserInformation?.userId || inputUserId || 'unknown-user'}`;
+                const backupState = localStorage.getItem(backupKey);
+                console.log(`Backup State (${backupKey}):`, backupState ? JSON.parse(backupState) : null);
+                alert(`Backup state (${backupKey}) ${backupState ? 'found' : 'NOT found'}. Check console.`);
+            }} className="px-4 py-2 bg-yellow-500 text-black rounded hover:bg-yellow-600">Check Backup State</button>
         </div>
       </div>
     </div>
