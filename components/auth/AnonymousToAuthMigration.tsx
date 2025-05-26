@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { hasAnonymousData, cleanupAnonymousData } from '../../lib/authUtils';
-import { transferAnonymousData } from '../../lib/auth/supabaseClient';
+// import { transferAnonymousData } from '../../lib/auth/supabaseClient'; // Removed
 
 interface AnonymousToAuthMigrationProps {
   onComplete?: (success: boolean) => void;
@@ -30,52 +30,44 @@ const AnonymousToAuthMigration: React.FC<AnonymousToAuthMigrationProps> = ({
     
     // Check if we have anonymous data to migrate
     if (!hasAnonymousData()) {
-      console.log('No anonymous data to migrate');
+      console.log('No anonymous data to cleanup.'); // Adjusted log message
       setMigrationState('idle');
       return;
     }
 
-    // Start migration process
-    const migrateData = async () => {
+    // Start cleanup process
+    const cleanupData = async () => {
       try {
-        setMigrationState('migrating');
-        setStatusMessage('Transferring your progress...');
+        setMigrationState('migrating'); // Keep 'migrating' state name, but message changes
+        setStatusMessage('Cleaning up previous session data...');
         
-        console.log('Starting migration of anonymous data to authenticated user', user.id);
+        console.log('Starting cleanup of anonymous data for authenticated user', user.id);
         
-        // Transfer the data using the supabase function
-        const success = await transferAnonymousData(user.id);
+        // Data transfer is now implicit via Zustand store sync on login.
+        // This component now only handles cleanup of old localStorage flags/items.
         
-        if (success) {
-          setMigrationState('success');
-          setStatusMessage('Your progress has been successfully transferred!');
-          console.log('Migration successful');
-          
-          // Clean up any remaining anonymous data
-          cleanupAnonymousData();
-          
-          // Call completion callback
-          onComplete?.(true);
-        } else {
-          setMigrationState('error');
-          setStatusMessage('There was an issue transferring your progress.');
-          console.error('Migration failed');
-          
-          // Call error callback
-          onError?.({ message: 'Progress transfer failed' });
-        }
+        // Directly proceed to cleanup
+        cleanupAnonymousData();
+        console.log('Anonymous data cleanup successful.');
+        
+        setMigrationState('success');
+        setStatusMessage('Previous session data cleaned up.');
+        
+        // Call completion callback
+        onComplete?.(true);
+
       } catch (error) {
-        console.error('Error during data migration:', error);
+        console.error('Error during anonymous data cleanup:', error);
         setMigrationState('error');
-        setStatusMessage('An error occurred while transferring your progress.');
+        setStatusMessage('An error occurred during cleanup.');
         
         // Call error callback
         onError?.(error);
       }
     };
     
-    // Execute migration
-    migrateData();
+    // Execute cleanup
+    cleanupData();
   }, [isAuthenticated, user, onComplete, onError]);
   
   // Render status message if showStatus is enabled

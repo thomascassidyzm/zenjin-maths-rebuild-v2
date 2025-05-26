@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { supabase, transferAnonymousData } from '../lib/auth/supabaseClient';
+import { supabase } from '../lib/auth/supabaseClient'; // transferAnonymousData removed
 import { cleanupAnonymousData } from '../lib/authUtils';
 import AnonymousToAuthMigration from '../components/auth/AnonymousToAuthMigration';
 
@@ -74,8 +74,15 @@ export default function LoginCallback() {
                 localStorage.setItem('zenjin_auth_headers', JSON.stringify(authHeaders));
               }
               
-              // Transfer anonymous data
-              await transferAnonymousData(data.user.id);
+              // Transfer anonymous data - REMOVED (Implicit transfer via Zustand store sync)
+              // await transferAnonymousData(data.user.id); 
+              console.log('Anonymous data transfer is now implicit. Skipping explicit client-side call.');
+              // Transfer anonymous data - REMOVED
+              // await transferAnonymousData(data.user.id);
+              console.log('Anonymous data transfer is now implicit. Skipping explicit client-side call.');
+              // Transfer anonymous data - REMOVED
+              // await transferAnonymousData(data.user.id);
+              console.log('Anonymous data transfer is now implicit. Skipping explicit client-side call.');
               
               // Create or update user profile
               try {
