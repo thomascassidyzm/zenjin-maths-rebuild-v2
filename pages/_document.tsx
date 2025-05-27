@@ -24,9 +24,6 @@ export default function Document() {
 
         {/* EMERGENCY FIX: Disable unnecessary API calls to /api/user-state */}
         <script src="/disable-api-calls.js"></script>
-
-        {/* Simple tube state checker */}
-        <script src="/tube-persistence-check.js"></script>
       </body>
     </Html>
   );
